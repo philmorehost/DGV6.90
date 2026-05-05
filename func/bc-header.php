@@ -104,9 +104,9 @@ if (mysqli_num_rows($select_user_vendor_status_message) == 1) {
 
 
       <li class="nav-item">
-        <a class="sitemap-guide-btn" href="<?php echo $web_http_host; ?>/web/SiteMap.php" title="Services &amp; Features Guide">
+        <a class="sitemap-guide-btn" href="<?php echo $web_http_host; ?>/web/SiteMap.php" title="Services &amp; Features">
           <span class="guide-hand">👉</span>
-          SITEMAP / GUIDE
+          SITEMAP
         </a>
       </li><!-- End SiteMap Icon -->
 

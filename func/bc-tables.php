@@ -191,6 +191,13 @@ $create_vendor_paid_bills_table = mysqli_query($connection_server, "CREATE TABLE
 //Create Domain Extensions Table
 $create_domain_extensions_table = mysqli_query($connection_server, "CREATE TABLE IF NOT EXISTS sas_domain_extensions (id INT NOT NULL AUTO_INCREMENT, extension VARCHAR(20) NOT NULL, price DECIMAL(10,2) NOT NULL, PRIMARY KEY (id), UNIQUE(extension))");
 
+if ($create_domain_extensions_table) {
+    $check_promo_col = mysqli_query($connection_server, "SHOW COLUMNS FROM `sas_domain_extensions` LIKE 'promo_price'");
+    if (mysqli_num_rows($check_promo_col) == 0) {
+        mysqli_query($connection_server, "ALTER TABLE `sas_domain_extensions` ADD COLUMN promo_price DECIMAL(10,2) DEFAULT 0.00 AFTER price");
+    }
+}
+
 //Create Pending Vendors Table
 $create_pending_vendors_table = mysqli_query($connection_server, "
 CREATE TABLE IF NOT EXISTS sas_pending_vendors (

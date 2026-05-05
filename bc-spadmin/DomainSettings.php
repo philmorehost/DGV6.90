@@ -7,9 +7,10 @@
         $ext = mysqli_real_escape_string($connection_server, trim(strtolower($_POST['extension'])));
         $ext = "." . ltrim($ext, "."); // Ensure it starts with a dot
         $price = mysqli_real_escape_string($connection_server, $_POST['price']);
+        $promo_price = mysqli_real_escape_string($connection_server, $_POST['promo_price'] ?? 0);
 
         if(!empty($ext) && is_numeric($price)) {
-            $sql = "INSERT INTO sas_domain_extensions (extension, price) VALUES ('$ext', '$price') ON DUPLICATE KEY UPDATE price='$price'";
+            $sql = "INSERT INTO sas_domain_extensions (extension, price, promo_price) VALUES ('$ext', '$price', '$promo_price') ON DUPLICATE KEY UPDATE price='$price', promo_price='$promo_price'";
             if(mysqli_query($connection_server, $sql)) {
                 $_SESSION['page_alert'] = "Domain extension $ext added/updated successfully!";
             } else {
@@ -103,13 +104,19 @@
                     </div>
                     <div class="card-body p-4">
                         <form method="POST" action="" class="row g-3 align-items-end mb-4">
-                            <div class="col-md-5">
+                            <div class="col-md-3">
                                 <label class="form-label small fw-bold text-muted">EXTENSION (e.g. .com)</label>
                                 <input type="text" name="extension" class="form-control rounded-3" placeholder=".com" required>
                             </div>
-                            <div class="col-md-5">
-                                <label class="form-label small fw-bold text-muted">REGISTRATION PRICE (₦)</label>
+                            <div class="col-md-3">
+                                <label class="form-label small fw-bold text-muted">PROMO PRICE (₦)</label>
+                                <input type="number" step="0.01" name="promo_price" class="form-control rounded-3" placeholder="3500">
+                                <div class="form-text x-small">1st Year Only</div>
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label small fw-bold text-muted">NORMAL PRICE (₦)</label>
                                 <input type="number" step="0.01" name="price" class="form-control rounded-3" placeholder="5000" required>
+                                <div class="form-text x-small">Renewal Price</div>
                             </div>
                             <div class="col-md-2">
                                 <button type="submit" name="add_extension" class="btn btn-primary w-100 rounded-3 fw-bold">ADD</button>
@@ -121,7 +128,8 @@
                                 <thead class="table-light">
                                     <tr class="small text-uppercase">
                                         <th>Extension</th>
-                                        <th>Price</th>
+                                        <th>Promo Price</th>
+                                        <th>Normal Price</th>
                                         <th class="text-end">Action</th>
                                     </tr>
                                 </thead>
@@ -133,6 +141,9 @@
                                     ?>
                                     <tr>
                                         <td class="fw-bold"><?php echo htmlspecialchars($ext['extension']); ?></td>
+                                        <td class="text-success fw-bold">
+                                            <?php echo ($ext['promo_price'] > 0) ? '₦'.number_format($ext['promo_price'], 2) : '—'; ?>
+                                        </td>
                                         <td class="text-primary fw-bold">₦<?php echo number_format($ext['price'], 2); ?></td>
                                         <td class="text-end">
                                             <a href="?delete_ext=<?php echo $ext['id']; ?>" class="text-danger" onclick="return confirm('Delete this extension?')"><i class="bi bi-trash"></i></a>

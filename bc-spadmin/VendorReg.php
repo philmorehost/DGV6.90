@@ -102,9 +102,9 @@
                                     $first_dot = strpos($app_base_url, '.');
                                     $ext = ($first_dot !== false) ? substr($app_base_url, $first_dot) : '';
                                     $ext_esc = mysqli_real_escape_string($connection_server, $ext);
-                                    $q_ext = mysqli_query($connection_server, "SELECT price FROM sas_domain_extensions WHERE extension='$ext_esc' LIMIT 1");
+                                    $q_ext = mysqli_query($connection_server, "SELECT price, promo_price FROM sas_domain_extensions WHERE extension='$ext_esc' LIMIT 1");
                                     if($r_ext = mysqli_fetch_assoc($q_ext)) {
-                                        $actual_domain_fee = (float)$r_ext['price'];
+                                        $actual_domain_fee = ($r_ext['promo_price'] > 0) ? (float)$r_ext['promo_price'] : (float)$r_ext['price'];
                                     }
                                 }
                                 $calculated_total += $actual_domain_fee;
@@ -216,13 +216,33 @@
         .form-control:focus { box-shadow: 0 0 0 0.25rem rgba(13, 110, 253, 0.1); border-color: #86b7fe; }
         .card { transition: transform 0.2s ease, box-shadow 0.2s ease; }
         .card:hover { transform: translateY(-2px); box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.1) !important; }
+
+        /* COMPLETE ORDER button fix - high contrast background and text */
+        #btn-submit {
+            background-color: #0d6efd !important;
+            color: #ffffff !important;
+            border-color: #0d6efd !important;
+            opacity: 1 !important;
+            display: inline-block !important;
+            visibility: visible !important;
+        }
+        #btn-submit:hover {
+            background-color: #0b5ed7 !important;
+            box-shadow: 0 4px 12px rgba(13, 110, 253, 0.3);
+        }
+
         .btn-primary { background-color: #0d6efd !important; border-color: #0d6efd !important; color: #fff !important; }
         .btn-primary:hover { background-color: #0b5ed7 !important; border-color: #0a58ca !important; }
         .form-check-input:checked { background-color: #0d6efd; border-color: #0d6efd; }
         .cursor-pointer { cursor: pointer; }
+
+        /* Mobile pricing labels */
+        .price-label { font-size: 1.2rem; font-weight: 900; }
+
         @media (max-width: 991.98px) {
             .pagetitle h1 { font-size: 1.5rem; text-align: center; margin-bottom: 20px; }
             .card-header h5 { font-size: 1.1rem; }
+            .col-lg-4, .col-lg-8 { padding-left: 10px; padding-right: 10px; }
         }
     </style>
 </head>
@@ -450,12 +470,12 @@
                                     <div class="col-12">
                                         <div class="bg-light p-4 rounded-4 border">
                                             <div class="d-flex flex-column flex-md-row justify-content-between align-items-center gap-3">
-                                                <div class="text-center text-md-start">
+                                                <div class="text-center text-md-start mb-3 mb-md-0">
                                                     <h6 class="fw-bold text-muted mb-1 text-uppercase small">Checkout Summary</h6>
-                                                    <h4 class="fw-black text-primary mb-0" id="display_total" style="word-break: break-all;">₦0.00</h4>
+                                                    <h4 class="fw-black text-primary mb-0 price-label" id="display_total" style="word-break: break-all;">₦0.00</h4>
                                                 </div>
                                                 <input type="hidden" name="total_amount" id="total_amount_input" value="0">
-                                                <button class="btn btn-primary btn-lg px-5 rounded-pill fw-bold shadow-sm w-100 w-md-auto" type="submit" name="create-profile" id="btn-submit">
+                                                <button class="btn btn-primary btn-lg px-5 rounded-pill fw-bold shadow-sm w-100 w-md-auto py-3 py-md-2" type="submit" name="create-profile" id="btn-submit">
                                                     COMPLETE ORDER
                                                 </button>
                                             </div>

@@ -2425,11 +2425,11 @@ function verifyBvnNin($bvn_nin, $type, $bank_code, $account_number, $expected_fi
  * Monnify BVN/NIN verification (extracted for use by dispatcher).
  */
 function verifyBvnNinWithMonnify($bvn_nin, $type, $bank_code, $account_number, $vid, $use_vendor_token = true) {
-    global $connection_server;
+    global $connection_server, $get_logged_user_details;
     if ($use_vendor_token) {
         $token_result = json_decode(getVendorMonnifyAccessToken(), true);
     } else {
-        $token_result = json_decode(getVendorMonnifyAccessToken(), true);
+        $token_result = json_decode(getUserMonnifyAccessToken(), true);
     }
     if ($token_result['status'] !== 'success') {
         return ["status" => "failed", "message" => $token_result['message'] ?? "Monnify token error"];
@@ -2438,26 +2438,33 @@ function verifyBvnNinWithMonnify($bvn_nin, $type, $bank_code, $account_number, $
 
     if ($type === 'bvn') {
         // Validate account number first
-        $nuban = json_decode(makeMonnifyRequest("get", $token, "api/v1/disbursements/account/validate?accountNumber=" . $account_number . "&bankCode=" . $bank_code, ""), true);
-        if ($nuban['status'] !== 'success') {
-            return ["status" => "failed", "message" => "Invalid bank account number"];
+        $nuban_res = json_decode(makeMonnifyRequest("get", $token, "api/v1/disbursements/account/validate?accountNumber=" . $account_number . "&bankCode=" . $bank_code, ""), true);
+        if ($nuban_res['status'] !== 'success') {
+            return ["status" => "failed", "message" => "Invalid bank account number: " . ($nuban_res['message'] ?? 'Unknown error')];
         }
-        $res = json_decode(makeMonnifyRequest("post", $token, "api/v1/vas/bvn-account-match", ["bankCode" => $bank_code, "accountNumber" => $account_number, "bvn" => $bvn_nin]), true);
+
+        $mobileNo = preg_replace('/[^0-9]/', '', $get_logged_user_details['phone'] ?? '');
+        $res = json_decode(makeMonnifyRequest("post", $token, "api/v1/vas/bvn-account-match", ["bankCode" => $bank_code, "accountNumber" => $account_number, "bvn" => $bvn_nin, "mobileNo" => $mobileNo]), true);
         if ($res['status'] !== 'success') {
-            return ["status" => "failed", "message" => "BVN and account number do not match"];
+            return ["status" => "failed", "message" => "BVN and account number do not match: " . ($res['message'] ?? 'Unknown error')];
         }
-        // Monnify BVN match doesn't return name; return blank names (name matching skipped for Monnify BVN)
-        return ["status" => "success", "firstname" => "", "lastname" => "", "phone" => "", "bank_validated" => true];
+
+        $res_data = json_decode($res['json_result'], true);
+        $firstname = $res_data['responseBody']['firstName'] ?? "";
+        $lastname = $res_data['responseBody']['lastName'] ?? "";
+
+        return ["status" => "success", "firstname" => $firstname, "lastname" => $lastname, "phone" => "", "bank_validated" => true];
     } else {
-        $res = json_decode(makeMonnifyRequest("post", $token, "api/v1/vas/nin-details", ["nin" => $bvn_nin]), true);
+        $mobileNo = preg_replace('/[^0-9]/', '', $get_logged_user_details['phone'] ?? '');
+        $res = json_decode(makeMonnifyRequest("post", $token, "api/v1/vas/nin-details", ["nin" => $bvn_nin, "mobileNo" => $mobileNo]), true);
         if ($res['status'] !== 'success') {
-            return ["status" => "failed", "message" => "NIN cannot be verified"];
+            return ["status" => "failed", "message" => "NIN lookup failed: " . ($res['message'] ?? 'Unknown error')];
         }
         $nin_data = json_decode($res['json_result'], true);
         $phone = $nin_data['responseBody']['mobileNumber'] ?? '';
         $phone_len = strlen($phone);
         if ($phone_len >= 10) $phone = "0" . substr($phone, $phone_len - 10, $phone_len);
-        return ["status" => "success", "firstname" => "", "lastname" => "", "phone" => $phone];
+        return ["status" => "success", "firstname" => $nin_data['responseBody']['firstname'] ?? "", "lastname" => $nin_data['responseBody']['surname'] ?? "", "phone" => $phone];
     }
 }
 

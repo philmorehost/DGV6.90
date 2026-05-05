@@ -27,9 +27,9 @@ if (($result['status'] ?? '') == 'available') {
     $ext = ($first_dot !== false) ? substr($domain, $first_dot) : '';
     $ext_esc = mysqli_real_escape_string($connection_server, $ext);
 
-    $q_price = mysqli_query($connection_server, "SELECT price FROM sas_domain_extensions WHERE extension='$ext_esc' LIMIT 1");
+    $q_price = mysqli_query($connection_server, "SELECT price, promo_price FROM sas_domain_extensions WHERE extension='$ext_esc' LIMIT 1");
     if($r_price = mysqli_fetch_assoc($q_price)) {
-        $result['price'] = (float)$r_price['price'];
+        $result['price'] = ($r_price['promo_price'] > 0) ? (float)$r_price['promo_price'] : (float)$r_price['price'];
     } else {
         // Extension not supported for registration via this platform
         $result['status'] = 'unsupported';
