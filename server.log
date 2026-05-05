@@ -1,9 +1,0 @@
-[Tue May  5 22:24:33 2026] PHP 8.3.6 Development Server (http://localhost:8000) started
-[Tue May  5 22:26:02 2026] [::1]:49122 Accepted
-[Tue May  5 22:26:03 2026] [::1]:49122 [500]: GET /bc-spadmin/VendorReg.php - Uncaught TypeError: mysqli_query(): Argument #1 ($mysql) must be of type mysqli, null given in /app/func/bc-tables.php:1239
-Stack trace:
-#0 /app/func/bc-tables.php(1239): mysqli_query()
-#1 /app/bc-spadmin/VendorReg.php(4): include('...')
-#2 {main}
-  thrown in /app/func/bc-tables.php on line 1239
-[Tue May  5 22:26:03 2026] [::1]:49122 Closing

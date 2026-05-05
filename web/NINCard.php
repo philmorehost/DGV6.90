@@ -43,6 +43,32 @@ if (isset($_POST["request-nin-card"])) {
         exit();
     }
 
+    // Handle optional portrait upload
+    $user_portrait = '';
+    if (isset($_FILES['user_portrait']) && $_FILES['user_portrait']['error'] === UPLOAD_ERR_OK) {
+        $file_tmp = $_FILES['user_portrait']['tmp_name'];
+        $file_size = $_FILES['user_portrait']['size'];
+        $file_type = $_FILES['user_portrait']['type'];
+        $allowed_types = ['image/jpeg', 'image/jpg', 'image/png'];
+
+        if (in_array($file_type, $allowed_types)) {
+            if ($file_size <= 2 * 1024 * 1024) { // 2MB limit
+                $data = file_get_contents($file_tmp);
+                $user_portrait = base64_encode($data);
+            } else {
+                chargeUser("credit", $reference . "_REFUND", "NIN Slip Refund", $reference . "_RF", "", $service_fee, $service_fee, "Refund: Image too large", "WEB", $_SERVER["HTTP_HOST"], 1);
+                $_SESSION["product_purchase_response"] = "The uploaded portrait is too large. Maximum size is 2MB.";
+                header("Location: NINCard.php");
+                exit();
+            }
+        } else {
+            chargeUser("credit", $reference . "_REFUND", "NIN Slip Refund", $reference . "_RF", "", $service_fee, $service_fee, "Refund: Invalid image type", "WEB", $_SERVER["HTTP_HOST"], 1);
+            $_SESSION["product_purchase_response"] = "Invalid file type. Please upload a JPG or PNG image.";
+            header("Location: NINCard.php");
+            exit();
+        }
+    }
+
     // Fetch NIN profile from provider
     $profile = fetchNINProfile($nin_input, $get_logged_user_details["vendor_id"]);
 
@@ -67,12 +93,14 @@ if (isset($_POST["request-nin-card"])) {
     $soo         = mysqli_real_escape_string($connection_server, $profile['state_of_origin'] ?? '');
     $provider    = mysqli_real_escape_string($connection_server, $profile['provider'] ?? '');
 
+    $user_portrait = mysqli_real_escape_string($connection_server, $user_portrait);
+
     mysqli_query($connection_server, "INSERT INTO sas_nin_card_requests
-        (vendor_id, user_id, reference, nin_input, firstname, middlename, lastname, birthdate, gender, photo_data, phone, address, residence_state, state_of_origin, price, provider, status)
+        (vendor_id, user_id, reference, nin_input, firstname, middlename, lastname, birthdate, gender, photo_data, phone, address, residence_state, state_of_origin, price, provider, user_portrait, status)
         VALUES
         ('".$get_logged_user_details["vendor_id"]."', '".$get_logged_user_details["id"]."', '$reference', '$nin_input',
          '$firstname', '$middlename', '$lastname', '$birthdate', '$gender', '$photo_data', '$phone', '$address', '$res_state', '$soo',
-         '$service_fee', '$provider', 'success')");
+         '$service_fee', '$provider', '$user_portrait', 'success')");
 
     header("Location: ViewNINCard.php?ref=$reference");
     exit();
@@ -124,13 +152,19 @@ if (isset($_POST["request-nin-card"])) {
                         Your balance: <strong>₦<?php echo number_format(userBalance(1), 2); ?></strong>
                     </div>
 
-                    <form method="post" action="">
-                        <div class="mb-4">
+                    <form method="post" action="" enctype="multipart/form-data">
+                        <div class="mb-3">
                             <label class="form-label small fw-bold text-uppercase">NIN Number (11 digits)</label>
                             <input type="text" name="nin_number" class="form-control form-control-lg"
                                    placeholder="e.g. 12345678901" maxlength="11" pattern="[0-9]{11}"
                                    inputmode="numeric" required autocomplete="off">
                             <div class="form-text">Enter the full 11-digit National Identification Number.</div>
+                        </div>
+
+                        <div class="mb-4">
+                            <label class="form-label small fw-bold text-uppercase">Custom Portrait (Optional)</label>
+                            <input type="file" name="user_portrait" class="form-control" accept="image/*">
+                            <div class="form-text">If provided, this image will be used on the card instead of the default NIMC photo. Max 2MB (JPG/PNG).</div>
                         </div>
 
                         <button type="submit" name="request-nin-card" class="btn btn-success btn-lg w-100 rounded-pill fw-bold shadow-sm">

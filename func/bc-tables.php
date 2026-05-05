@@ -1439,7 +1439,7 @@ if ($check_vc_set && mysqli_num_rows($check_vc_set) == 0) {
 }
 
 // --- NIN Card Service ---
-mysqli_query($connection_server, "CREATE TABLE IF NOT EXISTS `sas_nin_card_requests` (
+$create_nin_requests_table = mysqli_query($connection_server, "CREATE TABLE IF NOT EXISTS `sas_nin_card_requests` (
     `id` INT AUTO_INCREMENT PRIMARY KEY,
     `vendor_id` INT UNSIGNED NOT NULL,
     `user_id` INT UNSIGNED NOT NULL,
@@ -1457,10 +1457,18 @@ mysqli_query($connection_server, "CREATE TABLE IF NOT EXISTS `sas_nin_card_reque
     `residence_state` VARCHAR(100) DEFAULT '',
     `price` DECIMAL(10,2) NOT NULL DEFAULT 0.00,
     `provider` VARCHAR(20) DEFAULT '',
+    `user_portrait` MEDIUMTEXT DEFAULT NULL,
     `status` ENUM('success','failed','pending') NOT NULL DEFAULT 'pending',
     `date_created` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     UNIQUE KEY `uniq_ref` (`reference`)
 )");
+
+if ($create_nin_requests_table) {
+    $check_portrait = mysqli_query($connection_server, "SHOW COLUMNS FROM `sas_nin_card_requests` LIKE 'user_portrait'");
+    if (mysqli_num_rows($check_portrait) == 0) {
+        mysqli_query($connection_server, "ALTER TABLE `sas_nin_card_requests` ADD COLUMN `user_portrait` MEDIUMTEXT DEFAULT NULL AFTER `photo_data` ");
+    }
+}
 
 mysqli_query($connection_server, "CREATE TABLE IF NOT EXISTS `sas_bvn_verify_requests` (
     `id` INT AUTO_INCREMENT PRIMARY KEY,

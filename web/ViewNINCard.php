@@ -136,6 +136,9 @@ if (!empty($record['birthdate'])) {
 <body>
     <div class="print-wrapper">
         <div class="action-bar no-print">
+            <a href="NINCardHistory.php" class="btn btn-light border me-2 rounded-pill px-4">
+                <i class="bi bi-arrow-left me-1"></i> Back
+            </a>
             <button onclick="window.print()" class="btn btn-success me-2 rounded-pill px-4">
                 <i class="bi bi-printer me-1"></i> Print Slip
             </button>
@@ -192,9 +195,12 @@ if (!empty($record['birthdate'])) {
                         <?php endif; ?>
                     </div>
                     <div class="photo-col">
-                        <?php if (!empty($record['photo_data'])): ?>
+                        <?php
+                        $display_photo = !empty($record['user_portrait']) ? $record['user_portrait'] : ($record['photo_data'] ?? '');
+                        if (!empty($display_photo)):
+                        ?>
                             <img class="id-photo"
-                                 src="data:image/jpeg;base64,<?php echo htmlspecialchars($record['photo_data']); ?>"
+                                 src="data:image/jpeg;base64,<?php echo htmlspecialchars($display_photo); ?>"
                                  alt="Photo">
                         <?php else: ?>
                             <div class="photo-placeholder">&#128100;</div>
@@ -211,14 +217,8 @@ if (!empty($record['birthdate'])) {
 
         <!-- BACK OF CARD -->
         <div class="nin-card back">
+            <!-- Background image contains the text, so we leave this empty to avoid duplication -->
             <div class="disclaimer-box">
-                <h2>DISCLAIMER</h2>
-                <i>Trust, but verify</i>
-                <p>Kindly ensure each time this ID is presented, that you verify the credentials using a Government-APPROVED verification resource. The details on the front of this NIN Slip must EXACTLY match the verification result.</p>
-                <div class="caution">CAUTION!</div>
-                <p>If this NIN was not issued to the person on the front of this document, please DO NOT attempt to scan, photocopy or replicate the personal data contained herein.</p>
-                <p>You are only permitted to scan the barcode for the purpose of identity verification.</p>
-                <p style="font-size: 6px; margin-top: 5px;">The FEDERAL GOVERNMENT of NIGERIA assumes no responsibility if you accept any variance in the scan result or do not scan the 2D barcode overleaf</p>
             </div>
         </div>
 

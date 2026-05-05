@@ -125,7 +125,7 @@ function hex2rgb($hex) {
         <li class="nav-item">
           <a class="sitemap-guide-btn" href="<?php echo $web_http_host; ?>/bc-admin/SiteMap.php" title="Platform Guide &amp; Site Map">
             <span class="guide-hand">👉</span>
-            SITEMAP / GUIDE
+            SITEMAP
           </a>
         </li><!-- End SiteMap Icon -->
 
