@@ -1,0 +1,8 @@
+activity_dashboard.xml
+activity_fund.xml
+activity_login.xml
+activity_profile.xml
+activity_register.xml
+activity_service.xml
+activity_setup.xml
+activity_splash.xml

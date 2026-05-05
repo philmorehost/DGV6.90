@@ -1,0 +1,5 @@
+activity_dashboard.xml
+activity_login.xml
+activity_register.xml
+activity_setup.xml
+activity_splash.xml

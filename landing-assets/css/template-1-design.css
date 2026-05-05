@@ -1,0 +1,192 @@
+/*
+    Template 1 Design
+*/
+
+/* Import Poppins font */
+@import url("https://fonts.googleapis.com/css?family=Poppins:100,200,300,400,500,600,700,800,900");
+
+/* Reset styles */
+html, body, div, span, applet, object, iframe, h1, h2, h3, h4, h5, h6, p, blockquote, div,
+pre, a, abbr, acronym, address, big, cite, code, del, dfn, em, font, img, ins, kbd, q,
+s, samp, small, strike, strong, sub, sup, tt, var, b, u, i, center, dl, dt, dd, ol, ul, li,
+figure, header, nav, section, article, aside, footer, figcaption {
+  margin: 0;
+  padding: 0;
+  border: 0;
+  outline: 0;
+}
+
+.clearfix:after {
+  content: ".";
+  display: block;
+  clear: both;
+  visibility: hidden;
+  line-height: 0;
+  height: 0;
+}
+
+.clearfix {
+  display: inline-block;
+}
+
+html[xmlns] .clearfix {
+  display: block;
+}
+
+* html .clearfix {
+  height: 1%;
+}
+
+ul, li {
+  padding: 0;
+  margin: 0;
+  list-style: none;
+}
+
+header, nav, section, article, aside, footer, hgroup {
+  display: block;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html, body {
+  font-family: 'Poppins', sans-serif;
+  font-weight: 400;
+  background-color: #fff;
+  font-size: 16px;
+  -ms-text-size-adjust: 100%;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+a {
+  text-decoration: none !important;
+}
+
+h1, h2, h3, h4, h5, h6 {
+  margin-top: 0px;
+  margin-bottom: 0px;
+}
+
+ul {
+  margin-bottom: 0px;
+}
+
+p {
+  font-size: 15px;
+  line-height: 25px;
+  color: #555;
+}
+
+/* Global styles */
+html, body {
+  background: #fff;
+  font-family: 'Poppins', sans-serif;
+}
+
+::selection {
+  background: #ff8c00;
+  color: #fff;
+}
+
+::-moz-selection {
+  background: #ff8c00;
+  color: #fff;
+}
+
+.main-button-slider {
+  font-size: 14px;
+  border-radius: 25px;
+  padding: 15px 25px;
+  background-color: #ff8c00;
+  text-transform: uppercase;
+  color: #fff;
+  font-weight: 600;
+  letter-spacing: 1px;
+  transition: all 0.3s ease 0s;
+}
+
+.main-button-slider:hover {
+  background-color: #e67e22;
+}
+
+/* Header styles */
+.header-area {
+  background-color: #333;
+  padding: 20px 0;
+}
+
+.header-area .main-nav .logo {
+  color: #fff;
+}
+
+.header-area .main-nav .nav li a {
+  color: #fff;
+}
+
+.header-area .main-nav .nav li:hover a {
+  color: #ff8c00;
+}
+
+/* Welcome area styles */
+.welcome-area {
+  background-image: url(../images/slider-bg.png);
+  background-size: cover;
+  background-position: center center;
+  color: #fff;
+  padding: 200px 0;
+  text-align: center;
+}
+
+.welcome-area h1 {
+  font-size: 48px;
+  font-weight: 700;
+}
+
+.welcome-area p {
+  font-size: 18px;
+  color: #fff;
+}
+
+/* Features section */
+#about {
+  padding: 100px 0px;
+}
+
+.features-item {
+  text-align: left;
+  margin-bottom: 30px;
+}
+
+.features-item .features-icon {
+  float: left;
+  margin-right: 20px;
+}
+
+.features-item h4 {
+  font-size: 20px;
+  font-weight: 600;
+  color: #333;
+}
+
+/* Footer styles */
+footer {
+  background-color: #333;
+  color: #fff;
+  padding: 60px 0;
+  text-align: center;
+}
+
+footer p {
+  color: #fff;
+}
+
+footer a {
+  color: #ff8c00;
+}
+
+footer a:hover {
+  color: #fff;
+}
