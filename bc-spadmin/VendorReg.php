@@ -88,7 +88,7 @@
                             }
 
                             if ($payment_method == 'paystack') {
-                                // Server-side Total Verification (Protect against client manipulation)
+                                // Server-side Total Verification
                                 $v_package_id = mysqli_real_escape_string($connection_server, $billing_package_id);
                                 $v_pkg_res = mysqli_query($connection_server, "SELECT price FROM sas_billing_packages WHERE id='$v_package_id'");
                                 $v_pkg = mysqli_fetch_assoc($v_pkg_res);
@@ -99,7 +99,6 @@
                                 if($order_playstore) $calculated_total += $playstore_price;
                                 if($order_sms_bridge) $calculated_total += $sms_bridge_price;
 
-                                // Recalculate domain fee on server for security
                                 if ($domain_option == 'register') {
                                     $actual_domain_fee = 0;
                                     if (!empty($app_base_url)) {
@@ -114,15 +113,12 @@
                                     $calculated_total += $actual_domain_fee;
                                 }
 
-                                // Use total amount for payment initialization
                                 $amount_in_kobo = $calculated_total * 100;
 
-                                // Update record with correct calculated total if they differ
                                 if(abs($calculated_total - $total_amount) > 0.01) {
                                     mysqli_query($connection_server, "UPDATE sas_pending_vendors SET total_amount='$calculated_total' WHERE id='$pending_id'");
                                 }
 
-                                // Fetch Paystack secret key
                                 $gateway_res = mysqli_query($connection_server, "SELECT secret_key FROM sas_super_admin_payment_gateways WHERE gateway_name='paystack'");
                                 $gateway = mysqli_fetch_assoc($gateway_res);
                                 $secret_key = $gateway['secret_key'];
@@ -136,10 +132,7 @@
                                         'amount' => $amount_in_kobo,
                                         'callback_url' => $callback_url,
                                         'reference' => $reference,
-                                        'metadata' => [
-                                            'pending_vendor_id' => $pending_id,
-                                            'type' => 'vendor_subscription'
-                                        ]
+                                        'metadata' => ['pending_vendor_id' => $pending_id, 'type' => 'vendor_subscription']
                                     ];
 
                                     $curl = curl_init();
@@ -148,10 +141,7 @@
                                         CURLOPT_RETURNTRANSFER => true,
                                         CURLOPT_CUSTOMREQUEST => "POST",
                                         CURLOPT_POSTFIELDS => json_encode($post_data),
-                                        CURLOPT_HTTPHEADER => [
-                                            "Authorization: Bearer " . $secret_key,
-                                            "Content-Type: application/json"
-                                        ],
+                                        CURLOPT_HTTPHEADER => ["Authorization: Bearer " . $secret_key, "Content-Type: application/json"],
                                     ));
 
                                     $response = curl_exec($curl);
@@ -173,7 +163,7 @@
                                 } else {
                                      $_SESSION["product_purchase_response"] = "Paystack payment gateway is not configured. Please contact support.";
                                 }
-                            } else { // Manual bank deposit
+                            } else {
                                 header("Location: /web/manual_payment.php");
                                 exit();
                             }
@@ -198,14 +188,13 @@
         exit();
     }
 
-    // Set layout based on session
     $is_admin_session = isset($_SESSION["spadmin_session"]);
     $css_style_template_location = "/cssfile/template/bc-style-template-1.css";
 ?>
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <title>Vendor Registration | Super Admin</title>
+    <title>Vendor Onboarding | Platform Registration</title>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1"/>
     <link rel="stylesheet" href="<?php echo $css_style_template_location; ?>">
@@ -220,13 +209,12 @@
         }
         body { background-color: #f6f9ff; font-family: 'Inter', sans-serif; }
         .form-label { font-weight: 600; font-size: 0.85rem; color: #444; margin-bottom: 8px; }
-        .card { border: none; border-radius: 15px; box-shadow: 0 5px 20px rgba(0,0,0,0.05); }
-        .card-header { border-bottom: 1px solid #f0f0f0; background: transparent; padding: 1.5rem; }
+        .card { border: none; border-radius: 15px; box-shadow: 0 5px 20px rgba(0,0,0,0.05); overflow: hidden; }
+        .card-header { border-bottom: 1px solid #f0f0f0; background: #fff; padding: 1.25rem 1.5rem; }
         .input-group-text { background: #f8f9fa; border-right: none; color: var(--bs-primary); }
         .form-control, .form-select { border-radius: 10px; padding: 0.75rem 1rem; border-color: #e0e0e0; }
         .form-control:focus, .form-select:focus { box-shadow: 0 0 0 0.25rem rgba(var(--bs-primary-rgb), 0.1); border-color: var(--bs-primary); }
 
-        /* Addon Cards */
         .addon-card {
             border: 2px solid #f0f0f0;
             border-radius: 12px;
@@ -236,6 +224,10 @@
             transition: all 0.3s ease;
             position: relative;
             background: #fff;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            text-align: center;
         }
         .addon-card:hover { border-color: var(--bs-primary); transform: translateY(-3px); }
         .addon-trigger:checked + .addon-card {
@@ -253,18 +245,18 @@
             justify-content: center;
             font-size: 1.5rem;
             color: var(--bs-primary);
-            margin-bottom: 1rem;
+            margin-bottom: 0.75rem;
         }
         .addon-price {
-            font-size: 1.1rem;
+            font-size: 1.05rem;
             font-weight: 800;
             color: var(--bs-primary);
-            margin-top: 0.5rem;
+            margin-top: 0.25rem;
         }
         .addon-check {
             position: absolute;
-            top: 15px;
-            right: 15px;
+            top: 12px;
+            right: 12px;
             width: 20px;
             height: 20px;
             border-radius: 50%;
@@ -282,7 +274,6 @@
             font-size: 12px;
         }
 
-        /* Domain Logic UI */
         .domain-option-card {
             border: 2px solid #f0f0f0;
             border-radius: 12px;
@@ -292,6 +283,7 @@
             background: #fff;
             text-align: center;
             height: 100%;
+            display: block;
         }
         .domain-option-trigger:checked + .domain-option-card {
             border-color: var(--bs-primary);
@@ -300,7 +292,6 @@
         .domain-option-card i { font-size: 2rem; color: #666; margin-bottom: 0.5rem; display: block; }
         .domain-option-trigger:checked + .domain-option-card i { color: var(--bs-primary); }
 
-        /* Checkout Panel */
         .checkout-summary {
             background: #fff;
             border-radius: 20px;
@@ -339,21 +330,30 @@
             transform: scale(1.02);
             filter: brightness(1.1);
         }
-        .animate-pulse { animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite; }
-        @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: .5; } }
 
         .suggestion-btn {
             font-size: 0.75rem;
-            padding: 0.4rem 1rem;
+            padding: 0.5rem 1.25rem;
             border: 1px solid #dee2e6;
             background: #fff;
             border-radius: 50px;
             transition: all 0.2s;
+            word-break: break-all;
+            font-weight: 600;
         }
         .suggestion-btn:hover {
             border-color: var(--bs-primary);
             color: var(--bs-primary);
             background: rgba(var(--bs-primary-rgb), 0.05);
+            transform: scale(1.05);
+        }
+
+        .setup-instructions {
+            background: #fffdf5;
+            border: 1px solid #ffeeba;
+            border-left: 5px solid #ffc107;
+            border-radius: 12px;
+            padding: 1.5rem;
         }
     </style>
 </head>
@@ -362,20 +362,24 @@
 
     <div class="container py-4 py-lg-5">
         <?php if($is_admin_session): ?>
-        <div class="pagetitle mb-4 text-center">
-            <h1 class="h3 fw-900 text-dark">Platform Onboarding</h1>
-            <p class="text-muted">Start your own automated VTU business in minutes</p>
+        <div class="pagetitle mb-4">
+            <h1 class="h3 fw-900 text-dark">Onboard New Vendor</h1>
+            <nav>
+                <ol class="breadcrumb">
+                    <li class="breadcrumb-item"><a href="Dashboard.php">Home</a></li>
+                    <li class="breadcrumb-item active">Add Vendor</li>
+                </ol>
+            </nav>
         </div>
         <?php endif; ?>
 
         <form method="post" action="" id="reg-form">
             <div class="row g-4">
-                <!-- Left Column: Form -->
                 <div class="col-lg-8">
-                    <!-- Section 1: Basic Info -->
-                    <div class="card mb-4">
+                    <!-- Basic Info -->
+                    <div class="card mb-4 shadow-sm">
                         <div class="card-header">
-                            <h5 class="mb-0 fw-bold"><i class="bi bi-person-circle me-2 text-primary"></i>1. Vendor Identity</h5>
+                            <h5 class="mb-0 fw-bold"><i class="bi bi-person-badge me-2 text-primary"></i>1. Vendor Contact Information</h5>
                         </div>
                         <div class="card-body p-4">
                             <div class="row g-3">
@@ -389,47 +393,47 @@
                                 </div>
                                 <div class="col-md-6">
                                     <label class="form-label text-uppercase small fw-bold">Email Address</label>
-                                    <input type="email" name="email" class="form-control" placeholder="john@example.com" required>
+                                    <input type="email" name="email" class="form-control" placeholder="vendor@example.com" required>
                                 </div>
                                 <div class="col-md-6">
                                     <label class="form-label text-uppercase small fw-bold">Phone Number</label>
-                                    <input type="text" name="phone" class="form-control" placeholder="080XXXXXXXX" pattern="[0-9]{11}" required>
+                                    <input type="text" name="phone" class="form-control" placeholder="081XXXXXXXX" pattern="[0-9]{11}" required>
                                 </div>
                                 <div class="col-12">
-                                    <label class="form-label text-uppercase small fw-bold">Contact Address</label>
-                                    <textarea name="address" class="form-control" rows="2" placeholder="Full office or residential address" required></textarea>
+                                    <label class="form-label text-uppercase small fw-bold">Address</label>
+                                    <textarea name="address" class="form-control" rows="2" placeholder="Full residential or business address" required></textarea>
                                 </div>
                             </div>
                         </div>
                     </div>
 
-                    <!-- Section 2: Domain Choice (WHMCS Style) -->
-                    <div class="card mb-4">
+                    <!-- Domain Config -->
+                    <div class="card mb-4 shadow-sm">
                         <div class="card-header">
-                            <h5 class="mb-0 fw-bold"><i class="bi bi-globe2 me-2 text-primary"></i>2. Domain Configuration</h5>
+                            <h5 class="mb-0 fw-bold"><i class="bi bi-globe me-2 text-primary"></i>2. Domain & URL Setup</h5>
                         </div>
                         <div class="card-body p-4">
                             <div class="row g-3 mb-4">
                                 <div class="col-md-6">
                                     <input type="radio" class="d-none domain-option-trigger" name="domain_option" id="opt_reg" value="register" checked onchange="toggleDomainView()">
                                     <label class="domain-option-card" for="opt_reg">
-                                        <i class="bi bi-plus-circle"></i>
+                                        <i class="bi bi-plus-circle-fill"></i>
                                         <div class="fw-bold">Register New Domain</div>
-                                        <div class="x-small text-muted">We will register it for you</div>
+                                        <div class="x-small text-muted">Auto-registration by system</div>
                                     </label>
                                 </div>
                                 <div class="col-md-6">
                                     <input type="radio" class="d-none domain-option-trigger" name="domain_option" id="opt_exist" value="existing" onchange="toggleDomainView()">
                                     <label class="domain-option-card" for="opt_exist">
-                                        <i class="bi bi-hdd-network"></i>
+                                        <i class="bi bi-hdd-network-fill"></i>
                                         <div class="fw-bold">Use Existing Domain</div>
-                                        <div class="x-small text-muted">You already have a domain</div>
+                                        <div class="x-small text-muted">Already registered elsewhere</div>
                                     </label>
                                 </div>
                             </div>
 
                             <div id="register_view">
-                                <label class="form-label text-uppercase small fw-bold">Find Your New Domain</label>
+                                <label class="form-label text-uppercase small fw-bold">Find Availability</label>
                                 <div class="row g-2">
                                     <div class="col-sm-8">
                                         <div class="input-group input-group-lg">
@@ -458,26 +462,30 @@
                             </div>
 
                             <div id="existing_view" class="d-none">
-                                <label class="form-label text-uppercase small fw-bold">Enter Your Domain</label>
+                                <label class="form-label text-uppercase small fw-bold">Specify Domain</label>
                                 <div class="input-group input-group-lg">
                                     <span class="input-group-text bg-white">https://</span>
-                                    <input type="text" id="existing_domain" name="existing_url" class="form-control" placeholder="example.com" oninput="syncExistingDomain(this.value)">
+                                    <input type="text" id="existing_domain" name="existing_url" class="form-control" placeholder="mywebsite.com" oninput="syncExistingDomain(this.value)">
                                 </div>
-                            </div>
 
-                            <div id="setup-instructions" class="mt-4 p-3 bg-light rounded-3 border-start border-4 border-info">
-                                <div class="d-flex align-items-start">
-                                    <i class="bi bi-tools text-info fs-4 me-3"></i>
-                                    <div>
-                                        <h6 class="fw-bold mb-2">Point Your Domain (Instructions)</h6>
-                                        <div class="row g-3">
-                                            <div class="col-sm-6">
-                                                <div class="x-small fw-bold text-muted mb-1">NAMESERVERS</div>
-                                                <code class="text-dark small"><?php echo nl2br(htmlspecialchars($nameservers)); ?></code>
-                                            </div>
-                                            <div class="col-sm-6">
-                                                <div class="x-small fw-bold text-muted mb-1">A-RECORD (IP)</div>
-                                                <code class="text-primary small"><?php echo htmlspecialchars($ip_address); ?></code>
+                                <div id="setup-instructions" class="mt-4 setup-instructions shadow-sm">
+                                    <div class="d-flex align-items-start">
+                                        <i class="bi bi-info-square-fill text-warning fs-3 me-3"></i>
+                                        <div class="w-100">
+                                            <h6 class="fw-bold mb-3 text-dark">Point Your Domain (Instructions)</h6>
+                                            <div class="row g-3">
+                                                <div class="col-sm-6">
+                                                    <div class="x-small fw-bold text-muted mb-1">PRIMARY NAMESERVERS</div>
+                                                    <div class="bg-white p-2 border rounded">
+                                                        <code class="text-dark small text-break"><?php echo nl2br(htmlspecialchars($nameservers)); ?></code>
+                                                    </div>
+                                                </div>
+                                                <div class="col-sm-6">
+                                                    <div class="x-small fw-bold text-muted mb-1">A-RECORD (IPv4)</div>
+                                                    <div class="bg-white p-2 border rounded">
+                                                        <code class="text-primary small text-break"><?php echo htmlspecialchars($ip_address); ?></code>
+                                                    </div>
+                                                </div>
                                             </div>
                                         </div>
                                     </div>
@@ -489,10 +497,10 @@
                         </div>
                     </div>
 
-                    <!-- Section 3: App Addons -->
-                    <div class="card mb-4">
+                    <!-- Add-ons -->
+                    <div class="card mb-4 shadow-sm">
                         <div class="card-header">
-                            <h5 class="mb-0 fw-bold"><i class="bi bi-grid-1x2-fill me-2 text-primary"></i>3. Mobile App Add-ons</h5>
+                            <h5 class="mb-0 fw-bold"><i class="bi bi-app-indicator me-2 text-primary"></i>3. Mobile App Options</h5>
                         </div>
                         <div class="card-body p-4">
                             <div class="row g-3">
@@ -501,15 +509,15 @@
                                     ['id' => 'add_apk', 'name' => 'order_apk', 'label' => 'Android APK', 'price' => $apk_price, 'icon' => 'bi-android2'],
                                     ['id' => 'add_ios', 'name' => 'order_ios', 'label' => 'iOS App', 'price' => $ios_price, 'icon' => 'bi-apple'],
                                     ['id' => 'add_playstore', 'name' => 'order_playstore', 'label' => 'Play Store', 'price' => $playstore_price, 'icon' => 'bi-google-play'],
-                                    ['id' => 'add_sms_bridge', 'name' => 'order_sms_bridge', 'label' => 'SMS Bridge', 'price' => $sms_bridge_price, 'icon' => 'bi-chat-dots-fill']
+                                    ['id' => 'add_sms_bridge', 'name' => 'order_sms_bridge', 'label' => 'SMS Bridge', 'price' => $sms_bridge_price, 'icon' => 'bi-chat-dots']
                                 ];
                                 foreach($addons as $addon):
                                 ?>
                                 <div class="col-6 col-md-3">
                                     <input class="d-none addon-trigger" type="checkbox" name="<?php echo $addon['name'] ?>" id="<?php echo $addon['id'] ?>" data-price="<?php echo $addon['price'] ?>" onchange="updateCheckoutTotal()">
-                                    <label class="addon-card" for="<?php echo $addon['id'] ?>">
+                                    <label class="addon-card shadow-sm" for="<?php echo $addon['id'] ?>">
                                         <div class="addon-check"><i class="bi bi-check"></i></div>
-                                        <div class="addon-icon"><i class="bi <?php echo $addon['icon'] ?>"></i></div>
+                                        <div class="addon-icon shadow-sm"><i class="bi <?php echo $addon['icon'] ?>"></i></div>
                                         <div class="fw-bold small text-dark"><?php echo $addon['label'] ?></div>
                                         <div class="addon-price">₦<?php echo number_format($addon['price'], 0) ?></div>
                                     </label>
@@ -520,15 +528,14 @@
                     </div>
                 </div>
 
-                <!-- Right Column: Summary -->
                 <div class="col-lg-4">
                     <div class="checkout-summary shadow-sm">
-                        <h5 class="fw-black mb-4">Order Checkout</h5>
+                        <h5 class="fw-black mb-4"><i class="bi bi-cart-check me-2 text-primary"></i>Checkout</h5>
 
                         <div class="mb-4">
                             <label class="form-label text-uppercase small fw-bold">Subscription Plan</label>
                             <select name="billing_package_id" id="billing_package_id" class="form-select bg-light border-0 py-3" required onchange="updateCheckoutTotal()">
-                                <option value="" data-price="0" hidden selected>Choose Plan</option>
+                                <option value="" data-price="0" hidden selected>Select Plan</option>
                                 <?php
                                     $packages_result = mysqli_query($connection_server, "SELECT * FROM sas_billing_packages ORDER BY price ASC");
                                     while($package = mysqli_fetch_assoc($packages_result)) {
@@ -540,51 +547,51 @@
 
                         <div id="summary-details">
                             <div class="summary-item">
-                                <span class="text-muted">Subscription</span>
+                                <span class="text-muted">Plan Base</span>
                                 <span class="fw-bold" id="sum-pkg">₦0.00</span>
                             </div>
                             <div class="summary-item" id="domain-row">
-                                <span class="text-muted">Domain Registration</span>
+                                <span class="text-muted">Domain Name</span>
                                 <span class="fw-bold" id="sum-domain">₦0.00</span>
                             </div>
                             <div class="summary-item">
-                                <span class="text-muted">Mobile Add-ons</span>
+                                <span class="text-muted">App Add-ons</span>
                                 <span class="fw-bold" id="sum-addons">₦0.00</span>
                             </div>
                         </div>
 
                         <div class="d-flex justify-content-between align-items-center mt-4 mb-4 pt-3 border-top">
-                            <span class="fw-black text-dark fs-5">GRAND TOTAL</span>
+                            <span class="fw-900 text-dark fs-5">TOTAL PAYABLE</span>
                             <span class="summary-total" id="display_total">₦0.00</span>
                         </div>
 
                         <div class="mb-4">
-                            <label class="form-label text-uppercase small fw-bold">Select Payment</label>
+                            <label class="form-label text-uppercase small fw-bold">Payment Channel</label>
                             <div class="row g-2">
                                 <div class="col-6">
                                     <input type="radio" class="btn-check" name="payment_method" id="paystack" value="paystack" required>
-                                    <label class="btn btn-outline-primary w-100 fw-bold py-2" for="paystack">ONLINE</label>
+                                    <label class="btn btn-outline-primary w-100 fw-bold py-2 shadow-sm" for="paystack">ONLINE</label>
                                 </div>
                                 <div class="col-6">
                                     <input type="radio" class="btn-check" name="payment_method" id="bank_deposit" value="bank_deposit">
-                                    <label class="btn btn-outline-primary w-100 fw-bold py-2" for="bank_deposit">MANUAL</label>
+                                    <label class="btn btn-outline-primary w-100 fw-bold py-2 shadow-sm" for="bank_deposit">MANUAL</label>
                                 </div>
                             </div>
                         </div>
 
                         <div class="mb-4">
-                            <label class="form-label text-uppercase small fw-bold">Create Admin Password</label>
-                            <input type="password" name="pass" class="form-control bg-light border-0 py-3" placeholder="********" required>
+                            <label class="form-label text-uppercase small fw-bold">Account Password</label>
+                            <input type="password" name="pass" class="form-control bg-light border-0 py-3" placeholder="Set password" required>
                         </div>
 
                         <input type="hidden" name="total_amount" id="total_amount_input" value="0">
-                        <button type="submit" name="create-profile" id="btn-submit" class="btn btn-primary w-100 rounded-pill py-3">
-                            PLACE YOUR ORDER <i class="bi bi-arrow-right-circle ms-2"></i>
+                        <button type="submit" name="create-profile" id="btn-submit" class="btn btn-primary w-100 rounded-pill py-3 shadow">
+                            COMPLETE REGISTRATION <i class="bi bi-arrow-right-circle ms-2"></i>
                         </button>
 
                         <?php if(!$is_admin_session): ?>
                         <div class="text-center mt-4">
-                            <a href="/" class="text-decoration-none text-muted small fw-bold"><i class="bi bi-arrow-left me-1"></i> Return Home</a>
+                            <a href="/" class="text-decoration-none text-muted small fw-bold"><i class="bi bi-house-door me-1"></i> Back to Home</a>
                         </div>
                         <?php endif; ?>
                     </div>
@@ -642,7 +649,7 @@
         const submitBtn = document.getElementById('btn-submit');
 
         if (domain === '') {
-            feedback.innerHTML = '<div class="alert alert-danger py-2 rounded-3 small">Please enter a name</div>';
+            feedback.innerHTML = '<div class="alert alert-danger py-2 rounded-3 small fw-bold">Error: Enter a name first</div>';
             return;
         }
 
@@ -654,7 +661,7 @@
         const fullDomain = domain + extension;
         spinner.classList.remove('d-none');
         btnText.classList.add('d-none');
-        feedback.innerHTML = '<div class="text-primary small animate-pulse">Consulting Registrar...</div>';
+        feedback.innerHTML = '<div class="text-primary small animate-pulse fw-bold"><i class="bi bi-cpu me-1"></i> Checking Availability...</div>';
         submitBtn.disabled = true;
 
         fetch('ajax-domain-check.php?domain=' + encodeURIComponent(fullDomain))
@@ -667,10 +674,10 @@
                     domainFee = parseFloat(data.price || 0);
                     document.getElementById('domain_fee_input').value = domainFee;
                     document.getElementById('app_base_url_input').value = fullDomain;
-                    feedback.innerHTML = `<div class="alert alert-success border-0 shadow-sm rounded-3">
+                    feedback.innerHTML = `<div class="alert alert-success border-0 shadow-sm rounded-4 p-3">
                         <div class="d-flex align-items-center justify-content-between">
-                            <div><i class="bi bi-check-circle-fill me-2 fs-5"></i> <strong style="color:#198754;">${fullDomain.toUpperCase()}</strong> IS AVAILABLE!</div>
-                            <div class="fw-black">₦${domainFee.toLocaleString()}</div>
+                            <div><i class="bi bi-check-circle-fill me-2 fs-4" style="color:#198754;"></i> <strong class="fs-5" style="color:#198754;">${fullDomain.toUpperCase()}</strong> IS AVAILABLE!</div>
+                            <div class="fw-900 fs-5 text-dark">₦${domainFee.toLocaleString()}</div>
                         </div>
                     </div>`;
                     submitBtn.disabled = false;
@@ -678,11 +685,17 @@
                     domainFee = 0;
                     document.getElementById('domain_fee_input').value = 0;
                     document.getElementById('app_base_url_input').value = "";
-                    let html = `<div class="alert alert-danger border-0 rounded-3 small"><strong style="color:#dc3545;">${fullDomain.toUpperCase()}</strong> IS NOT AVAILABLE.</div>`;
+                    let html = `<div class="alert alert-danger border-0 rounded-4 p-3 shadow-sm mb-3">
+                        <div class="d-flex align-items-center">
+                            <i class="bi bi-x-circle-fill me-2 fs-4" style="color:#dc3545;"></i>
+                            <strong class="fs-5" style="color:#dc3545;">${fullDomain.toUpperCase()}</strong> IS TAKEN.
+                        </div>
+                    </div>`;
+
                     if(data.suggestions && data.suggestions.length > 0) {
-                        html += `<div class="mt-3"><div class="x-small fw-bold text-muted mb-2 text-uppercase">Recommended Suggestions:</div><div class="d-flex flex-wrap gap-2">`;
+                        html += `<div class="p-3 bg-white border rounded-4"><div class="x-small fw-black text-muted mb-3 text-uppercase letter-spacing-1">Try available alternatives:</div><div class="d-flex flex-wrap gap-2">`;
                         data.suggestions.forEach(s => {
-                            html += `<button type="button" class="suggestion-btn fw-bold" onclick="useSuggestedDomain('${s}')">${s}</button>`;
+                            html += `<button type="button" class="suggestion-btn" onclick="useSuggestedDomain('${s}')"><i class="bi bi-plus me-1"></i>${s}</button>`;
                         });
                         html += `</div></div>`;
                     }
@@ -694,7 +707,7 @@
             .catch(err => {
                 spinner.classList.add('d-none');
                 btnText.classList.remove('d-none');
-                feedback.innerHTML = '<div class="alert alert-danger py-2 small">Error connecting to registrar API.</div>';
+                feedback.innerHTML = '<div class="alert alert-danger py-2 small fw-bold">System Error: Could not connect to domain registry.</div>';
             });
     }
 
