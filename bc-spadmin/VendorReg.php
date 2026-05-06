@@ -318,13 +318,44 @@
             .checkout-summary { margin-top: 2rem; position: static; }
         }
 
+        /* Explicit Button Styles for Visibility */
+        .btn-primary, #search-btn {
+            background-color: #0d6efd !important;
+            border-color: #0d6efd !important;
+            color: #ffffff !important;
+        }
+        .btn-primary:hover, #search-btn:hover {
+            background-color: #0b5ed7 !important;
+            border-color: #0a58ca !important;
+            color: #ffffff !important;
+        }
+
+        /* Payment Channel Buttons Explicit Fix */
+        .btn-outline-primary {
+            color: #0d6efd !important;
+            border-color: #0d6efd !important;
+            background-color: transparent !important;
+        }
+        .btn-check:checked + .btn-outline-primary {
+            background-color: #0d6efd !important;
+            color: #ffffff !important;
+            border-color: #0d6efd !important;
+        }
+        /* Fix Hover Visibility for Outline Buttons */
+        .btn-outline-primary:hover {
+            background-color: #0b5ed7 !important;
+            color: #ffffff !important;
+            border-color: #0b5ed7 !important;
+        }
+
         #btn-submit {
-            background-color: var(--bs-primary) !important;
+            background-color: #0d6efd !important;
             border: none;
             padding: 1rem 2rem;
             font-weight: 700;
             letter-spacing: 1px;
             transition: all 0.3s ease;
+            color: #ffffff !important;
         }
         #btn-submit:hover:not(:disabled) {
             transform: scale(1.02);
@@ -340,20 +371,26 @@
             transition: all 0.2s;
             word-break: break-all;
             font-weight: 600;
+            color: #444;
         }
         .suggestion-btn:hover {
             border-color: var(--bs-primary);
-            color: var(--bs-primary);
+            color: var(--bs-primary) !important;
             background: rgba(var(--bs-primary-rgb), 0.05);
             transform: scale(1.05);
         }
 
         .setup-instructions {
-            background: #fffdf5;
-            border: 1px solid #ffeeba;
-            border-left: 5px solid #ffc107;
+            background: #f0f7ff;
+            border: 1px solid #cce3ff;
+            border-left: 5px solid #0d6efd;
             border-radius: 12px;
             padding: 1.5rem;
+        }
+
+        code.text-break {
+            word-wrap: break-word !important;
+            white-space: pre-wrap !important;
         }
     </style>
 </head>
@@ -442,8 +479,8 @@
                                         </div>
                                     </div>
                                     <div class="col-sm-4">
-                                        <div class="input-group input-group-lg">
-                                            <select id="domain_extension" class="form-select fw-bold" onchange="updateCheckoutTotal()">
+                                        <div class="input-group input-group-lg h-100">
+                                            <select id="domain_extension" class="form-select fw-bold" onchange="updateCheckoutTotal()" style="border-top-right-radius: 0; border-bottom-right-radius: 0;">
                                                 <?php
                                                 $ext_res = mysqli_query($connection_server, "SELECT extension FROM sas_domain_extensions ORDER BY extension ASC");
                                                 while($ext = mysqli_fetch_assoc($ext_res)) {
@@ -451,7 +488,7 @@
                                                 }
                                                 ?>
                                             </select>
-                                            <button class="btn btn-primary px-4 fw-bold" type="button" onclick="lookupDomain()" id="search-btn">
+                                            <button class="btn btn-primary px-4 fw-bold" type="button" onclick="lookupDomain()" id="search-btn" style="border-top-left-radius: 0; border-bottom-left-radius: 0;">
                                                 <span id="btn-text">SEARCH</span>
                                                 <span id="btn-spinner" class="spinner-border spinner-border-sm d-none"></span>
                                             </button>
@@ -463,14 +500,14 @@
 
                             <div id="existing_view" class="d-none">
                                 <label class="form-label text-uppercase small fw-bold">Specify Domain</label>
-                                <div class="input-group input-group-lg">
+                                <div class="input-group input-group-lg mb-4">
                                     <span class="input-group-text bg-white">https://</span>
                                     <input type="text" id="existing_domain" name="existing_url" class="form-control" placeholder="mywebsite.com" oninput="syncExistingDomain(this.value)">
                                 </div>
 
-                                <div id="setup-instructions" class="mt-4 setup-instructions shadow-sm">
+                                <div id="setup-instructions" class="setup-instructions shadow-sm">
                                     <div class="d-flex align-items-start">
-                                        <i class="bi bi-info-square-fill text-warning fs-3 me-3"></i>
+                                        <i class="bi bi-info-square-fill text-primary fs-3 me-3"></i>
                                         <div class="w-100">
                                             <h6 class="fw-bold mb-3 text-dark">Point Your Domain (Instructions)</h6>
                                             <div class="row g-3">
@@ -676,7 +713,7 @@
                     document.getElementById('app_base_url_input').value = fullDomain;
                     feedback.innerHTML = `<div class="alert alert-success border-0 shadow-sm rounded-4 p-3">
                         <div class="d-flex align-items-center justify-content-between">
-                            <div><i class="bi bi-check-circle-fill me-2 fs-4" style="color:#198754;"></i> <strong class="fs-5" style="color:#198754;">${fullDomain.toUpperCase()}</strong> IS AVAILABLE!</div>
+                            <div><i class="bi bi-check-circle-fill me-2 fs-4" style="color:#198754;"></i> <strong class="fs-5" style="color:#198754;" class="text-success">${fullDomain.toUpperCase()}</strong> IS AVAILABLE!</div>
                             <div class="fw-900 fs-5 text-dark">₦${domainFee.toLocaleString()}</div>
                         </div>
                     </div>`;
@@ -688,12 +725,12 @@
                     let html = `<div class="alert alert-danger border-0 rounded-4 p-3 shadow-sm mb-3">
                         <div class="d-flex align-items-center">
                             <i class="bi bi-x-circle-fill me-2 fs-4" style="color:#dc3545;"></i>
-                            <strong class="fs-5" style="color:#dc3545;">${fullDomain.toUpperCase()}</strong> IS TAKEN.
+                            <strong class="fs-5" style="color:#dc3545;" class="text-danger">${fullDomain.toUpperCase()}</strong> IS TAKEN.
                         </div>
                     </div>`;
 
                     if(data.suggestions && data.suggestions.length > 0) {
-                        html += `<div class="p-3 bg-white border rounded-4"><div class="x-small fw-black text-muted mb-3 text-uppercase letter-spacing-1">Try available alternatives:</div><div class="d-flex flex-wrap gap-2">`;
+                        html += `<div class="p-3 bg-white border rounded-4 shadow-sm"><div class="x-small fw-black text-muted mb-3 text-uppercase letter-spacing-1">Try available alternatives:</div><div class="d-flex flex-wrap gap-2">`;
                         data.suggestions.forEach(s => {
                             html += `<button type="button" class="suggestion-btn" onclick="useSuggestedDomain('${s}')"><i class="bi bi-plus me-1"></i>${s}</button>`;
                         });
