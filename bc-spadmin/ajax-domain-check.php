@@ -64,7 +64,7 @@ if (($result['status'] ?? '') == 'available') {
         $suggestions[] = $name_only . $v . $primary_ext;
     }
 
-    $result['suggestions'] = array_slice($suggestions, 0, 5);
+    $result['suggestions'] = array_slice($suggestions, 0, 6);
 }
 
 echo json_encode($result);

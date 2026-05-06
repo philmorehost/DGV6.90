@@ -341,6 +341,20 @@
         }
         .animate-pulse { animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite; }
         @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: .5; } }
+
+        .suggestion-btn {
+            font-size: 0.75rem;
+            padding: 0.4rem 1rem;
+            border: 1px solid #dee2e6;
+            background: #fff;
+            border-radius: 50px;
+            transition: all 0.2s;
+        }
+        .suggestion-btn:hover {
+            border-color: var(--bs-primary);
+            color: var(--bs-primary);
+            background: rgba(var(--bs-primary-rgb), 0.05);
+        }
     </style>
 </head>
 <body>
@@ -449,8 +463,24 @@
                                     <span class="input-group-text bg-white">https://</span>
                                     <input type="text" id="existing_domain" name="existing_url" class="form-control" placeholder="example.com" oninput="syncExistingDomain(this.value)">
                                 </div>
-                                <div class="alert alert-info mt-3 border-0 small py-3">
-                                    <i class="bi bi-info-circle-fill me-2"></i>You must point your domain nameservers to our system. Check the instructions panel for details.
+                            </div>
+
+                            <div id="setup-instructions" class="mt-4 p-3 bg-light rounded-3 border-start border-4 border-info">
+                                <div class="d-flex align-items-start">
+                                    <i class="bi bi-tools text-info fs-4 me-3"></i>
+                                    <div>
+                                        <h6 class="fw-bold mb-2">Point Your Domain (Instructions)</h6>
+                                        <div class="row g-3">
+                                            <div class="col-sm-6">
+                                                <div class="x-small fw-bold text-muted mb-1">NAMESERVERS</div>
+                                                <code class="text-dark small"><?php echo nl2br(htmlspecialchars($nameservers)); ?></code>
+                                            </div>
+                                            <div class="col-sm-6">
+                                                <div class="x-small fw-bold text-muted mb-1">A-RECORD (IP)</div>
+                                                <code class="text-primary small"><?php echo htmlspecialchars($ip_address); ?></code>
+                                            </div>
+                                        </div>
+                                    </div>
                                 </div>
                             </div>
 
@@ -558,21 +588,6 @@
                         </div>
                         <?php endif; ?>
                     </div>
-
-                    <!-- Side Info: Nameservers -->
-                    <div class="card mt-4 bg-white border-0 shadow-sm rounded-4">
-                        <div class="card-body p-4">
-                            <h6 class="fw-bold mb-3"><i class="bi bi-tools me-2 text-primary"></i>Point Your Domain</h6>
-                            <div class="bg-light p-3 rounded-3 mb-2 border">
-                                <div class="x-small fw-bold text-muted mb-1">NAMESERVERS</div>
-                                <code class="text-dark small"><?php echo nl2br(htmlspecialchars($nameservers)); ?></code>
-                            </div>
-                            <div class="bg-light p-3 rounded-3 border">
-                                <div class="x-small fw-bold text-muted mb-1">A-RECORD (IP)</div>
-                                <code class="text-primary small"><?php echo htmlspecialchars($ip_address); ?></code>
-                            </div>
-                        </div>
-                    </div>
                 </div>
             </div>
         </form>
@@ -654,7 +669,7 @@
                     document.getElementById('app_base_url_input').value = fullDomain;
                     feedback.innerHTML = `<div class="alert alert-success border-0 shadow-sm rounded-3">
                         <div class="d-flex align-items-center justify-content-between">
-                            <div><i class="bi bi-check-circle-fill me-2 fs-5"></i> <strong>${fullDomain.toUpperCase()}</strong> is available!</div>
+                            <div><i class="bi bi-check-circle-fill me-2 fs-5"></i> <strong style="color:#198754;">${fullDomain.toUpperCase()}</strong> IS AVAILABLE!</div>
                             <div class="fw-black">₦${domainFee.toLocaleString()}</div>
                         </div>
                     </div>`;
@@ -663,13 +678,13 @@
                     domainFee = 0;
                     document.getElementById('domain_fee_input').value = 0;
                     document.getElementById('app_base_url_input').value = "";
-                    let html = `<div class="alert alert-danger border-0 rounded-3 small"><strong>${fullDomain.toUpperCase()}</strong> is already taken.</div>`;
+                    let html = `<div class="alert alert-danger border-0 rounded-3 small"><strong style="color:#dc3545;">${fullDomain.toUpperCase()}</strong> IS NOT AVAILABLE.</div>`;
                     if(data.suggestions && data.suggestions.length > 0) {
-                        html += `<div class="small fw-bold text-muted mb-2">WHATS AVAILABLE:</div><div class="d-flex flex-wrap gap-2">`;
+                        html += `<div class="mt-3"><div class="x-small fw-bold text-muted mb-2 text-uppercase">Recommended Suggestions:</div><div class="d-flex flex-wrap gap-2">`;
                         data.suggestions.forEach(s => {
-                            html += `<button type="button" class="btn btn-xs btn-outline-primary rounded-pill px-3 py-1 fw-bold" onclick="useSuggestedDomain('${s}')">${s}</button>`;
+                            html += `<button type="button" class="suggestion-btn fw-bold" onclick="useSuggestedDomain('${s}')">${s}</button>`;
                         });
-                        html += `</div>`;
+                        html += `</div></div>`;
                     }
                     feedback.innerHTML = html;
                     submitBtn.disabled = true;
