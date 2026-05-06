@@ -20,14 +20,24 @@ if (!$connection_server) {
 }
 
 if ($connection_server) {
-    // Branch DG6.7 Optimization: Only run migrations if not already done in current session
+    // Branch DG6.7 Optimization: Only run migrations if not already done globally or in current session
     // This significantly improves site-wide page load speeds by skipping redundant DB structural checks.
-    define('SYSTEM_VERSION', '6.7.9');
+    define('SYSTEM_VERSION', '6.9.1');
     $current_mig_v = $_SESSION['migrations_completed_version'] ?? '0';
+
+    // Global Migration Check to avoid redundant checks for new visitors
+    if ($current_mig_v !== SYSTEM_VERSION) {
+        $q_mig = mysqli_query($connection_server, "SELECT option_value FROM sas_super_admin_options WHERE option_name='system_migration_version' LIMIT 1");
+        $global_mig_v = ($q_mig && $r_mig = mysqli_fetch_assoc($q_mig)) ? $r_mig['option_value'] : '0';
+        if ($global_mig_v === SYSTEM_VERSION) {
+            $_SESSION['migrations_completed_version'] = SYSTEM_VERSION;
+            $current_mig_v = SYSTEM_VERSION;
+        }
+    }
 
     if ($current_mig_v !== SYSTEM_VERSION) {
         include_once(__DIR__ . "/bc-tables.php");
-        include_once(__DIR__ . "/bc-email-templates.php");
+
         // Migration: Add val_4 to parameter value tables
         $param_tables = array("sas_smart_parameter_values", "sas_agent_parameter_values", "sas_api_parameter_values", "sas_smart_card_funding_parameter_values", "sas_agent_card_funding_parameter_values", "sas_api_card_funding_parameter_values", "sas_smart_card_transaction_parameter_values", "sas_agent_card_transaction_parameter_values", "sas_api_card_transaction_parameter_values");
         foreach ($param_tables as $table) {
@@ -217,10 +227,20 @@ if ($connection_server) {
             }
         }
 
+        mysqli_query($connection_server, "INSERT INTO sas_super_admin_options (option_name, option_value) VALUES ('system_migration_version', '".SYSTEM_VERSION."') ON DUPLICATE KEY UPDATE option_value='".SYSTEM_VERSION."'");
         $_SESSION['migrations_completed_version'] = SYSTEM_VERSION;
     }
 
-	// Optimization: Combined super admin and vendor check
+    // Per-vendor template seeding must happen if not already done in this session
+    // (We don't want to skip this globally because each vendor needs their own rows)
+    $vendor_id_for_seed = resolveVendorID();
+    $seed_key = 'templates_seeded_v' . $vendor_id_for_seed;
+    if (!isset($_SESSION[$seed_key])) {
+        include_once(__DIR__ . "/bc-email-templates.php");
+        $_SESSION[$seed_key] = true;
+    }
+
+	// Optimization: Combined super admin and vendor check (Throttled fetching)
 	$vendor_id = resolveVendorID();
 	$select_vendor_table = mysqli_fetch_array(mysqli_query($connection_server, "SELECT * FROM sas_vendors WHERE id='$vendor_id' AND status=1 LIMIT 1"));
 

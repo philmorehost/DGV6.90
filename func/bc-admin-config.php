@@ -25,9 +25,10 @@ include_once(__DIR__ . "/email-design.php");
 if ($connection_server) {
     // Branch DG6.7 Optimization: Only run migrations if not already done in current session
     // This significantly improves site-wide page load speeds by skipping redundant DB structural checks.
-    if (!isset($_SESSION['migrations_completed'])) {
-        $check_tables = mysqli_query($connection_server, "SHOW TABLES");
-        $_SESSION['migrations_completed'] = true;
+    if (!isset($_SESSION['migrations_completed_version']) || $_SESSION['migrations_completed_version'] !== '6.9.1') {
+        include_once(__DIR__ . "/bc-tables.php");
+        include_once(__DIR__ . "/bc-email-templates.php");
+        $_SESSION['migrations_completed_version'] = '6.9.1';
     }
 
     $checkmate_super_admin_table_exists = mysqli_query($connection_server, "SELECT * FROM sas_super_admin");

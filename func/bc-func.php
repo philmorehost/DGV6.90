@@ -1436,54 +1436,36 @@ function getUserEmailTemplate($row_id, $column_name)
 {
 	global $connection_server;
 	$vendor_id = resolveVendorID();
-	if($vendor_id <= 0) return "";
+	if($vendor_id <= 0) return getSuperAdminEmailTemplate($row_id, $column_name);
+
 	$template_details = mysqli_query($connection_server, "SELECT * FROM sas_email_templates WHERE vendor_id='$vendor_id' && email_type='$row_id'");
-	if (mysqli_num_rows($template_details) == 1) {
+	if (mysqli_num_rows($template_details) >= 1) {
 		$template_array = mysqli_fetch_array($template_details);
-		if (isset($template_array[$column_name])) {
+		if (isset($template_array[$column_name]) && !empty($template_array[$column_name])) {
 			return $template_array[$column_name];
-		} else {
-			//Column Mismatch
-			return "";
-		}
-	} else {
-		if (mysqli_num_rows($template_details) > 1) {
-			//Duplicated Details
-			return "";
-		} else {
-			if (mysqli_num_rows($template_details) == 0) {
-				//Null
-				return "";
-			}
 		}
 	}
+
+	// Fallback to Super Admin Template
+	return getSuperAdminEmailTemplate($row_id, $column_name);
 }
 
 function getVendorEmailTemplate($row_id, $column_name)
 {
 	global $connection_server;
 	$vendor_id = resolveVendorID();
-	if($vendor_id <= 0) return "";
+	if($vendor_id <= 0) return getSuperAdminEmailTemplate($row_id, $column_name);
+
 	$template_details = mysqli_query($connection_server, "SELECT * FROM sas_email_templates WHERE vendor_id='$vendor_id' && email_type='$row_id'");
-	if (mysqli_num_rows($template_details) == 1) {
+	if (mysqli_num_rows($template_details) >= 1) {
 		$template_array = mysqli_fetch_array($template_details);
-		if (isset($template_array[$column_name])) {
+		if (isset($template_array[$column_name]) && !empty($template_array[$column_name])) {
 			return $template_array[$column_name];
-		} else {
-			//Column Mismatch
-			return "";
-		}
-	} else {
-		if (mysqli_num_rows($template_details) > 1) {
-			//Duplicated Details
-			return "";
-		} else {
-			if (mysqli_num_rows($template_details) == 0) {
-				//Null
-				return "";
-			}
 		}
 	}
+
+	// Fallback to Super Admin Template
+	return getSuperAdminEmailTemplate($row_id, $column_name);
 }
 
 function getSuperAdminEmailTemplate($row_id, $column_name)
@@ -1581,7 +1563,7 @@ function beeMailer($recipient_email, $email_subject, $email_body)
 
 	$website_admin_phone_number = "234" . substr(get_admin_info(1, "phone_number"), 1, 11);
 	$details_array = array($website_admin_phone_number);
-	$mail_html_body = mailDesignTemplate($email_subject, $email_body, $details_array);
+	$mail_html_body = mailDesignTemplate($email_subject, $email_body, $details_array, true);
 	customBCMailSender('', $recipient_email, $email_subject, $mail_html_body, $mail_headers);
 	fwrite(fopen("./email-msg.txt", "a++"), "\n" . $recipient_email . " || " . strtoupper($email_subject) . " || " . $email_body . "\n");
 }
@@ -1612,7 +1594,7 @@ function sendVendorEmail($recipient_email, $email_subject, $email_body)
 
 	$website_admin_phone_number = "234" . substr($logged_account_details["phone_number"], 1, 11);
 	$details_array = array($website_admin_phone_number);
-	$mail_html_body = mailDesignTemplate($email_subject, $email_body, $details_array);
+	$mail_html_body = mailDesignTemplate($email_subject, $email_body, $details_array, true);
 
     // Branch DG6.7: Don't block login UI for background email notifications
     $is_background = (stripos($email_subject, "Login") !== false || stripos($email_subject, "Account") !== false);
@@ -1641,7 +1623,7 @@ function sendSuperAdminEmail($recipient_email, $email_subject, $email_body)
 
 	$website_admin_phone_number = "234" . substr($logged_account_details["phone_number"], 1, 11);
 	$details_array = array($website_admin_phone_number);
-	$mail_html_body = mailDesignTemplate($email_subject, $email_body, $details_array);
+	$mail_html_body = mailDesignTemplate($email_subject, $email_body, $details_array, false);
 
     // Branch DG6.7: Don't block UI for background email notifications
     $is_background = (stripos($email_subject, "Login") !== false || stripos($email_subject, "Account") !== false);
@@ -1718,7 +1700,7 @@ function createVendorEmailTemplateIfNotExists($email_type, $subject, $body)
 		if ($vendor_id > 0) {
 			$template_details = mysqli_query($connection_server, "SELECT * FROM sas_email_templates WHERE vendor_id='$vendor_id' && email_type='$email_type'");
 			if (mysqli_num_rows($template_details) == 0) {
-				mysqli_query($connection_server, "INSERT INTO sas_email_templates (vendor_id, email_type, subject, body) VALUES ('" . $vendor_details["id"] . "', '$email_type', '$subject', '$body')");
+				mysqli_query($connection_server, "INSERT INTO sas_email_templates (vendor_id, email_type, subject, body) VALUES ('$vendor_id', '$email_type', '$subject', '$body')");
 				return "success";
 			} else {
 				return "failed";

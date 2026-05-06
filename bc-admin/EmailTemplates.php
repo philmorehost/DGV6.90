@@ -3,7 +3,9 @@
     
     if(isset($_POST["update-template"])){
         $subject = mysqli_real_escape_string($connection_server, trim(strip_tags($_POST["subject"])));
-        $body = mysqli_real_escape_string($connection_server, trim(strip_tags($_POST["body"])));
+        // Allow some HTML tags for the email body (visual builder output)
+        $allowed_tags = '<div><p><br><span><img/><a><h1><h2><h3><h4><h5><h6><table><tbody><tr><td><th><ul><li><ol><strong><em><u><section><header><footer>';
+        $body = mysqli_real_escape_string($connection_server, trim(strip_tags($_POST["body"], $allowed_tags)));
         $email_type = mysqli_real_escape_string($connection_server, trim(strip_tags(strtolower($_POST["type"]))));
         
         if(!empty($subject) && !empty($body) && !empty($email_type)){
@@ -78,6 +80,29 @@
   <!-- Template Main CSS File -->
   <link href="../assets-2/css/style.css" rel="stylesheet">
 
+  <!-- GrapesJS -->
+  <link href="https://unpkg.com/grapesjs/dist/css/grapes.min.css" rel="stylesheet">
+  <script src="https://unpkg.com/grapesjs"></script>
+  <script src="https://unpkg.com/grapesjs-preset-newsletter"></script>
+
+  <style>
+    .gjs-cv-canvas {
+        top: 0;
+        width: 100%;
+        height: 100%;
+    }
+    #gjs {
+        border: 3px solid #444;
+    }
+    .modal-full {
+        min-width: 100%;
+        margin: 0;
+    }
+    .modal-full .modal-content {
+        min-height: 100vh;
+    }
+  </style>
+
 </head>
 <body>
     <?php include("../func/bc-admin-header.php"); ?>    
@@ -95,6 +120,25 @@
     <section class="section dashboard">
       <div class="col-12">
 
+        <!-- GrapesJS Modal -->
+        <div class="modal fade" id="grapesModal" tabindex="-1" aria-hidden="true">
+            <div class="modal-dialog modal-full">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h5 class="modal-title">Email Builder</h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                    </div>
+                    <div class="modal-body p-0">
+                        <div id="gjs"></div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                        <button type="button" class="btn btn-primary" id="save-builder">Save Template</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
     	<div style="text-align: center;" class="card info-card px-5 py-5">
     		<span style="user-select: auto;" class="text-dark h5">USER REGISTRATION TEMPLATE</span><br>
             <form method="post" enctype="multipart/form-data" action="">
@@ -108,10 +152,15 @@
     			</div><br/>
                 <input style="text-align: left;" id="" name="type" onkeyup="" type="text" value="user-reg" placeholder="Email Type" hidden readonly required/>
                 <input style="text-align: left;" id="" name="subject" onkeyup="" type="text" value="<?php echo getVendorEmailTemplate('user-reg','subject'); ?>" placeholder="Email Subject" class="form-control mb-1" required/><br/>
-                <textarea style="text-align: left; resize: none;" id="" name="body" onkeyup="" placeholder="Email Body" class="form-control mb-1" rows="10" required><?php echo getVendorEmailTemplate('user-reg','body'); ?></textarea><br>
-			<button name="update-template" type="submit" style="user-select: auto;" class="btn btn-primary col-12" >
-    				UPDATE TEMPLATE
-    			</button><br>
+                <textarea style="text-align: left; resize: none;" id="body-user-reg" name="body" onkeyup="" placeholder="Email Body" class="form-control mb-1" rows="10" required><?php echo getVendorEmailTemplate('user-reg','body'); ?></textarea><br>
+			<div class="d-flex gap-2 mb-2">
+                <button type="button" class="btn btn-info col-6 text-white" onclick="openBuilder('user-reg')">
+                    <i class="bi bi-brush"></i> BUILDER
+                </button>
+                <button name="update-template" type="submit" style="user-select: auto;" class="btn btn-primary col-6" >
+				UPDATE
+			</button>
+            </div>
     		</form>	
     	</div><br/>
     	
@@ -126,10 +175,15 @@
                 </div><br/>
                 <input style="text-align: left;" id="" name="type" onkeyup="" type="text" value="user-log" placeholder="Email Type" hidden readonly required/>
                 <input style="text-align: left;" id="" name="subject" onkeyup="" type="text" value="<?php echo getVendorEmailTemplate('user-log','subject'); ?>" placeholder="Email Subject" class="form-control mb-1" required/><br/>
-                <textarea style="text-align: left; resize: none;" id="" name="body" onkeyup="" placeholder="Email Body" class="form-control mb-1" rows="10" required><?php echo getVendorEmailTemplate('user-log','body'); ?></textarea><br>
-			<button name="update-template" type="submit" style="user-select: auto;" class="btn btn-primary col-12" >
-    				UPDATE TEMPLATE
-    			</button><br>
+                <textarea style="text-align: left; resize: none;" id="body-user-log" name="body" onkeyup="" placeholder="Email Body" class="form-control mb-1" rows="10" required><?php echo getVendorEmailTemplate('user-log','body'); ?></textarea><br>
+			<div class="d-flex gap-2 mb-2">
+                <button type="button" class="btn btn-info col-6 text-white" onclick="openBuilder('user-log')">
+                    <i class="bi bi-brush"></i> BUILDER
+                </button>
+                <button name="update-template" type="submit" style="user-select: auto;" class="btn btn-primary col-6" >
+				UPDATE
+			</button>
+            </div>
     		</form>	
     	</div><br/>
     	
@@ -142,10 +196,15 @@
     	                </div><br/>
     	                <input style="text-align: left;" id="" name="type" onkeyup="" type="text" value="user-pass-update" placeholder="Email Type" hidden readonly required/>
     	                <input style="text-align: left;" id="" name="subject" onkeyup="" type="text" value="<?php echo getVendorEmailTemplate('user-pass-update','subject'); ?>" placeholder="Email Subject" class="form-control mb-1" required/><br/>
-    	                <textarea style="text-align: left; resize: none;" id="" name="body" onkeyup="" placeholder="Email Body" class="form-control mb-1" rows="10" required><?php echo getVendorEmailTemplate('user-pass-update','body'); ?></textarea><br>
-			<button name="update-template" type="submit" style="user-select: auto;" class="btn btn-primary col-12" >
-    				UPDATE TEMPLATE
-    			</button><br>
+	                <textarea style="text-align: left; resize: none;" id="body-user-pass-update" name="body" onkeyup="" placeholder="Email Body" class="form-control mb-1" rows="10" required><?php echo getVendorEmailTemplate('user-pass-update','body'); ?></textarea><br>
+			<div class="d-flex gap-2 mb-2">
+                <button type="button" class="btn btn-info col-6 text-white" onclick="openBuilder('user-pass-update')">
+                    <i class="bi bi-brush"></i> BUILDER
+                </button>
+                <button name="update-template" type="submit" style="user-select: auto;" class="btn btn-primary col-6" >
+				UPDATE
+			</button>
+            </div>
     		</form>	
     	</div><br/>
 		
@@ -163,10 +222,15 @@
 				</div><br/>
 				<input style="text-align: left;" id="" name="type" onkeyup="" type="text" value="user-account-update" placeholder="Email Type" hidden readonly required/>
 				<input style="text-align: left;" id="" name="subject" onkeyup="" type="text" value="<?php echo getVendorEmailTemplate('user-account-update','subject'); ?>" placeholder="Email Subject" class="form-control mb-1" required/><br/>
-				<textarea style="text-align: left; resize: none;" id="" name="body" onkeyup="" placeholder="Email Body" class="form-control mb-1" rows="10" required><?php echo getVendorEmailTemplate('user-account-update','body'); ?></textarea><br>
-				<button name="update-template" type="submit" style="user-select: auto;" class="btn btn-primary col-12" >
-					UPDATE TEMPLATE
-				</button><br>
+				<textarea style="text-align: left; resize: none;" id="body-user-account-update" name="body" onkeyup="" placeholder="Email Body" class="form-control mb-1" rows="10" required><?php echo getVendorEmailTemplate('user-account-update','body'); ?></textarea><br>
+				<div class="d-flex gap-2 mb-2">
+                    <button type="button" class="btn btn-info col-6 text-white" onclick="openBuilder('user-account-update')">
+                        <i class="bi bi-brush"></i> BUILDER
+                    </button>
+                    <button name="update-template" type="submit" style="user-select: auto;" class="btn btn-primary col-6" >
+                        UPDATE
+                    </button>
+                </div>
 			</form>	
 		</div><br/>
 		
@@ -180,10 +244,15 @@
                 </div><br/>
                 <input style="text-align: left;" id="" name="type" onkeyup="" type="text" value="user-account-recovery" placeholder="Email Type" hidden readonly required/>
                 <input style="text-align: left;" id="" name="subject" onkeyup="" type="text" value="<?php echo getVendorEmailTemplate('user-account-recovery','subject'); ?>" placeholder="Email Subject" class="form-control mb-1" required/><br/>
-                <textarea style="text-align: left; resize: none;" id="" name="body" onkeyup="" placeholder="Email Body" class="form-control mb-1" rows="10" required><?php echo getVendorEmailTemplate('user-account-recovery','body'); ?></textarea><br>
-			<button name="update-template" type="submit" style="user-select: auto;" class="btn btn-primary col-12" >
-    				UPDATE TEMPLATE
-    			</button><br>
+                <textarea style="text-align: left; resize: none;" id="body-user-account-recovery" name="body" onkeyup="" placeholder="Email Body" class="form-control mb-1" rows="10" required><?php echo getVendorEmailTemplate('user-account-recovery','body'); ?></textarea><br>
+			<div class="d-flex gap-2 mb-2">
+                <button type="button" class="btn btn-info col-6 text-white" onclick="openBuilder('user-account-recovery')">
+                    <i class="bi bi-brush"></i> BUILDER
+                </button>
+                <button name="update-template" type="submit" style="user-select: auto;" class="btn btn-primary col-6" >
+				UPDATE
+			</button>
+            </div>
     		</form>	
     	</div><br/>
         
@@ -197,10 +266,15 @@
                 </div><br/>
                 <input style="text-align: left;" id="" name="type" onkeyup="" type="text" value="user-account-status" placeholder="Email Type" hidden readonly required/>
                 <input style="text-align: left;" id="" name="subject" onkeyup="" type="text" value="<?php echo getVendorEmailTemplate('user-account-status','subject'); ?>" placeholder="Email Subject" class="form-control mb-1" required/><br/>
-                <textarea style="text-align: left; resize: none;" id="" name="body" onkeyup="" placeholder="Email Body" class="form-control mb-1" rows="10" required><?php echo getVendorEmailTemplate('user-account-status','body'); ?></textarea><br>
-			<button name="update-template" type="submit" style="user-select: auto;" class="btn btn-primary col-12" >
-    				UPDATE TEMPLATE
-    			</button><br>
+                <textarea style="text-align: left; resize: none;" id="body-user-account-status" name="body" onkeyup="" placeholder="Email Body" class="form-control mb-1" rows="10" required><?php echo getVendorEmailTemplate('user-account-status','body'); ?></textarea><br>
+			<div class="d-flex gap-2 mb-2">
+                <button type="button" class="btn btn-info col-6 text-white" onclick="openBuilder('user-account-status')">
+                    <i class="bi bi-brush"></i> BUILDER
+                </button>
+                <button name="update-template" type="submit" style="user-select: auto;" class="btn btn-primary col-6" >
+				UPDATE
+			</button>
+            </div>
     		</form>	
     	</div><br/>
 
@@ -214,10 +288,15 @@
                 </div><br/>
                 <input style="text-align: left;" id="" name="type" onkeyup="" type="text" value="user-api-status" placeholder="Email Type" hidden readonly required/>
                 <input style="text-align: left;" id="" name="subject" onkeyup="" type="text" value="<?php echo getVendorEmailTemplate('user-api-status','subject'); ?>" placeholder="Email Subject" class="form-control mb-1" required/><br/>
-                <textarea style="text-align: left; resize: none;" id="" name="body" onkeyup="" placeholder="Email Body" class="form-control mb-1" rows="10" required><?php echo getVendorEmailTemplate('user-api-status','body'); ?></textarea><br>
-			<button name="update-template" type="submit" style="user-select: auto;" class="btn btn-primary col-12" >
-    				UPDATE TEMPLATE
-    			</button><br>
+                <textarea style="text-align: left; resize: none;" id="body-user-api-status" name="body" onkeyup="" placeholder="Email Body" class="form-control mb-1" rows="10" required><?php echo getVendorEmailTemplate('user-api-status','body'); ?></textarea><br>
+			<div class="d-flex gap-2 mb-2">
+                <button type="button" class="btn btn-info col-6 text-white" onclick="openBuilder('user-api-status')">
+                    <i class="bi bi-brush"></i> BUILDER
+                </button>
+                <button name="update-template" type="submit" style="user-select: auto;" class="btn btn-primary col-6" >
+				UPDATE
+			</button>
+            </div>
     		</form>	
     	</div><br/>
     	
@@ -231,10 +310,15 @@
     			</div><br/>
     			<input style="text-align: left;" id="" name="type" onkeyup="" type="text" value="user-upgrade" placeholder="Email Type" hidden readonly required/>
     			<input style="text-align: left;" id="" name="subject" onkeyup="" type="text" value="<?php echo getVendorEmailTemplate('user-upgrade','subject'); ?>" placeholder="Email Subject" class="form-control mb-1" required/><br/>
-    			<textarea style="text-align: left; resize: none;" id="" name="body" onkeyup="" placeholder="Email Body" class="form-control mb-1" rows="10" required><?php echo getVendorEmailTemplate('user-upgrade','body'); ?></textarea><br>
-			<button name="update-template" type="submit" style="user-select: auto;" class="btn btn-primary col-12" >
-    				UPDATE TEMPLATE
-    			</button><br>
+			<textarea style="text-align: left; resize: none;" id="body-user-upgrade" name="body" onkeyup="" placeholder="Email Body" class="form-control mb-1" rows="10" required><?php echo getVendorEmailTemplate('user-upgrade','body'); ?></textarea><br>
+			<div class="d-flex gap-2 mb-2">
+                <button type="button" class="btn btn-info col-6 text-white" onclick="openBuilder('user-upgrade')">
+                    <i class="bi bi-brush"></i> BUILDER
+                </button>
+                <button name="update-template" type="submit" style="user-select: auto;" class="btn btn-primary col-6" >
+				UPDATE
+			</button>
+            </div>
     		</form>	
     	</div><br/>
 		
@@ -250,10 +334,15 @@
 				</div><br/>
 				<input style="text-align: left;" id="" name="type" onkeyup="" type="text" value="user-referral-commission" placeholder="Email Type" hidden readonly required/>
 				<input style="text-align: left;" id="" name="subject" onkeyup="" type="text" value="<?php echo getVendorEmailTemplate('user-referral-commission','subject'); ?>" placeholder="Email Subject" class="form-control mb-1" required/><br/>
-				<textarea style="text-align: left; resize: none;" id="" name="body" onkeyup="" placeholder="Email Body" class="form-control mb-1" rows="10" required><?php echo getVendorEmailTemplate('user-referral-commission','body'); ?></textarea><br>
-				<button name="update-template" type="submit" style="user-select: auto;" class="btn btn-primary col-12" >
-					UPDATE TEMPLATE
-				</button><br>
+				<textarea style="text-align: left; resize: none;" id="body-user-referral-commission" name="body" onkeyup="" placeholder="Email Body" class="form-control mb-1" rows="10" required><?php echo getVendorEmailTemplate('user-referral-commission','body'); ?></textarea><br>
+				<div class="d-flex gap-2 mb-2">
+                    <button type="button" class="btn btn-info col-6 text-white" onclick="openBuilder('user-referral-commission')">
+                        <i class="bi bi-brush"></i> BUILDER
+                    </button>
+                    <button name="update-template" type="submit" style="user-select: auto;" class="btn btn-primary col-6" >
+                        UPDATE
+                    </button>
+                </div>
 			</form>	
 		</div><br/>
 		
@@ -272,10 +361,15 @@
                 </div><br/>
                 <input style="text-align: left;" id="" name="type" onkeyup="" type="text" value="user-transactions" placeholder="Email Type" hidden readonly required/>
                 <input style="text-align: left;" id="" name="subject" onkeyup="" type="text" value="<?php echo getVendorEmailTemplate('user-transactions','subject'); ?>" placeholder="Email Subject" class="form-control mb-1" required/><br/>
-                <textarea style="text-align: left; resize: none;" id="" name="body" onkeyup="" placeholder="Email Body" class="form-control mb-1" rows="10" required><?php echo getVendorEmailTemplate('user-transactions','body'); ?></textarea><br>
-			<button name="update-template" type="submit" style="user-select: auto;" class="btn btn-primary col-12" >
-    				UPDATE TEMPLATE
-    			</button><br>
+                <textarea style="text-align: left; resize: none;" id="body-user-transactions" name="body" onkeyup="" placeholder="Email Body" class="form-control mb-1" rows="10" required><?php echo getVendorEmailTemplate('user-transactions','body'); ?></textarea><br>
+			<div class="d-flex gap-2 mb-2">
+                <button type="button" class="btn btn-info col-6 text-white" onclick="openBuilder('user-transactions')">
+                    <i class="bi bi-brush"></i> BUILDER
+                </button>
+                <button name="update-template" type="submit" style="user-select: auto;" class="btn btn-primary col-6" >
+				UPDATE
+			</button>
+            </div>
     		</form>	
     	</div><br/>
 
@@ -293,10 +387,15 @@
                 </div><br/>
                 <input style="text-align: left;" id="" name="type" onkeyup="" type="text" value="user-funding" placeholder="Email Type" hidden readonly required/>
                 <input style="text-align: left;" id="" name="subject" onkeyup="" type="text" value="<?php echo getVendorEmailTemplate('user-funding','subject'); ?>" placeholder="Email Subject" class="form-control mb-1" required/><br/>
-                <textarea style="text-align: left; resize: none;" id="" name="body" onkeyup="" placeholder="Email Body" class="form-control mb-1" rows="10" required><?php echo getVendorEmailTemplate('user-funding','body'); ?></textarea><br>
-			<button name="update-template" type="submit" style="user-select: auto;" class="btn btn-primary col-12" >
-    				UPDATE TEMPLATE
-    			</button><br>
+                <textarea style="text-align: left; resize: none;" id="body-user-funding" name="body" onkeyup="" placeholder="Email Body" class="form-control mb-1" rows="10" required><?php echo getVendorEmailTemplate('user-funding','body'); ?></textarea><br>
+			<div class="d-flex gap-2 mb-2">
+                <button type="button" class="btn btn-info col-6 text-white" onclick="openBuilder('user-funding')">
+                    <i class="bi bi-brush"></i> BUILDER
+                </button>
+                <button name="update-template" type="submit" style="user-select: auto;" class="btn btn-primary col-6" >
+				UPDATE
+			</button>
+            </div>
     		</form>	
     	</div><br/>
 
@@ -312,10 +411,15 @@
 				</div><br/>
 				<input style="text-align: left;" id="" name="type" onkeyup="" type="text" value="user-refund" placeholder="Email Type" hidden readonly required/>
 				<input style="text-align: left;" id="" name="subject" onkeyup="" type="text" value="<?php echo getVendorEmailTemplate('user-refund','subject'); ?>" placeholder="Email Subject" class="form-control mb-1" required/><br/>
-				<textarea style="text-align: left; resize: none;" id="" name="body" onkeyup="" placeholder="Email Body" class="form-control mb-1" rows="10" required><?php echo getVendorEmailTemplate('user-refund','body'); ?></textarea><br>
-				<button name="update-template" type="submit" style="user-select: auto;" class="btn btn-primary col-12" >
-					UPDATE TEMPLATE
-				</button><br>
+				<textarea style="text-align: left; resize: none;" id="body-user-refund" name="body" onkeyup="" placeholder="Email Body" class="form-control mb-1" rows="10" required><?php echo getVendorEmailTemplate('user-refund','body'); ?></textarea><br>
+				<div class="d-flex gap-2 mb-2">
+                    <button type="button" class="btn btn-info col-6 text-white" onclick="openBuilder('user-refund')">
+                        <i class="bi bi-brush"></i> BUILDER
+                    </button>
+                    <button name="update-template" type="submit" style="user-select: auto;" class="btn btn-primary col-6" >
+                        UPDATE
+                    </button>
+                </div>
 			</form>	
 		</div><br/>
 		
@@ -325,5 +429,38 @@
         
     <?php include("../func/bc-admin-footer.php"); ?>
     
+    <script>
+        let editor;
+        let currentTargetId;
+
+        function openBuilder(type) {
+            currentTargetId = 'body-' + type;
+            const content = document.getElementById(currentTargetId).value;
+
+            if (!editor) {
+                editor = grapesjs.init({
+                    container: '#gjs',
+                    fromElement: false,
+                    height: '70vh',
+                    width: 'auto',
+                    storageManager: false,
+                    plugins: ['grapesjs-preset-newsletter'],
+                    pluginsOpts: {
+                        'grapesjs-preset-newsletter': {}
+                    }
+                });
+            }
+
+            editor.setComponents(content);
+            const modal = new bootstrap.Modal(document.getElementById('grapesModal'));
+            modal.show();
+        }
+
+        document.getElementById('save-builder').addEventListener('click', function() {
+            const html = editor.runCommand('gjs-get-inlined-html');
+            document.getElementById(currentTargetId).value = html;
+            bootstrap.Modal.getInstance(document.getElementById('grapesModal')).hide();
+        });
+    </script>
 </body>
 </html>

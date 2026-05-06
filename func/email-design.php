@@ -1,6 +1,11 @@
 <?php
-function mailDesignTemplate($title, $message, $details_array) {
+function mailDesignTemplate($title, $message, $details_array, $show_app = true) {
     global $connection_server;
+
+    // If the message is already a full HTML document (e.g. from GrapesJS), return it as is
+    if (strpos($message, '<html') !== false || strpos($message, '<body') !== false) {
+        return $message;
+    }
 
     if (!empty(trim(strip_tags($title)))) {
         $mail_title = trim(strip_tags($title));
@@ -61,6 +66,18 @@ function mailDesignTemplate($title, $message, $details_array) {
         }
     }
 
+    $app_section_html = "";
+    if ($show_app) {
+        $app_section_html = '<tr>
+                <td style="padding: 20px 25px; background-color: #f8fafc; text-align: center; border-top: 1px solid #f1f5f9;">
+                    <p style="margin: 0; font-size: 14px; color: #64748b; font-weight: bold;">DOWNLOAD AND INSTALL APP</p>
+                    <div style="margin-top: 10px;">
+                         <a href="#"><img src="https://upload.wikimedia.org/wikipedia/commons/7/78/Google_Play_Store_badge_EN.svg" height="40"></a>
+                    </div>
+                </td>
+            </tr>';
+    }
+
     $html = '<!DOCTYPE html>
 <html lang="en">
 <head>
@@ -101,8 +118,9 @@ function mailDesignTemplate($title, $message, $details_array) {
                 </td>
             </tr>
             ' . $services_html . '
+            ' . $app_section_html . '
             <tr>
-                <td style="padding: 20px 25px; background-color: #f8fafc; text-align: center;">
+                <td style="padding: 20px 25px; background-color: #f8fafc; text-align: center; border-top: 1px solid #f1f5f9;">
                     <p style="margin: 0; font-size: 14px; color: #64748b; font-weight: bold;">Need Help?</p>
                     <div style="margin-top: 10px;">
                         <a href="https://wa.me/' . ($details_array[0] ?? "") . '" style="text-decoration: none; color: #16a34a; font-size: 14px; font-weight: bold; margin: 0 10px;">
