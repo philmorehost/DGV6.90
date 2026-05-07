@@ -4,7 +4,7 @@
     if(isset($_POST["update-template"])){
         $subject = mysqli_real_escape_string($connection_server, trim(strip_tags($_POST["subject"])));
         // Allow some HTML tags for the email body (visual builder output)
-        $allowed_tags = '<div><p><br><span><img/><a><h1><h2><h3><h4><h5><h6><table><tbody><tr><td><th><ul><li><ol><strong><em><u><section><header><footer>';
+        $allowed_tags = '<div><p><br><span><img/><a><h1><h2><h3><h4><h5><h6><table><tbody><tr><td><th><ul><li><ol><strong><em><u><section><header><footer><style>';
         $body = mysqli_real_escape_string($connection_server, trim(strip_tags($_POST["body"], $allowed_tags)));
         $email_type = mysqli_real_escape_string($connection_server, trim(strip_tags(strtolower($_POST["type"]))));
         

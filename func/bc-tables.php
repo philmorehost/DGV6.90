@@ -635,8 +635,23 @@ $create_super_admin_site_detail_table = mysqli_query($connection_server, "CREATE
 //Create Email Template Table
 $create_email_template_table = mysqli_query($connection_server, "CREATE TABLE IF NOT EXISTS sas_email_templates (id INT NOT NULL AUTO_INCREMENT, vendor_id INT UNSIGNED NOT NULL, email_type VARCHAR(225) NOT NULL, subject VARCHAR(225) NOT NULL, body LONGTEXT NOT NULL, PRIMARY KEY (id))");
 
+if ($create_email_template_table) {
+    // Add unique constraint for vendor isolation
+    $check_idx = mysqli_query($connection_server, "SHOW INDEX FROM sas_email_templates WHERE Key_name = 'idx_vendor_email_type'");
+    if (mysqli_num_rows($check_idx) == 0) {
+        mysqli_query($connection_server, "ALTER TABLE sas_email_templates ADD UNIQUE INDEX idx_vendor_email_type (vendor_id, email_type)");
+    }
+}
+
 //Create Super Admin Email Template Table
 $create_super_admin_email_template_table = mysqli_query($connection_server, "CREATE TABLE IF NOT EXISTS sas_super_admin_email_templates (id INT NOT NULL AUTO_INCREMENT, email_type VARCHAR(225) NOT NULL, subject VARCHAR(225) NOT NULL, body LONGTEXT NOT NULL, PRIMARY KEY (id))");
+
+if ($create_super_admin_email_template_table) {
+    $check_idx = mysqli_query($connection_server, "SHOW INDEX FROM sas_super_admin_email_templates WHERE Key_name = 'idx_email_type'");
+    if (mysqli_num_rows($check_idx) == 0) {
+        mysqli_query($connection_server, "ALTER TABLE sas_super_admin_email_templates ADD UNIQUE INDEX idx_email_type (email_type)");
+    }
+}
 
 //Create Vendor Style Template Table
 $create_vendor_style_templates_table = mysqli_query($connection_server, "CREATE TABLE IF NOT EXISTS sas_vendor_style_templates (vendor_id INT UNSIGNED NOT NULL, template_name VARCHAR(225) NOT NULL, date TIMESTAMP DEFAULT CURRENT_TIMESTAMP)");
