@@ -633,7 +633,7 @@ if ($create_site_detail_table) {
 $create_super_admin_site_detail_table = mysqli_query($connection_server, "CREATE TABLE IF NOT EXISTS sas_super_admin_site_details (site_title VARCHAR(225) NOT NULL, site_desc VARCHAR(225) NOT NULL)");
 
 //Create Email Template Table
-$create_email_template_table = mysqli_query($connection_server, "CREATE TABLE IF NOT EXISTS sas_email_templates (id INT NOT NULL AUTO_INCREMENT, vendor_id INT UNSIGNED NOT NULL, email_type VARCHAR(225) NOT NULL, subject VARCHAR(225) NOT NULL, body LONGTEXT NOT NULL, PRIMARY KEY (id))");
+$create_email_template_table = mysqli_query($connection_server, "CREATE TABLE IF NOT EXISTS sas_email_templates (id INT NOT NULL AUTO_INCREMENT, vendor_id INT UNSIGNED NOT NULL, email_type VARCHAR(225) NOT NULL, subject VARCHAR(225) NOT NULL, body LONGTEXT NOT NULL, body_json LONGTEXT, PRIMARY KEY (id))");
 
 if ($create_email_template_table) {
     // Add unique constraint for vendor isolation
@@ -641,17 +641,41 @@ if ($create_email_template_table) {
     if (mysqli_num_rows($check_idx) == 0) {
         mysqli_query($connection_server, "ALTER TABLE sas_email_templates ADD UNIQUE INDEX idx_vendor_email_type (vendor_id, email_type)");
     }
+
+    $check_json_col = mysqli_query($connection_server, "SHOW COLUMNS FROM sas_email_templates LIKE 'body_json'");
+    if (mysqli_num_rows($check_json_col) == 0) {
+        mysqli_query($connection_server, "ALTER TABLE sas_email_templates ADD COLUMN body_json LONGTEXT AFTER body");
+    }
 }
 
 //Create Super Admin Email Template Table
-$create_super_admin_email_template_table = mysqli_query($connection_server, "CREATE TABLE IF NOT EXISTS sas_super_admin_email_templates (id INT NOT NULL AUTO_INCREMENT, email_type VARCHAR(225) NOT NULL, subject VARCHAR(225) NOT NULL, body LONGTEXT NOT NULL, PRIMARY KEY (id))");
+$create_super_admin_email_template_table = mysqli_query($connection_server, "CREATE TABLE IF NOT EXISTS sas_super_admin_email_templates (id INT NOT NULL AUTO_INCREMENT, email_type VARCHAR(225) NOT NULL, subject VARCHAR(225) NOT NULL, body LONGTEXT NOT NULL, body_json LONGTEXT, PRIMARY KEY (id))");
 
 if ($create_super_admin_email_template_table) {
     $check_idx = mysqli_query($connection_server, "SHOW INDEX FROM sas_super_admin_email_templates WHERE Key_name = 'idx_email_type'");
     if (mysqli_num_rows($check_idx) == 0) {
         mysqli_query($connection_server, "ALTER TABLE sas_super_admin_email_templates ADD UNIQUE INDEX idx_email_type (email_type)");
     }
+
+    $check_json_col = mysqli_query($connection_server, "SHOW COLUMNS FROM sas_super_admin_email_templates LIKE 'body_json'");
+    if (mysqli_num_rows($check_json_col) == 0) {
+        mysqli_query($connection_server, "ALTER TABLE sas_super_admin_email_templates ADD COLUMN body_json LONGTEXT AFTER body");
+    }
 }
+
+// Create Email Drafts Table (Branch DG6.92)
+mysqli_query($connection_server, "CREATE TABLE IF NOT EXISTS sas_mail_drafts (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    vendor_id INT UNSIGNED NOT NULL,
+    subject VARCHAR(255) NOT NULL,
+    mailto VARCHAR(50),
+    body_html LONGTEXT NOT NULL,
+    body_json LONGTEXT NOT NULL,
+    is_super_admin TINYINT(1) DEFAULT 0,
+    last_updated TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    INDEX (vendor_id),
+    INDEX (is_super_admin)
+)");
 
 //Create Vendor Style Template Table
 $create_vendor_style_templates_table = mysqli_query($connection_server, "CREATE TABLE IF NOT EXISTS sas_vendor_style_templates (vendor_id INT UNSIGNED NOT NULL, template_name VARCHAR(225) NOT NULL, date TIMESTAMP DEFAULT CURRENT_TIMESTAMP)");

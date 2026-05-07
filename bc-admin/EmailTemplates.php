@@ -3,15 +3,14 @@
     
     if(isset($_POST["update-template"])){
         $subject = mysqli_real_escape_string($connection_server, trim(strip_tags($_POST["subject"])));
-        // Allow some HTML tags for the email body (visual builder output)
-        $allowed_tags = '<div><p><br><span><img/><a><h1><h2><h3><h4><h5><h6><table><tbody><tr><td><th><ul><li><ol><strong><em><u><section><header><footer><style>';
-        $body = mysqli_real_escape_string($connection_server, trim(strip_tags($_POST["body"], $allowed_tags)));
+        $body = mysqli_real_escape_string($connection_server, trim($_POST["body"]));
+        $body_json = mysqli_real_escape_string($connection_server, trim($_POST["body_json"]));
         $email_type = mysqli_real_escape_string($connection_server, trim(strip_tags(strtolower($_POST["type"]))));
         
         if(!empty($subject) && !empty($body) && !empty($email_type)){
             $template_details = mysqli_query($connection_server, "SELECT * FROM sas_email_templates WHERE vendor_id='".$get_logged_admin_details["id"]."' && email_type='$email_type'");
             if(mysqli_num_rows($template_details) == 1){
-                mysqli_query($connection_server, "UPDATE sas_email_templates SET subject='$subject', body='$body' WHERE vendor_id='".$get_logged_admin_details["id"]."' && email_type='$email_type'");
+                mysqli_query($connection_server, "UPDATE sas_email_templates SET subject='$subject', body='$body', body_json='$body_json' WHERE vendor_id='".$get_logged_admin_details["id"]."' && email_type='$email_type'");
                 //Email Template Updated Successfully
                 $json_response_array = array("desc" => "Email Template Updated Successfully");
                 $json_response_encode = json_encode($json_response_array,true);
@@ -22,7 +21,7 @@
                     $json_response_encode = json_encode($json_response_array,true);
                 }else{
                     if(mysqli_num_rows($template_details) == 0){
-                        mysqli_query($connection_server, "INSERT INTO sas_email_templates (vendor_id, email_type, subject, body) VALUES ('".$get_logged_admin_details["id"]."', '$email_type', '$subject', '$body')");
+                        mysqli_query($connection_server, "INSERT INTO sas_email_templates (vendor_id, email_type, subject, body, body_json) VALUES ('".$get_logged_admin_details["id"]."', '$email_type', '$subject', '$body', '$body_json')");
                         //Email Template Created Successfully
                         $json_response_array = array("desc" => "Email Template Created Successfully");
                         $json_response_encode = json_encode($json_response_array,true);
@@ -117,6 +116,42 @@
       </nav>
     </div><!-- End Page Title -->
 
+<?php
+// Asset Upload Handler
+if (isset($_GET['action']) && $_GET['action'] == 'upload_asset' && isset($_FILES['files'])) {
+    // Security: Verify Vendor session
+    if (!isset($_SESSION['admin_session'])) {
+        header("HTTP/1.1 403 Forbidden");
+        echo json_encode(['error' => 'Unauthorized access']);
+        exit;
+    }
+
+    $vid = $get_logged_admin_details['id'];
+    $upload_dir = '../uploaded-image/vendor_' . $vid . '/';
+    if (!is_dir($upload_dir)) mkdir($upload_dir, 0755, true);
+
+    $allowed_extensions = ['jpg', 'jpeg', 'png', 'gif', 'webp'];
+    $responses = [];
+    foreach ($_FILES['files']['name'] as $key => $name) {
+        $tmp_name = $_FILES['files']['tmp_name'][$key];
+        $ext = strtolower(pathinfo($name, PATHINFO_EXTENSION));
+
+        if (!in_array($ext, $allowed_extensions)) continue;
+
+        $filename = time() . '_' . bin2hex(random_bytes(4)) . '.' . $ext;
+        $target = $upload_dir . $filename;
+
+        if (move_uploaded_file($tmp_name, $target)) {
+            $responses[] = [
+                'src' => $web_http_host . '/uploaded-image/vendor_' . $vid . '/' . $filename,
+                'type' => 'image'
+            ];
+        }
+    }
+    echo json_encode(['data' => $responses]);
+    exit;
+}
+?>
     <section class="section dashboard">
       <div class="col-12">
 
@@ -152,7 +187,8 @@
     			</div><br/>
                 <input style="text-align: left;" id="" name="type" onkeyup="" type="text" value="user-reg" placeholder="Email Type" hidden readonly required/>
                 <input style="text-align: left;" id="" name="subject" onkeyup="" type="text" value="<?php echo getVendorEmailTemplate('user-reg','subject'); ?>" placeholder="Email Subject" class="form-control mb-1" required/><br/>
-                <textarea style="text-align: left; resize: none;" id="body-user-reg" name="body" onkeyup="" placeholder="Email Body" class="form-control mb-1" rows="10" required><?php echo getVendorEmailTemplate('user-reg','body'); ?></textarea><br>
+                <textarea style="text-align: left; resize: none;" id="body-user-reg" name="body" onkeyup="" placeholder="Email Body" class="form-control mb-1" rows="10" required><?php echo getVendorEmailTemplate('user-reg','body'); ?></textarea>
+                <input type="hidden" name="body_json" id="json-user-reg" value='<?php echo htmlspecialchars(getVendorEmailTemplate('user-reg', 'body_json'), ENT_QUOTES); ?>'><br>
 			<div class="d-flex gap-2 mb-2">
                 <button type="button" class="btn btn-info col-6 text-white" onclick="openBuilder('user-reg')">
                     <i class="bi bi-brush"></i> BUILDER
@@ -175,7 +211,8 @@
                 </div><br/>
                 <input style="text-align: left;" id="" name="type" onkeyup="" type="text" value="user-log" placeholder="Email Type" hidden readonly required/>
                 <input style="text-align: left;" id="" name="subject" onkeyup="" type="text" value="<?php echo getVendorEmailTemplate('user-log','subject'); ?>" placeholder="Email Subject" class="form-control mb-1" required/><br/>
-                <textarea style="text-align: left; resize: none;" id="body-user-log" name="body" onkeyup="" placeholder="Email Body" class="form-control mb-1" rows="10" required><?php echo getVendorEmailTemplate('user-log','body'); ?></textarea><br>
+                <textarea style="text-align: left; resize: none;" id="body-user-log" name="body" onkeyup="" placeholder="Email Body" class="form-control mb-1" rows="10" required><?php echo getVendorEmailTemplate('user-log','body'); ?></textarea>
+                <input type="hidden" name="body_json" id="json-user-log" value='<?php echo htmlspecialchars(getVendorEmailTemplate('user-log', 'body_json'), ENT_QUOTES); ?>'><br>
 			<div class="d-flex gap-2 mb-2">
                 <button type="button" class="btn btn-info col-6 text-white" onclick="openBuilder('user-log')">
                     <i class="bi bi-brush"></i> BUILDER
@@ -196,7 +233,8 @@
     	                </div><br/>
     	                <input style="text-align: left;" id="" name="type" onkeyup="" type="text" value="user-pass-update" placeholder="Email Type" hidden readonly required/>
     	                <input style="text-align: left;" id="" name="subject" onkeyup="" type="text" value="<?php echo getVendorEmailTemplate('user-pass-update','subject'); ?>" placeholder="Email Subject" class="form-control mb-1" required/><br/>
-	                <textarea style="text-align: left; resize: none;" id="body-user-pass-update" name="body" onkeyup="" placeholder="Email Body" class="form-control mb-1" rows="10" required><?php echo getVendorEmailTemplate('user-pass-update','body'); ?></textarea><br>
+	                <textarea style="text-align: left; resize: none;" id="body-user-pass-update" name="body" onkeyup="" placeholder="Email Body" class="form-control mb-1" rows="10" required><?php echo getVendorEmailTemplate('user-pass-update','body'); ?></textarea>
+                    <input type="hidden" name="body_json" id="json-user-pass-update" value='<?php echo htmlspecialchars(getVendorEmailTemplate('user-pass-update', 'body_json'), ENT_QUOTES); ?>'><br>
 			<div class="d-flex gap-2 mb-2">
                 <button type="button" class="btn btn-info col-6 text-white" onclick="openBuilder('user-pass-update')">
                     <i class="bi bi-brush"></i> BUILDER
@@ -222,7 +260,8 @@
 				</div><br/>
 				<input style="text-align: left;" id="" name="type" onkeyup="" type="text" value="user-account-update" placeholder="Email Type" hidden readonly required/>
 				<input style="text-align: left;" id="" name="subject" onkeyup="" type="text" value="<?php echo getVendorEmailTemplate('user-account-update','subject'); ?>" placeholder="Email Subject" class="form-control mb-1" required/><br/>
-				<textarea style="text-align: left; resize: none;" id="body-user-account-update" name="body" onkeyup="" placeholder="Email Body" class="form-control mb-1" rows="10" required><?php echo getVendorEmailTemplate('user-account-update','body'); ?></textarea><br>
+				<textarea style="text-align: left; resize: none;" id="body-user-account-update" name="body" onkeyup="" placeholder="Email Body" class="form-control mb-1" rows="10" required><?php echo getVendorEmailTemplate('user-account-update','body'); ?></textarea>
+                <input type="hidden" name="body_json" id="json-user-account-update" value='<?php echo htmlspecialchars(getVendorEmailTemplate('user-account-update', 'body_json'), ENT_QUOTES); ?>'><br>
 				<div class="d-flex gap-2 mb-2">
                     <button type="button" class="btn btn-info col-6 text-white" onclick="openBuilder('user-account-update')">
                         <i class="bi bi-brush"></i> BUILDER
@@ -244,7 +283,8 @@
                 </div><br/>
                 <input style="text-align: left;" id="" name="type" onkeyup="" type="text" value="user-account-recovery" placeholder="Email Type" hidden readonly required/>
                 <input style="text-align: left;" id="" name="subject" onkeyup="" type="text" value="<?php echo getVendorEmailTemplate('user-account-recovery','subject'); ?>" placeholder="Email Subject" class="form-control mb-1" required/><br/>
-                <textarea style="text-align: left; resize: none;" id="body-user-account-recovery" name="body" onkeyup="" placeholder="Email Body" class="form-control mb-1" rows="10" required><?php echo getVendorEmailTemplate('user-account-recovery','body'); ?></textarea><br>
+                <textarea style="text-align: left; resize: none;" id="body-user-account-recovery" name="body" onkeyup="" placeholder="Email Body" class="form-control mb-1" rows="10" required><?php echo getVendorEmailTemplate('user-account-recovery','body'); ?></textarea>
+                <input type="hidden" name="body_json" id="json-user-account-recovery" value='<?php echo htmlspecialchars(getVendorEmailTemplate('user-account-recovery', 'body_json'), ENT_QUOTES); ?>'><br>
 			<div class="d-flex gap-2 mb-2">
                 <button type="button" class="btn btn-info col-6 text-white" onclick="openBuilder('user-account-recovery')">
                     <i class="bi bi-brush"></i> BUILDER
@@ -266,7 +306,8 @@
                 </div><br/>
                 <input style="text-align: left;" id="" name="type" onkeyup="" type="text" value="user-account-status" placeholder="Email Type" hidden readonly required/>
                 <input style="text-align: left;" id="" name="subject" onkeyup="" type="text" value="<?php echo getVendorEmailTemplate('user-account-status','subject'); ?>" placeholder="Email Subject" class="form-control mb-1" required/><br/>
-                <textarea style="text-align: left; resize: none;" id="body-user-account-status" name="body" onkeyup="" placeholder="Email Body" class="form-control mb-1" rows="10" required><?php echo getVendorEmailTemplate('user-account-status','body'); ?></textarea><br>
+                <textarea style="text-align: left; resize: none;" id="body-user-account-status" name="body" onkeyup="" placeholder="Email Body" class="form-control mb-1" rows="10" required><?php echo getVendorEmailTemplate('user-account-status','body'); ?></textarea>
+                <input type="hidden" name="body_json" id="json-user-account-status" value='<?php echo htmlspecialchars(getVendorEmailTemplate('user-account-status', 'body_json'), ENT_QUOTES); ?>'><br>
 			<div class="d-flex gap-2 mb-2">
                 <button type="button" class="btn btn-info col-6 text-white" onclick="openBuilder('user-account-status')">
                     <i class="bi bi-brush"></i> BUILDER
@@ -288,7 +329,8 @@
                 </div><br/>
                 <input style="text-align: left;" id="" name="type" onkeyup="" type="text" value="user-api-status" placeholder="Email Type" hidden readonly required/>
                 <input style="text-align: left;" id="" name="subject" onkeyup="" type="text" value="<?php echo getVendorEmailTemplate('user-api-status','subject'); ?>" placeholder="Email Subject" class="form-control mb-1" required/><br/>
-                <textarea style="text-align: left; resize: none;" id="body-user-api-status" name="body" onkeyup="" placeholder="Email Body" class="form-control mb-1" rows="10" required><?php echo getVendorEmailTemplate('user-api-status','body'); ?></textarea><br>
+                <textarea style="text-align: left; resize: none;" id="body-user-api-status" name="body" onkeyup="" placeholder="Email Body" class="form-control mb-1" rows="10" required><?php echo getVendorEmailTemplate('user-api-status','body'); ?></textarea>
+                <input type="hidden" name="body_json" id="json-user-api-status" value='<?php echo htmlspecialchars(getVendorEmailTemplate('user-api-status', 'body_json'), ENT_QUOTES); ?>'><br>
 			<div class="d-flex gap-2 mb-2">
                 <button type="button" class="btn btn-info col-6 text-white" onclick="openBuilder('user-api-status')">
                     <i class="bi bi-brush"></i> BUILDER
@@ -310,7 +352,8 @@
     			</div><br/>
     			<input style="text-align: left;" id="" name="type" onkeyup="" type="text" value="user-upgrade" placeholder="Email Type" hidden readonly required/>
     			<input style="text-align: left;" id="" name="subject" onkeyup="" type="text" value="<?php echo getVendorEmailTemplate('user-upgrade','subject'); ?>" placeholder="Email Subject" class="form-control mb-1" required/><br/>
-			<textarea style="text-align: left; resize: none;" id="body-user-upgrade" name="body" onkeyup="" placeholder="Email Body" class="form-control mb-1" rows="10" required><?php echo getVendorEmailTemplate('user-upgrade','body'); ?></textarea><br>
+			<textarea style="text-align: left; resize: none;" id="body-user-upgrade" name="body" onkeyup="" placeholder="Email Body" class="form-control mb-1" rows="10" required><?php echo getVendorEmailTemplate('user-upgrade','body'); ?></textarea>
+            <input type="hidden" name="body_json" id="json-user-upgrade" value='<?php echo htmlspecialchars(getVendorEmailTemplate('user-upgrade', 'body_json'), ENT_QUOTES); ?>'><br>
 			<div class="d-flex gap-2 mb-2">
                 <button type="button" class="btn btn-info col-6 text-white" onclick="openBuilder('user-upgrade')">
                     <i class="bi bi-brush"></i> BUILDER
@@ -334,7 +377,8 @@
 				</div><br/>
 				<input style="text-align: left;" id="" name="type" onkeyup="" type="text" value="user-referral-commission" placeholder="Email Type" hidden readonly required/>
 				<input style="text-align: left;" id="" name="subject" onkeyup="" type="text" value="<?php echo getVendorEmailTemplate('user-referral-commission','subject'); ?>" placeholder="Email Subject" class="form-control mb-1" required/><br/>
-				<textarea style="text-align: left; resize: none;" id="body-user-referral-commission" name="body" onkeyup="" placeholder="Email Body" class="form-control mb-1" rows="10" required><?php echo getVendorEmailTemplate('user-referral-commission','body'); ?></textarea><br>
+				<textarea style="text-align: left; resize: none;" id="body-user-referral-commission" name="body" onkeyup="" placeholder="Email Body" class="form-control mb-1" rows="10" required><?php echo getVendorEmailTemplate('user-referral-commission','body'); ?></textarea>
+                <input type="hidden" name="body_json" id="json-user-referral-commission" value='<?php echo htmlspecialchars(getVendorEmailTemplate('user-referral-commission', 'body_json'), ENT_QUOTES); ?>'><br>
 				<div class="d-flex gap-2 mb-2">
                     <button type="button" class="btn btn-info col-6 text-white" onclick="openBuilder('user-referral-commission')">
                         <i class="bi bi-brush"></i> BUILDER
@@ -361,7 +405,8 @@
                 </div><br/>
                 <input style="text-align: left;" id="" name="type" onkeyup="" type="text" value="user-transactions" placeholder="Email Type" hidden readonly required/>
                 <input style="text-align: left;" id="" name="subject" onkeyup="" type="text" value="<?php echo getVendorEmailTemplate('user-transactions','subject'); ?>" placeholder="Email Subject" class="form-control mb-1" required/><br/>
-                <textarea style="text-align: left; resize: none;" id="body-user-transactions" name="body" onkeyup="" placeholder="Email Body" class="form-control mb-1" rows="10" required><?php echo getVendorEmailTemplate('user-transactions','body'); ?></textarea><br>
+                <textarea style="text-align: left; resize: none;" id="body-user-transactions" name="body" onkeyup="" placeholder="Email Body" class="form-control mb-1" rows="10" required><?php echo getVendorEmailTemplate('user-transactions','body'); ?></textarea>
+                <input type="hidden" name="body_json" id="json-user-transactions" value='<?php echo htmlspecialchars(getVendorEmailTemplate('user-transactions', 'body_json'), ENT_QUOTES); ?>'><br>
 			<div class="d-flex gap-2 mb-2">
                 <button type="button" class="btn btn-info col-6 text-white" onclick="openBuilder('user-transactions')">
                     <i class="bi bi-brush"></i> BUILDER
@@ -387,7 +432,8 @@
                 </div><br/>
                 <input style="text-align: left;" id="" name="type" onkeyup="" type="text" value="user-funding" placeholder="Email Type" hidden readonly required/>
                 <input style="text-align: left;" id="" name="subject" onkeyup="" type="text" value="<?php echo getVendorEmailTemplate('user-funding','subject'); ?>" placeholder="Email Subject" class="form-control mb-1" required/><br/>
-                <textarea style="text-align: left; resize: none;" id="body-user-funding" name="body" onkeyup="" placeholder="Email Body" class="form-control mb-1" rows="10" required><?php echo getVendorEmailTemplate('user-funding','body'); ?></textarea><br>
+                <textarea style="text-align: left; resize: none;" id="body-user-funding" name="body" onkeyup="" placeholder="Email Body" class="form-control mb-1" rows="10" required><?php echo getVendorEmailTemplate('user-funding','body'); ?></textarea>
+                <input type="hidden" name="body_json" id="json-user-funding" value='<?php echo htmlspecialchars(getVendorEmailTemplate('user-funding', 'body_json'), ENT_QUOTES); ?>'><br>
 			<div class="d-flex gap-2 mb-2">
                 <button type="button" class="btn btn-info col-6 text-white" onclick="openBuilder('user-funding')">
                     <i class="bi bi-brush"></i> BUILDER
@@ -411,7 +457,8 @@
 				</div><br/>
 				<input style="text-align: left;" id="" name="type" onkeyup="" type="text" value="user-refund" placeholder="Email Type" hidden readonly required/>
 				<input style="text-align: left;" id="" name="subject" onkeyup="" type="text" value="<?php echo getVendorEmailTemplate('user-refund','subject'); ?>" placeholder="Email Subject" class="form-control mb-1" required/><br/>
-				<textarea style="text-align: left; resize: none;" id="body-user-refund" name="body" onkeyup="" placeholder="Email Body" class="form-control mb-1" rows="10" required><?php echo getVendorEmailTemplate('user-refund','body'); ?></textarea><br>
+				<textarea style="text-align: left; resize: none;" id="body-user-refund" name="body" onkeyup="" placeholder="Email Body" class="form-control mb-1" rows="10" required><?php echo getVendorEmailTemplate('user-refund','body'); ?></textarea>
+                <input type="hidden" name="body_json" id="json-user-refund" value='<?php echo htmlspecialchars(getVendorEmailTemplate('user-refund', 'body_json'), ENT_QUOTES); ?>'><br>
 				<div class="d-flex gap-2 mb-2">
                     <button type="button" class="btn btn-info col-6 text-white" onclick="openBuilder('user-refund')">
                         <i class="bi bi-brush"></i> BUILDER
@@ -431,11 +478,12 @@
     
     <script>
         let editor;
-        let currentTargetId;
+        let currentKey;
 
         function openBuilder(type) {
-            currentTargetId = 'body-' + type;
-            const content = document.getElementById(currentTargetId).value;
+            currentKey = type;
+            const content = document.getElementById('body-' + type).value;
+            const jsonContent = document.getElementById('json-' + type).value;
 
             if (!editor) {
                 editor = grapesjs.init({
@@ -447,18 +495,35 @@
                     plugins: ['grapesjs-preset-newsletter'],
                     pluginsOpts: {
                         'grapesjs-preset-newsletter': {}
+                    },
+                    assetManager: {
+                        upload: '?action=upload_asset',
+                        params: { vid: '<?php echo $get_logged_admin_details["id"]; ?>' }
                     }
                 });
             }
 
-            editor.setComponents(content);
+            if (jsonContent && jsonContent.trim() !== '') {
+                try {
+                    editor.setComponents(JSON.parse(jsonContent));
+                } catch (e) {
+                    editor.setComponents(content);
+                }
+            } else {
+                editor.setComponents(content);
+            }
+
             const modal = new bootstrap.Modal(document.getElementById('grapesModal'));
             modal.show();
         }
 
         document.getElementById('save-builder').addEventListener('click', function() {
             const html = editor.runCommand('gjs-get-inlined-html');
-            document.getElementById(currentTargetId).value = html;
+            const json = JSON.stringify(editor.getComponents());
+
+            document.getElementById('body-' + currentKey).value = html;
+            document.getElementById('json-' + currentKey).value = json;
+
             bootstrap.Modal.getInstance(document.getElementById('grapesModal')).hide();
         });
     </script>

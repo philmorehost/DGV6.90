@@ -3,21 +3,20 @@
     
     if(isset($_POST["update-template"])){
         $subject = mysqli_real_escape_string($connection_server, trim(strip_tags($_POST["subject"])));
-        // Allow some HTML tags for the email body (visual builder output)
-        $allowed_tags = '<div><p><br><span><img/><a><h1><h2><h3><h4><h5><h6><table><tbody><tr><td><th><ul><li><ol><strong><em><u><section><header><footer><style>';
-        $body = mysqli_real_escape_string($connection_server, trim(strip_tags($_POST["body"], $allowed_tags)));
+        $body = mysqli_real_escape_string($connection_server, trim($_POST["body"]));
+        $body_json = mysqli_real_escape_string($connection_server, trim($_POST["body_json"]));
         $email_type = mysqli_real_escape_string($connection_server, trim(strip_tags(strtolower($_POST["type"]))));
         
         if(!empty($subject) && !empty($body) && !empty($email_type)){
             $template_details = mysqli_query($connection_server, "SELECT * FROM sas_super_admin_email_templates WHERE email_type='$email_type'");
             if(mysqli_num_rows($template_details) == 1){
-                mysqli_query($connection_server, "UPDATE sas_super_admin_email_templates SET subject='$subject', body='$body' WHERE email_type='$email_type'");
+                mysqli_query($connection_server, "UPDATE sas_super_admin_email_templates SET subject='$subject', body='$body', body_json='$body_json' WHERE email_type='$email_type'");
                 $_SESSION["product_purchase_response"] = "Email Template Updated Successfully";
             }else{
                 if(mysqli_num_rows($template_details) > 1){
                     $_SESSION["product_purchase_response"] = "Duplicated Details";
                 }else{
-                    mysqli_query($connection_server, "INSERT INTO sas_super_admin_email_templates (email_type, subject, body) VALUES ('$email_type', '$subject', '$body')");
+                    mysqli_query($connection_server, "INSERT INTO sas_super_admin_email_templates (email_type, subject, body, body_json) VALUES ('$email_type', '$subject', '$body', '$body_json')");
                     $_SESSION["product_purchase_response"] = "Email Template Created Successfully";
                 }
             }
@@ -164,7 +163,7 @@
                                     <?php endforeach; ?>
                                 </div>
                             </div>
-                            <form method="post">
+                            <form method="post" id="form-<?php echo $key; ?>">
                                 <input type="hidden" name="type" value="<?php echo $key; ?>">
                                 <div class="mb-3">
                                     <label class="form-label small fw-bold text-muted">EMAIL SUBJECT</label>
@@ -173,6 +172,7 @@
                                 <div class="mb-4">
                                     <label class="form-label small fw-bold text-muted">EMAIL BODY (HTML ALLOWED)</label>
                                     <textarea id="body-<?php echo $key; ?>" name="body" class="form-control rounded-4 mb-3" rows="12" required><?php echo getSuperAdminEmailTemplate($key, 'body'); ?></textarea>
+                                    <input type="hidden" name="body_json" id="json-<?php echo $key; ?>" value='<?php echo htmlspecialchars(getSuperAdminEmailTemplate($key, 'body_json'), ENT_QUOTES); ?>'>
                                     <button type="button" class="btn btn-info text-white rounded-pill px-4 fw-bold shadow-sm me-2" onclick="openBuilder('<?php echo $key; ?>')">
                                         <i class="bi bi-brush me-2"></i> Open Builder
                                     </button>
@@ -194,11 +194,12 @@
     
     <script>
         let editor;
-        let currentTargetId;
+        let currentKey;
 
         function openBuilder(key) {
-            currentTargetId = 'body-' + key;
-            const content = document.getElementById(currentTargetId).value;
+            currentKey = key;
+            const content = document.getElementById('body-' + key).value;
+            const jsonContent = document.getElementById('json-' + key).value;
 
             if (!editor) {
                 editor = grapesjs.init({
@@ -210,18 +211,35 @@
                     plugins: ['grapesjs-preset-newsletter'],
                     pluginsOpts: {
                         'grapesjs-preset-newsletter': {}
+                    },
+                    assetManager: {
+                        upload: 'SaUpload.php',
+                        params: { type: 'template' }
                     }
                 });
             }
 
-            editor.setComponents(content);
+            if (jsonContent && jsonContent.trim() !== '') {
+                try {
+                    editor.setComponents(JSON.parse(jsonContent));
+                } catch (e) {
+                    editor.setComponents(content);
+                }
+            } else {
+                editor.setComponents(content);
+            }
+
             const modal = new bootstrap.Modal(document.getElementById('grapesModal'));
             modal.show();
         }
 
         document.getElementById('save-builder').addEventListener('click', function() {
             const html = editor.runCommand('gjs-get-inlined-html');
-            document.getElementById(currentTargetId).value = html;
+            const json = JSON.stringify(editor.getComponents());
+
+            document.getElementById('body-' + currentKey).value = html;
+            document.getElementById('json-' + currentKey).value = json;
+
             bootstrap.Modal.getInstance(document.getElementById('grapesModal')).hide();
         });
     </script>

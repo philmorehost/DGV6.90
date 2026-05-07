@@ -1,168 +1,331 @@
 <?php session_start();
-    include("../func/bc-spadmin-config.php");
-    
-    if(isset($_POST["send-mail"])){
-        $subject = mysqli_real_escape_string($connection_server, trim($_POST["subject"]));
-        $body = mysqli_real_escape_string($connection_server, str_replace(["\r\n", "\n"], "<br/>", trim($_POST["body"])));
-        $mailto = mysqli_real_escape_string($connection_server, trim(strip_tags(strtolower($_POST["mailto"]))));
-        $mailto_array = array("all","a","b","d","bd");
-        if(!empty($subject) && !empty($body) && !empty($mailto) && in_array($mailto, $mailto_array)){
-            $select_users = mysqli_query($connection_server, "SELECT * FROM sas_vendors");
-                if(mysqli_num_rows($select_users) >= 1){
-                    // Email Beginning
-                    $send_mail_to_specified_users = sendSuperAdminEmailSpecific($mailto, $subject, $body);
-                    if($send_mail_to_specified_users == "success"){
-                        //Mail Sent Successfully
-                        $json_response_array = array("desc" => "Mail Sent Successfully");
-                        $json_response_encode = json_encode($json_response_array,true);
-                    }else{
-                        if($send_mail_to_specified_users == "failed"){
-                            //Error: No Account For Mail-To Type
-                            $json_response_array = array("desc" => "Error: No Account For Mail-To Type");
-                            $json_response_encode = json_encode($json_response_array,true);
-                        }else{
-                            if($send_mail_to_specified_users == "error"){
-                                //Error: Invalid Mail-To Function
-                                $json_response_array = array("desc" => "Error: Invalid Mail-To Function");
-                                $json_response_encode = json_encode($json_response_array,true);
-                            }
-                        }
-                    }
-                    // Email End
-                }else{
-                    //Error: No Account
-                    $json_response_array = array("desc" => "Error: No Account");
-                    $json_response_encode = json_encode($json_response_array,true);
-                }
-		}else{
-			if(empty($subject)){
-                //Email Subject Field Empty
-				$json_response_array = array("desc" => "Email Subject Field Empty");
-				$json_response_encode = json_encode($json_response_array,true);
-            }else{
-                if(empty($body)){
-                    //Email Body Field Empty
-                    $json_response_array = array("desc" => "Email Body Field Empty");
-                    $json_response_encode = json_encode($json_response_array,true);
-                }else{
-                    if(empty($mailto)){
-                        //Mail-To Field Empty
-                        $json_response_array = array("desc" => "Mail-To Field Empty");
-                        $json_response_encode = json_encode($json_response_array,true);
-                    }else{
-                        if(!in_array($mailto, $mailto_array)){
-                            //Invalid Mail-To Function
-                            $json_response_array = array("desc" => "Invalid Mail-To Function");
-                            $json_response_encode = json_encode($json_response_array,true);
-                        }
-                    }
-                }
-            }
-		}
-        
-        $json_response_decode = json_decode($json_response_encode,true);
-        $_SESSION["product_purchase_response"] = $json_response_decode["desc"];
-        header("Location: ".$_SERVER["REQUEST_URI"]);
+include("../func/bc-spadmin-config.php");
+
+// AJAX Handler for Drafts
+if (isset($_GET['action'])) {
+    // Security: Explicitly verify Super Admin session
+    if (!isset($_SESSION['spadmin_session'])) {
+        header("HTTP/1.1 403 Forbidden");
+        echo json_encode(['error' => 'Unauthorized access']);
+        exit;
     }
+
+    if ($_GET['action'] == 'save_draft') {
+        $json = file_get_contents('php://input');
+        $data = json_decode($json, true);
+        $subject = mysqli_real_escape_string($connection_server, $data['subject']);
+        $mailto = mysqli_real_escape_string($connection_server, $data['mailto']);
+        $body_html = mysqli_real_escape_string($connection_server, $data['body_html']);
+        $body_json = mysqli_real_escape_string($connection_server, $data['body_json']);
+
+        $check = mysqli_query($connection_server, "SELECT id FROM sas_mail_drafts WHERE is_super_admin=1 AND vendor_id=0 LIMIT 1");
+        if (mysqli_num_rows($check) > 0) {
+            mysqli_query($connection_server, "UPDATE sas_mail_drafts SET subject='$subject', mailto='$mailto', body_html='$body_html', body_json='$body_json' WHERE is_super_admin=1 AND vendor_id=0");
+        } else {
+            mysqli_query($connection_server, "INSERT INTO sas_mail_drafts (vendor_id, subject, mailto, body_html, body_json, is_super_admin) VALUES (0, '$subject', '$mailto', '$body_html', '$body_json', 1)");
+        }
+        echo json_encode(['status' => 'success']);
+        exit;
+    }
+    if ($_GET['action'] == 'load_draft') {
+        $res = mysqli_query($connection_server, "SELECT * FROM sas_mail_drafts WHERE is_super_admin=1 AND vendor_id=0 LIMIT 1");
+        if ($row = mysqli_fetch_assoc($res)) {
+            echo json_encode($row);
+        } else {
+            echo json_encode(['status' => 'empty']);
+        }
+        exit;
+    }
+}
+
+if (isset($_POST["send-mail"])) {
+    $subject = mysqli_real_escape_string($connection_server, trim($_POST["subject"]));
+    $body = mysqli_real_escape_string($connection_server, trim($_POST["body"])); // GrapesJS output
+    $mailto = mysqli_real_escape_string($connection_server, trim(strip_tags(strtolower($_POST["mailto"]))));
+    
+    $external_emails = [];
+
+    // Process Paste field
+    if (!empty($_POST['paste_emails'])) {
+        $pasted = preg_split('/[\s,]+/', $_POST['paste_emails'], -1, PREG_SPLIT_NO_EMPTY);
+        foreach ($pasted as $email) {
+            if (filter_var(trim($email), FILTER_VALIDATE_EMAIL)) $external_emails[] = trim($email);
+        }
+    }
+
+    // Process File Upload
+    if (isset($_FILES['email_file']) && $_FILES['email_file']['error'] == 0) {
+        $ext = strtolower(pathinfo($_FILES['email_file']['name'], PATHINFO_EXTENSION));
+        if ($ext == 'csv') {
+            if (($handle = fopen($_FILES['email_file']['tmp_name'], "r")) !== FALSE) {
+                while (($data = fgetcsv($handle, 1000, ",")) !== FALSE) {
+                    foreach ($data as $email) {
+                        if (!empty($email) && filter_var(trim($email), FILTER_VALIDATE_EMAIL)) $external_emails[] = trim($email);
+                    }
+                }
+                fclose($handle);
+            }
+        } else if ($ext == 'txt') {
+            $content = file_get_contents($_FILES['email_file']['tmp_name']);
+            $lines = preg_split('/[\s,]+/', $content, -1, PREG_SPLIT_NO_EMPTY);
+            foreach ($lines as $email) {
+                if (filter_var(trim($email), FILTER_VALIDATE_EMAIL)) $external_emails[] = trim($email);
+            }
+        }
+    }
+
+    $external_emails = array_unique($external_emails);
+
+    if (!empty($subject) && !empty($body)) {
+        $success_count = 0;
+
+        // Internal targets
+        if (!empty($mailto)) {
+            $res = sendSuperAdminEmailSpecific($mailto, $subject, $body);
+            if ($res == "success") $success_count++;
+        }
+        
+        // External targets
+        if (!empty($external_emails)) {
+            foreach ($external_emails as $ext_email) {
+                sendSuperAdminEmail($ext_email, $subject, $body);
+            }
+            $success_count += count($external_emails);
+        }
+
+        if ($success_count > 0) {
+            $_SESSION["product_purchase_response"] = "Global Dispatch Successful! (Targeted: $success_count)";
+        } else {
+            $_SESSION["product_purchase_response"] = "Error: No targets selected or dispatch failed.";
+        }
+    } else {
+        $_SESSION["product_purchase_response"] = "Error: Subject and Body are required.";
+    }
+    header("Location: " . $_SERVER["REQUEST_URI"]);
+    exit;
+}
 ?>
 <!DOCTYPE html>
+<html lang="en">
 <head>
-    <title>Mailing System</title>
+    <title>Marketing Suite | Super Admin</title>
     <meta charset="UTF-8" />
-    <meta name="description" content="" />
-    <meta http-equiv="Content-Type" content="text/html; " />
-    <meta name="theme-color" content="black" />
     <meta name="viewport" content="width=device-width, initial-scale=1"/>
     <link rel="stylesheet" href="<?php echo $css_style_template_location; ?>">
     <link rel="stylesheet" href="/cssfile/bc-style.css">
-    <meta name="author" content="Philmore Codes">
-    <meta name="dc.creator" content="Philmore Codes">
     
-    
-  <!-- Vendor CSS Files -->
-  <link href="../assets-2/vendor/bootstrap/css/bootstrap.min.css" rel="stylesheet">
-  <link href="../assets-2/vendor/bootstrap-icons/bootstrap-icons.css" rel="stylesheet">
-  <link href="../assets-2/vendor/boxicons/css/boxicons.min.css" rel="stylesheet">
-  <link href="../assets-2/vendor/quill/quill.snow.css" rel="stylesheet">
-  <link href="../assets-2/vendor/quill/quill.bubble.css" rel="stylesheet">
-  <link href="../assets-2/vendor/remixicon/remixicon.css" rel="stylesheet">
-  <link href="../assets-2/vendor/simple-datatables/style.css" rel="stylesheet">
+    <!-- Vendor CSS Files -->
+    <link href="../assets-2/vendor/bootstrap/css/bootstrap.min.css" rel="stylesheet">
+    <link href="../assets-2/vendor/bootstrap-icons/bootstrap-icons.css" rel="stylesheet">
+    <link href="../assets-2/vendor/boxicons/css/boxicons.min.css" rel="stylesheet">
+    <link href="../assets-2/css/style.css" rel="stylesheet">
 
-  <!-- Template Main CSS File -->
-  <link href="../assets-2/css/style.css" rel="stylesheet">
+    <!-- GrapesJS -->
+    <link href="https://unpkg.com/grapesjs/dist/css/grapes.min.css" rel="stylesheet">
+    <script src="https://unpkg.com/grapesjs"></script>
+    <script src="https://unpkg.com/grapesjs-preset-newsletter"></script>
+
+    <style>
+        .marketing-card {
+            border: none;
+            border-radius: 20px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.08);
+            background: #fff;
+        }
+        #gjs {
+            border: 1px solid #ddd;
+            border-radius: 10px;
+            overflow: hidden;
+            height: 700px;
+        }
+        .placeholder-btn {
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        .placeholder-btn:hover {
+            transform: scale(1.05);
+            background: #eef2ff !important;
+        }
+        .app-sidebar {
+            background: #f8fafc;
+            border-right: 1px solid #e2e8f0;
+            padding: 25px;
+        }
+        .gjs-cv-canvas {
+            width: 100%;
+            height: 100%;
+            top: 0;
+        }
+        .nav-pills .nav-link {
+            border-radius: 10px;
+            font-weight: 600;
+            padding: 10px 20px;
+        }
+    </style>
 </head>
 <body>
-	<?php include("../func/bc-spadmin-header.php"); ?>	
-	<div class="pagetitle">
-      <h1>MAIL SENDER</h1>
+    <?php include("../func/bc-spadmin-header.php"); ?>
+
+    <div class="pagetitle">
+      <h1>MARKETING SUITE</h1>
       <nav>
         <ol class="breadcrumb">
-          <li class="breadcrumb-item"><a href="#">Home</a></li>
+          <li class="breadcrumb-item"><a href="Dashboard.php">Home</a></li>
           <li class="breadcrumb-item active">Send Mail</li>
         </ol>
       </nav>
-    </div><!-- End Page Title -->
+    </div>
 
-    <section class="section dashboard">
-      <div class="row justify-content-center">
-        <div class="col-lg-10">
-            <div class="card shadow-sm border-0 rounded-4 overflow-hidden">
-                <div class="card-header bg-white py-4 border-0 text-center">
-                    <div class="bg-primary bg-opacity-10 rounded-circle d-inline-flex align-items-center justify-content-center mb-3" style="width: 80px; height: 80px;">
-                        <i class="bi bi-envelope-paper text-dark-primary fs-1"></i>
-                    </div>
-                    <h4 class="fw-bold mb-0">Super Admin Mail Sender</h4>
-                    <p class="text-muted small">Broadcast custom emails to all or specific vendor groups</p>
-                </div>
-                <div class="card-body p-4 p-md-5">
-                    <form method="post">
-                        <div class="alert alert-info border-0 rounded-4 d-flex align-items-center mb-5 shadow-sm">
-                            <i class="bi bi-info-circle-fill fs-4 me-3"></i>
-                            <div class="small">
-                                <p class="fw-bold mb-1 text-uppercase">Supported Placeholders:</p>
-                                <div class="d-flex flex-wrap gap-2">
-                                    <code class="bg-white border rounded px-1">{firstname}</code>
-                                    <code class="bg-white border rounded px-1">{lastname}</code>
-                                    <code class="bg-white border rounded px-1">{email}</code>
-                                    <code class="bg-white border rounded px-1">{phone}</code>
-                                    <code class="bg-white border rounded px-1">{address}</code>
+    <section class="section">
+      <div class="row">
+        <div class="col-lg-12">
+            <div class="marketing-card mb-4">
+                <div class="card-body p-0">
+                    <div class="row g-0">
+                        <!-- Left Controls -->
+                        <div class="col-md-3 app-sidebar">
+                            <h5 class="fw-bold mb-4 text-primary"><i class="bi bi- megaphone me-2"></i>Campaign Settings</h5>
+
+                            <form id="mainForm" method="post" enctype="multipart/form-data">
+                                <div class="mb-4">
+                                    <label class="form-label small fw-bold text-muted text-uppercase">Email Subject</label>
+                                    <input name="subject" id="subject" type="text" class="form-control rounded-3" placeholder="e.g. system Update v2.0" required />
                                 </div>
-                            </div>
+
+                                <div class="mb-4">
+                                    <label class="form-label small fw-bold text-muted text-uppercase">Target Audience</label>
+                                    <select name="mailto" id="mailto" class="form-select rounded-3">
+                                        <option value="">No internal target (External only)</option>
+                                        <option value="all">All Vendors</option>
+                                        <option value="a">Active Vendors Only</option>
+                                        <option value="b">Suspended Vendors</option>
+                                        <option value="d">Deleted Accounts</option>
+                                        <option value="bd">Blocked & Deleted</option>
+                                    </select>
+                                </div>
+
+                                <hr class="my-4 opacity-50">
+
+                                <h6 class="fw-bold mb-3 small text-muted text-uppercase">External Marketing</h6>
+
+                                <div class="mb-3">
+                                    <label class="form-label small fw-bold"><i class="bi bi-file-earmark-arrow-up me-1"></i> Bulk Upload (.csv, .txt)</label>
+                                    <input type="file" name="email_file" class="form-control form-control-sm rounded-3" accept=".csv,.txt">
+                                </div>
+
+                                <div class="mb-4">
+                                    <label class="form-label small fw-bold"><i class="bi bi-clipboard-plus me-1"></i> Paste Emails</label>
+                                    <textarea name="paste_emails" class="form-control rounded-3" rows="3" placeholder="Separate by comma or newline"></textarea>
+                                </div>
+
+                                <div class="mb-4">
+                                    <label class="form-label small fw-bold text-muted text-uppercase mb-3">Personalization Tags</label>
+                                    <div class="d-flex flex-wrap gap-2">
+                                        <span class="badge bg-light text-primary border p-2 placeholder-btn" onclick="insertPlaceholder('{firstname}')">{firstname}</span>
+                                        <span class="badge bg-light text-primary border p-2 placeholder-btn" onclick="insertPlaceholder('{lastname}')">{lastname}</span>
+                                        <span class="badge bg-light text-primary border p-2 placeholder-btn" onclick="insertPlaceholder('{email}')">{email}</span>
+                                        <span class="badge bg-light text-primary border p-2 placeholder-btn" onclick="insertPlaceholder('{phone}')">{phone}</span>
+                                        <span class="badge bg-light text-primary border p-2 placeholder-btn" onclick="insertPlaceholder('{address}')">{address}</span>
+                                        <span class="badge bg-light text-primary border p-2 placeholder-btn" onclick="insertPlaceholder('{website}')">{website}</span>
+                                    </div>
+                                </div>
+
+                                <textarea name="body" id="body_html" hidden></textarea>
+                                <input type="hidden" name="body_json" id="body_json">
+
+                                <div class="d-grid gap-2 mt-5">
+                                    <button type="button" class="btn btn-outline-primary fw-bold" onclick="saveDraft()">
+                                        <i class="bi bi-save me-2"></i>Save Draft
+                                    </button>
+                                    <button name="send-mail" type="submit" class="btn btn-primary btn-lg fw-bold shadow">
+                                        <i class="bi bi-send-fill me-2"></i>Dispatch Campaign
+                                    </button>
+                                </div>
+                            </form>
                         </div>
 
-                        <div class="row g-4 mb-4">
-                            <div class="col-md-8">
-                                <label class="form-label small fw-bold text-muted text-uppercase">Email Subject</label>
-                                <input name="subject" type="text" value="System Notification Update" class="form-control rounded-3 py-2" required />
+                        <!-- Right Builder -->
+                        <div class="col-md-9 p-4">
+                            <div class="d-flex justify-content-between align-items-center mb-4">
+                                <h4 class="fw-bold mb-0">Visual Email Builder</h4>
+                                <button type="button" class="btn btn-light btn-sm text-danger fw-bold" onclick="if(confirm('Clear all content?')) editor.setComponents('')">
+                                    <i class="bi bi-trash me-1"></i> Clear Canvas
+                                </button>
                             </div>
-                            <div class="col-md-4">
-                                <label class="form-label small fw-bold text-muted text-uppercase">Target Audience</label>
-                                <select name="mailto" class="form-select rounded-3 py-2" required>
-                                    <option value="" selected hidden default>Choose Mail To</option>
-                                    <option value="all">All Vendors</option>
-                                    <option value="a">Active Vendors Only</option>
-                                    <option value="b">Suspended Vendors</option>
-                                    <option value="d">Deleted Accounts</option>
-                                    <option value="bd">Blocked & Deleted</option>
-                                </select>
-                            </div>
-                            <div class="col-12">
-                                <label class="form-label small fw-bold text-muted text-uppercase">Message Body (HTML Supported)</label>
-                                <textarea name="body" class="form-control rounded-4 p-3" rows="10" placeholder="Write your email content here..." required></textarea>
-                            </div>
+                            <div id="gjs"></div>
                         </div>
-
-                        <button name="send-mail" type="submit" class="btn btn-primary btn-lg w-100 rounded-pill fw-bold shadow-sm py-3 mt-3">
-                            <i class="bi bi-send-fill me-2"></i>Dispatch Global Broadcast
-                        </button>
-                    </form>
+                    </div>
                 </div>
             </div>
         </div>
       </div>
     </section>
 
-	<?php include("../func/bc-spadmin-footer.php"); ?>
-	
+    <?php include("../func/bc-spadmin-footer.php"); ?>
+
+    <script>
+        let editor;
+
+        window.onload = () => {
+            editor = grapesjs.init({
+                container: '#gjs',
+                fromElement: false,
+                height: '700px',
+                width: 'auto',
+                storageManager: false,
+                plugins: ['grapesjs-preset-newsletter'],
+                pluginsOpts: {
+                    'grapesjs-preset-newsletter': {}
+                },
+                assetManager: {
+                    upload: 'SaUpload.php', // Assuming a central upload handler exists or will be created
+                    params: { type: 'marketing' }
+                }
+            });
+
+            // Load draft automatically if exists
+            fetch('?action=load_draft')
+                .then(res => res.json())
+                .then(data => {
+                    if (data.body_json) {
+                        editor.setComponents(JSON.parse(data.body_json));
+                        document.getElementById('subject').value = data.subject;
+                        document.getElementById('mailto').value = data.mailto;
+                    }
+                });
+
+            // Sync HTML to hidden textarea before submit
+            document.getElementById('mainForm').onsubmit = (e) => {
+                document.getElementById('body_html').value = editor.runCommand('gjs-get-inlined-html');
+                document.getElementById('body_json').value = JSON.stringify(editor.getComponents());
+            };
+        };
+
+        function insertPlaceholder(tag) {
+            const selected = editor.getSelected();
+            if (selected && selected.is('text')) {
+                selected.append(tag);
+            } else {
+                alert('Please select a text block first to insert a placeholder.');
+            }
+        }
+
+        function saveDraft() {
+            const data = {
+                subject: document.getElementById('subject').value,
+                mailto: document.getElementById('mailto').value,
+                body_html: editor.runCommand('gjs-get-inlined-html'),
+                body_json: JSON.stringify(editor.getComponents())
+            };
+
+            fetch('?action=save_draft', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(data)
+            }).then(res => res.json()).then(res => {
+                if(res.status == 'success') alert('Draft saved successfully!');
+            });
+        }
+    </script>
 </body>
 </html>
