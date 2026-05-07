@@ -131,16 +131,25 @@ if (isset($_POST["send-mail"])) {
             border-radius: 20px;
             box-shadow: 0 10px 30px rgba(0,0,0,0.08);
             background: #fff;
+            height: calc(100vh - 180px);
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+        .marketing-card .card-body {
+            flex: 1;
+            overflow: hidden;
         }
         #gjs {
             border: 1px solid #ddd;
-            border-radius: 10px;
             overflow: hidden;
-            height: 700px;
+            height: 100% !important;
         }
         .placeholder-btn {
             cursor: pointer;
             transition: all 0.2s;
+            font-size: 11px;
+            padding: 5px 8px;
         }
         .placeholder-btn:hover {
             transform: scale(1.05);
@@ -149,17 +158,19 @@ if (isset($_POST["send-mail"])) {
         .app-sidebar {
             background: #f8fafc;
             border-right: 1px solid #e2e8f0;
-            padding: 25px;
+            padding: 20px;
+            overflow-y: auto;
+            height: 100%;
         }
         .gjs-cv-canvas {
             width: 100%;
             height: 100%;
             top: 0;
         }
-        .nav-pills .nav-link {
-            border-radius: 10px;
-            font-weight: 600;
-            padding: 10px 20px;
+        .main-content-area {
+            height: 100%;
+            display: flex;
+            flex-direction: column;
         }
     </style>
 </head>
@@ -179,20 +190,20 @@ if (isset($_POST["send-mail"])) {
     <section class="section">
       <div class="row">
         <div class="col-lg-12">
-            <div class="marketing-card mb-4">
+            <div class="marketing-card">
                 <div class="card-body p-0">
-                    <div class="row g-0">
+                    <div class="row g-0 h-100">
                         <!-- Left Controls -->
                         <div class="col-md-3 app-sidebar">
-                            <h5 class="fw-bold mb-4 text-primary"><i class="bi bi- megaphone me-2"></i>Campaign Settings</h5>
+                            <h5 class="fw-bold mb-4 text-primary"><i class="bi bi-megaphone me-2"></i>Campaign Settings</h5>
 
                             <form id="mainForm" method="post" enctype="multipart/form-data">
-                                <div class="mb-4">
+                                <div class="mb-3">
                                     <label class="form-label small fw-bold text-muted text-uppercase">Email Subject</label>
-                                    <input name="subject" id="subject" type="text" class="form-control rounded-3" placeholder="e.g. system Update v2.0" required />
+                                    <input name="subject" id="subject" type="text" class="form-control rounded-3" placeholder="e.g. System Update v2.0" required />
                                 </div>
 
-                                <div class="mb-4">
+                                <div class="mb-3">
                                     <label class="form-label small fw-bold text-muted text-uppercase">Target Audience</label>
                                     <select name="mailto" id="mailto" class="form-select rounded-3">
                                         <option value="">No internal target (External only)</option>
@@ -204,7 +215,7 @@ if (isset($_POST["send-mail"])) {
                                     </select>
                                 </div>
 
-                                <hr class="my-4 opacity-50">
+                                <hr class="my-3 opacity-50">
 
                                 <h6 class="fw-bold mb-3 small text-muted text-uppercase">External Marketing</h6>
 
@@ -213,31 +224,31 @@ if (isset($_POST["send-mail"])) {
                                     <input type="file" name="email_file" class="form-control form-control-sm rounded-3" accept=".csv,.txt">
                                 </div>
 
-                                <div class="mb-4">
+                                <div class="mb-3">
                                     <label class="form-label small fw-bold"><i class="bi bi-clipboard-plus me-1"></i> Paste Emails</label>
-                                    <textarea name="paste_emails" class="form-control rounded-3" rows="3" placeholder="Separate by comma or newline"></textarea>
+                                    <textarea name="paste_emails" class="form-control rounded-3" rows="2" placeholder="Separate by comma or newline"></textarea>
                                 </div>
 
-                                <div class="mb-4">
-                                    <label class="form-label small fw-bold text-muted text-uppercase mb-3">Personalization Tags</label>
-                                    <div class="d-flex flex-wrap gap-2">
-                                        <span class="badge bg-light text-primary border p-2 placeholder-btn" onclick="insertPlaceholder('{firstname}')">{firstname}</span>
-                                        <span class="badge bg-light text-primary border p-2 placeholder-btn" onclick="insertPlaceholder('{lastname}')">{lastname}</span>
-                                        <span class="badge bg-light text-primary border p-2 placeholder-btn" onclick="insertPlaceholder('{email}')">{email}</span>
-                                        <span class="badge bg-light text-primary border p-2 placeholder-btn" onclick="insertPlaceholder('{phone}')">{phone}</span>
-                                        <span class="badge bg-light text-primary border p-2 placeholder-btn" onclick="insertPlaceholder('{address}')">{address}</span>
-                                        <span class="badge bg-light text-primary border p-2 placeholder-btn" onclick="insertPlaceholder('{website}')">{website}</span>
+                                <div class="mb-3">
+                                    <label class="form-label small fw-bold text-muted text-uppercase mb-2">Personalization Tags</label>
+                                    <div class="d-flex flex-wrap gap-1">
+                                        <span class="badge bg-light text-primary border placeholder-btn" onclick="insertPlaceholder('{firstname}')">{firstname}</span>
+                                        <span class="badge bg-light text-primary border placeholder-btn" onclick="insertPlaceholder('{lastname}')">{lastname}</span>
+                                        <span class="badge bg-light text-primary border placeholder-btn" onclick="insertPlaceholder('{email}')">{email}</span>
+                                        <span class="badge bg-light text-primary border placeholder-btn" onclick="insertPlaceholder('{phone}')">{phone}</span>
+                                        <span class="badge bg-light text-primary border placeholder-btn" onclick="insertPlaceholder('{address}')">{address}</span>
+                                        <span class="badge bg-light text-primary border placeholder-btn" onclick="insertPlaceholder('{website}')">{website}</span>
                                     </div>
                                 </div>
 
                                 <textarea name="body" id="body_html" hidden></textarea>
                                 <input type="hidden" name="body_json" id="body_json">
 
-                                <div class="d-grid gap-2 mt-5">
-                                    <button type="button" class="btn btn-outline-primary fw-bold" onclick="saveDraft()">
+                                <div class="d-grid gap-2 mt-4">
+                                    <button type="button" class="btn btn-outline-primary btn-sm fw-bold" onclick="saveDraft()">
                                         <i class="bi bi-save me-2"></i>Save Draft
                                     </button>
-                                    <button name="send-mail" type="submit" class="btn btn-primary btn-lg fw-bold shadow">
+                                    <button name="send-mail" type="submit" class="btn btn-primary fw-bold shadow">
                                         <i class="bi bi-send-fill me-2"></i>Dispatch Campaign
                                     </button>
                                 </div>
@@ -245,8 +256,8 @@ if (isset($_POST["send-mail"])) {
                         </div>
 
                         <!-- Right Builder -->
-                        <div class="col-md-9 p-4">
-                            <div class="d-flex justify-content-between align-items-center mb-4">
+                        <div class="col-md-9 main-content-area">
+                            <div class="d-flex justify-content-between align-items-center p-3 border-bottom bg-white">
                                 <h4 class="fw-bold mb-0">Visual Email Builder</h4>
                                 <button type="button" class="btn btn-light btn-sm text-danger fw-bold" onclick="if(confirm('Clear all content?')) editor.setComponents('')">
                                     <i class="bi bi-trash me-1"></i> Clear Canvas
@@ -270,16 +281,24 @@ if (isset($_POST["send-mail"])) {
             editor = grapesjs.init({
                 container: '#gjs',
                 fromElement: false,
-                height: '700px',
+                height: '100%',
                 width: 'auto',
                 storageManager: false,
                 plugins: ['grapesjs-preset-newsletter'],
                 pluginsOpts: {
-                    'grapesjs-preset-newsletter': {}
+                    'grapesjs-preset-newsletter': {
+                        modalTitleImport: 'Import template',
+                    }
                 },
                 assetManager: {
-                    upload: 'SaUpload.php', // Assuming a central upload handler exists or will be created
+                    upload: 'SaUpload.php',
                     params: { type: 'marketing' }
+                },
+                canvas: {
+                    styles: [
+                        'https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css',
+                        'https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css'
+                    ]
                 }
             });
 
