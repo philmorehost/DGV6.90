@@ -5,9 +5,12 @@
     // Handle Domain Extension Management
     if(isset($_POST['add_extension'])) {
         $ext = mysqli_real_escape_string($connection_server, trim(strtolower($_POST['extension'])));
-        $ext = "." . ltrim($ext, "."); // Ensure it starts with a dot
+        if (!empty($ext)) {
+            $ext = "." . ltrim($ext, "."); // Ensure it starts with a dot
+        }
         $price = mysqli_real_escape_string($connection_server, $_POST['price']);
-        $promo_price = mysqli_real_escape_string($connection_server, $_POST['promo_price'] ?? 0);
+        $promo_price = trim($_POST['promo_price'] ?? '');
+        $promo_price = ($promo_price === '') ? 0 : mysqli_real_escape_string($connection_server, $promo_price);
 
         if(!empty($ext) && is_numeric($price)) {
             $sql = "INSERT INTO sas_domain_extensions (extension, price, promo_price) VALUES ('$ext', '$price', '$promo_price') ON DUPLICATE KEY UPDATE price='$price', promo_price='$promo_price'";
@@ -16,6 +19,8 @@
             } else {
                 $_SESSION['page_alert'] = "Error adding extension: " . mysqli_error($connection_server);
             }
+        } else {
+            $_SESSION['page_alert'] = "Invalid input. Please ensure extension and normal price are provided.";
         }
         header("Location: DomainSettings.php");
         exit();

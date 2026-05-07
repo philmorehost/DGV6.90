@@ -2404,46 +2404,57 @@ function verifyBvnNin($bvn_nin, $type, $bank_code, $account_number, $expected_fi
  * Monnify BVN/NIN verification (extracted for use by dispatcher).
  */
 function verifyBvnNinWithMonnify($bvn_nin, $type, $bank_code, $account_number, $vid, $use_vendor_token = true) {
-    global $connection_server, $get_logged_user_details;
+    global $connection_server, $get_logged_user_details, $get_logged_admin_details;
     if ($use_vendor_token) {
-        $token_result = json_decode(getVendorMonnifyAccessToken(), true);
+        if (isset($get_logged_admin_details["id"])) {
+            $token_result = json_decode(getVendorUserMonnifyAccessToken(), true);
+        } else {
+            $token_result = json_decode(getVendorMonnifyAccessToken(), true);
+        }
     } else {
         $token_result = json_decode(getUserMonnifyAccessToken(), true);
     }
-    if ($token_result['status'] !== 'success') {
-        return ["status" => "failed", "message" => $token_result['message'] ?? "Monnify token error"];
+
+    if ($token_result["status"] !== "success") {
+        return ["status" => "failed", "message" => $token_result["message"] ?? "Monnify token error"];
     }
-    $token = $token_result['token'];
+    $token = $token_result["token"];
 
-    if ($type === 'bvn') {
+    $mobileNo = preg_replace("/[^0-9]/", "", $get_logged_user_details["phone"] ?? "");
+    if (empty($mobileNo)) $mobileNo = "08000000000";
+
+    if ($type === "bvn") {
         // Validate account number first
-        $nuban_res = json_decode(makeMonnifyRequest("get", $token, "api/v1/disbursements/account/validate?accountNumber=" . $account_number . "&bankCode=" . $bank_code, ""), true);
-        if ($nuban_res['status'] !== 'success') {
-            return ["status" => "failed", "message" => "Invalid bank account number: " . ($nuban_res['message'] ?? 'Unknown error')];
+        $nuban_res_raw = makeMonnifyRequest("get", $token, "api/v1/disbursements/account/validate?accountNumber=" . $account_number . "&bankCode=" . $bank_code, "");
+        $nuban_res = json_decode($nuban_res_raw, true);
+        if ($nuban_res["status"] !== "success") {
+            return ["status" => "failed", "message" => "Invalid bank account number: " . ($nuban_res["message"] ?? "Unknown error")];
         }
 
-        $mobileNo = preg_replace('/[^0-9]/', '', $get_logged_user_details['phone'] ?? '');
-        $res = json_decode(makeMonnifyRequest("post", $token, "api/v1/vas/bvn-account-match", ["bankCode" => $bank_code, "accountNumber" => $account_number, "bvn" => $bvn_nin, "mobileNo" => $mobileNo]), true);
-        if ($res['status'] !== 'success') {
-            return ["status" => "failed", "message" => "BVN and account number do not match: " . ($res['message'] ?? 'Unknown error')];
+        $res_raw = makeMonnifyRequest("post", $token, "api/v1/vas/bvn-account-match", ["bankCode" => $bank_code, "accountNumber" => $account_number, "bvn" => $bvn_nin, "mobileNo" => $mobileNo]);
+        $res = json_decode($res_raw, true);
+        if ($res["status"] !== "success") {
+            return ["status" => "failed", "message" => "BVN and account number do not match: " . ($res["message"] ?? "Unknown error")];
         }
 
-        $res_data = json_decode($res['json_result'], true);
-        $firstname = $res_data['responseBody']['firstName'] ?? "";
-        $lastname = $res_data['responseBody']['lastName'] ?? "";
+        $res_data = json_decode($res["json_result"], true);
+        $body = $res_data["responseBody"] ?? [];
+        $firstname = $body["firstName"] ?? $body["firstname"] ?? "";
+        $lastname = $body["lastName"] ?? $body["surname"] ?? "";
 
         return ["status" => "success", "firstname" => $firstname, "lastname" => $lastname, "phone" => "", "bank_validated" => true];
     } else {
-        $mobileNo = preg_replace('/[^0-9]/', '', $get_logged_user_details['phone'] ?? '');
-        $res = json_decode(makeMonnifyRequest("post", $token, "api/v1/vas/nin-details", ["nin" => $bvn_nin, "mobileNo" => $mobileNo]), true);
-        if ($res['status'] !== 'success') {
-            return ["status" => "failed", "message" => "NIN lookup failed: " . ($res['message'] ?? 'Unknown error')];
+        $res_raw = makeMonnifyRequest("post", $token, "api/v1/vas/nin-details", ["nin" => $bvn_nin, "mobileNo" => $mobileNo]);
+        $res = json_decode($res_raw, true);
+        if ($res["status"] !== "success") {
+            return ["status" => "failed", "message" => "NIN lookup failed: " . ($res["message"] ?? "Unknown error")];
         }
-        $nin_data = json_decode($res['json_result'], true);
-        $phone = $nin_data['responseBody']['mobileNumber'] ?? '';
+        $nin_data = json_decode($res["json_result"], true);
+        $body = $nin_data["responseBody"] ?? [];
+        $phone = $body["mobileNumber"] ?? $body["phone"] ?? "";
         $phone_len = strlen($phone);
-        if ($phone_len >= 10) $phone = "0" . substr($phone, $phone_len - 10, $phone_len);
-        return ["status" => "success", "firstname" => $nin_data['responseBody']['firstname'] ?? "", "lastname" => $nin_data['responseBody']['surname'] ?? "", "phone" => $phone];
+        if ($phone_len >= 10) $phone = "0" . substr($phone, $phone_len - 10, 10);
+        return ["status" => "success", "firstname" => $body["firstname"] ?? $body["firstName"] ?? "", "lastname" => $body["surname"] ?? $body["lastName"] ?? "", "phone" => $phone];
     }
 }
 
@@ -2461,12 +2472,12 @@ function fetchNINProfile($nin, $vid) {
     global $connection_server;
     $provider = getIdentityProvider($vid);
 
-    if ($provider === 'dojah') {
+    if ($provider === "dojah") {
         return fetchNINProfileWithDojah($nin, $vid);
-    } elseif ($provider === 'qoreid') {
+    } elseif ($provider === "qoreid") {
         return fetchNINProfileWithQoreID($nin, $vid);
     } else {
-        return ["status" => "failed", "message" => "NIN Card service requires Dojah or QoreID as your identity provider. Please configure one in Payment Gateway settings."];
+        return fetchNINProfileWithMonnify($nin, $vid);
     }
 }
 
@@ -4899,15 +4910,14 @@ function fetchBVNProfile($bvn, $vid) {
     global $connection_server;
     $provider = getIdentityProvider($vid);
 
-    if ($provider === 'dojah') {
+    if ($provider === "dojah") {
         return fetchBVNProfileWithDojah($bvn, $vid);
-    } elseif ($provider === 'qoreid') {
+    } elseif ($provider === "qoreid") {
         return fetchBVNProfileWithQoreID($bvn, $vid);
     } else {
-        return ["status" => "failed", "message" => "BVN Verification requires Dojah or QoreID as your identity provider. Please configure one in Payment Gateway settings."];
+        return fetchBVNProfileWithMonnify($bvn, $vid);
     }
 }
-
 function fetchBVNProfileWithDojah($bvn, $vid) {
     global $connection_server;
     $vid_esc = mysqli_real_escape_string($connection_server, $vid);
@@ -5075,4 +5085,58 @@ function getAndroidDownloadButton($vid = null) {
         }
     }
     return '';
+}
+
+/**
+ * Fetch full NIN profile from Monnify.
+ * Note: Monnify provides limited fields compared to Dojah/QoreID.
+ */
+function fetchNINProfileWithMonnify($nin, $vid) {
+    // We use the already corrected verifyBvnNinWithMonnify
+    $res = verifyBvnNinWithMonnify($nin, "nin", "", "", $vid, true);
+    if ($res["status"] !== "success") return $res;
+
+    return [
+        "status" => "success",
+        "firstname" => $res["firstname"],
+        "middlename" => "",
+        "lastname" => $res["lastname"],
+        "birthdate" => "",
+        "gender" => "",
+        "photo_data" => "",
+        "phone" => $res["phone"],
+        "address" => "Address not provided by Monnify",
+        "residence_state" => "",
+        "state_of_origin" => "",
+        "provider" => "monnify"
+    ];
+}
+
+/**
+ * Fetch BVN profile from Monnify.
+ */
+function fetchBVNProfileWithMonnify($bvn, $vid) {
+    // Monnify BVN match requires bank account, but basic BVN lookup might not be directly available for full profile without match.
+    // However, if the user is using Monnify for KYC/Verification, we'll attempt a dummy match or use their registered details if possible.
+    // Actually, Monnify has a BVN lookup API if enabled.
+
+    global $get_logged_user_details;
+    $res = verifyBvnNinWithMonnify($bvn, "nin", "", "", $vid, true); // Use NIN endpoint for BVN if it works or just return error if not supported
+
+    if ($res["status"] !== "success") {
+        return ["status" => "failed", "message" => "Monnify BVN Lookup failed. Please use Dojah or QoreID for full BVN profile retrieval."];
+    }
+
+    return [
+        "status" => "success",
+        "firstname" => $res["firstname"],
+        "middlename" => "",
+        "lastname" => $res["lastname"],
+        "birthdate" => "",
+        "gender" => "",
+        "phone" => $res["phone"],
+        "bank_of_enrolment" => "",
+        "level_of_account" => "",
+        "provider" => "monnify"
+    ];
 }

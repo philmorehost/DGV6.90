@@ -252,6 +252,12 @@
             font-weight: 800;
             color: var(--bs-primary);
             margin-top: 0.25rem;
+            white-space: nowrap;
+        }
+        @media (max-width: 576px) {
+            .addon-price { font-size: 0.85rem; }
+            .addon-card { padding: 1rem 0.5rem; }
+            .addon-icon { width: 35px; height: 35px; font-size: 1.2rem; }
         }
         .addon-check {
             position: absolute;
@@ -349,17 +355,29 @@
         }
 
         #btn-submit {
-            background-color: #0d6efd !important;
+            background: linear-gradient(45deg, #0d6efd, #004dc7) !important;
             border: none;
-            padding: 1rem 2rem;
-            font-weight: 700;
-            letter-spacing: 1px;
-            transition: all 0.3s ease;
+            padding: 1.1rem 2rem;
+            font-weight: 800;
+            letter-spacing: 0.5px;
+            transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
             color: #ffffff !important;
+            display: flex !important;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 10px 20px rgba(13, 110, 253, 0.3) !important;
+            opacity: 1 !important;
+            visibility: visible !important;
+            text-transform: uppercase;
         }
         #btn-submit:hover:not(:disabled) {
-            transform: scale(1.02);
+            transform: translateY(-3px) scale(1.01);
+            box-shadow: 0 15px 30px rgba(13, 110, 253, 0.4) !important;
             filter: brightness(1.1);
+            color: #ffffff !important;
+        }
+        #btn-submit:active {
+            transform: translateY(-1px);
         }
 
         .suggestion-btn {
@@ -622,8 +640,8 @@
                         </div>
 
                         <input type="hidden" name="total_amount" id="total_amount_input" value="0">
-                        <button type="submit" name="create-profile" id="btn-submit" class="btn btn-primary w-100 rounded-pill py-3 shadow">
-                            COMPLETE REGISTRATION <i class="bi bi-arrow-right-circle ms-2"></i>
+                        <button type="submit" name="create-profile" id="btn-submit" class="btn btn-primary w-100 rounded-pill py-3">
+                            COMPLETE ORDER & PAY <i class="bi bi-arrow-right-circle ms-2"></i>
                         </button>
 
                         <?php if(!$is_admin_session): ?>
