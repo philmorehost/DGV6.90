@@ -79,29 +79,34 @@ if (isset($_POST["generate-apikey"])) {
 			padding: 100px 0 60px;
 			margin-bottom: 50px;
 			border-radius: 0 0 50px 50px;
+			position: relative;
+			z-index: 1;
 		}
 
-		.sidebar-nav {
+		.api-docs-sidebar {
 			position: sticky;
 			top: 100px;
 			background: white;
 			padding: 20px;
 			border-radius: 20px;
 			box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+			max-height: calc(100vh - 120px);
+			overflow-y: auto;
 		}
 
-		.nav-link.api-link {
-			color: #64748b;
+		.api-docs-sidebar .nav-link.api-link {
+			color: #64748b !important;
 			font-weight: 500;
 			padding: 12px 15px;
 			border-radius: 12px;
 			margin-bottom: 5px;
 			transition: all 0.2s;
+			background: transparent !important;
 		}
 
-		.nav-link.api-link:hover,
-		.nav-link.api-link.active {
-			background-color: var(--api-primary);
+		.api-docs-sidebar .nav-link.api-link:hover,
+		.api-docs-sidebar .nav-link.api-link.active {
+			background-color: var(--api-primary) !important;
 			color: white !important;
 			transform: translateX(5px);
 		}
@@ -113,6 +118,11 @@ if (isset($_POST["generate-apikey"])) {
 			margin-bottom: 40px;
 			background: white;
 			overflow: hidden;
+			transition: transform 0.3s ease;
+		}
+
+		.card-api:hover {
+			transform: translateY(-5px);
 		}
 
 		.card-api .card-header {
@@ -152,19 +162,22 @@ if (isset($_POST["generate-apikey"])) {
 		}
 
 		/* Custom Scrollbar */
+		.api-docs-sidebar::-webkit-scrollbar,
 		pre::-webkit-scrollbar {
+			width: 6px;
 			height: 8px;
 		}
+		.api-docs-sidebar::-webkit-scrollbar-track,
 		pre::-webkit-scrollbar-track {
-			background: #1e293b;
+			background: transparent;
+		}
+		.api-docs-sidebar::-webkit-scrollbar-thumb,
+		pre::-webkit-scrollbar-thumb {
+			background: #cbd5e1;
 			border-radius: 10px;
 		}
 		pre::-webkit-scrollbar-thumb {
 			background: #475569;
-			border-radius: 10px;
-		}
-		pre::-webkit-scrollbar-thumb:hover {
-			background: #64748b;
 		}
 
 		.copy-btn {
@@ -194,6 +207,7 @@ if (isset($_POST["generate-apikey"])) {
 			align-items: center;
 			gap: 15px;
 			margin-bottom: 25px;
+			flex-wrap: wrap;
 		}
 
 		.badge-method {
@@ -280,14 +294,66 @@ if (isset($_POST["generate-apikey"])) {
 			100% { transform: rotate(360deg); }
 		}
 
+		.mobile-nav-toggle {
+			display: none;
+			position: fixed;
+			bottom: 20px;
+			right: 20px;
+			z-index: 999;
+			background: var(--api-primary);
+			color: white;
+			width: 50px;
+			height: 50px;
+			border-radius: 50%;
+			border: none;
+			box-shadow: 0 4px 10px rgba(0,0,0,0.3);
+			align-items: center;
+			justify-content: center;
+			font-size: 24px;
+		}
+
+		@media (max-width: 991px) {
+			.mobile-nav-toggle {
+				display: flex;
+			}
+			.api-docs-sidebar {
+				position: fixed;
+				top: 0;
+				left: -100%;
+				width: 280px;
+				height: 100vh;
+				z-index: 1000;
+				transition: 0.3s;
+				border-radius: 0;
+				max-height: none;
+			}
+			.api-docs-sidebar.show {
+				left: 0;
+			}
+			.sidebar-overlay {
+				display: none;
+				position: fixed;
+				top: 0;
+				left: 0;
+				width: 100%;
+				height: 100%;
+				background: rgba(0,0,0,0.5);
+				z-index: 999;
+			}
+			.sidebar-overlay.show {
+				display: block;
+			}
+		}
+
 		@media (max-width: 768px) {
 			.card-api .card-body { padding: 20px; }
 			.api-header { padding: 60px 0 40px; }
+			.section-title { font-size: 1.5rem; }
 		}
 	</style>
 </head>
 
-<body data-bs-spy="scroll" data-bs-target=".sidebar-nav">
+<body data-bs-spy="scroll" data-bs-target="#apiDocsNav">
 	<?php include("../func/bc-header.php"); ?>
 
 	<div class="api-header text-center">
@@ -297,11 +363,14 @@ if (isset($_POST["generate-apikey"])) {
 		</div>
 	</div>
 
+	<button class="mobile-nav-toggle" onclick="toggleApiNav()"><i class="bi bi-list"></i></button>
+	<div class="sidebar-overlay" onclick="toggleApiNav()"></div>
+
 	<div class="container">
 		<div class="row">
 			<!-- Sidebar -->
-			<div class="col-lg-3 d-none d-lg-block">
-				<div class="sidebar-nav">
+			<div class="col-lg-3">
+				<div class="api-docs-sidebar" id="apiDocsNav">
 					<h6 class="text-uppercase text-muted fw-bold mb-3 small">Getting Started</h6>
 					<nav class="nav flex-column mb-4">
 						<a class="nav-link api-link" href="#authentication">Authentication</a>
@@ -1431,6 +1500,18 @@ if (isset($_POST["generate-apikey"])) {
 	<script src="../assets-2/vendor/bootstrap/js/bootstrap.bundle.min.js"></script>
 
 	<script>
+		function toggleApiNav() {
+			document.getElementById('apiDocsNav').classList.toggle('show');
+			document.querySelector('.sidebar-overlay').classList.toggle('show');
+		}
+
+		// Close nav when clicking a link on mobile
+		document.querySelectorAll('.api-link').forEach(link => {
+			link.addEventListener('click', () => {
+				if(window.innerWidth < 992) toggleApiNav();
+			});
+		});
+
 		async function runTest(event, endpoint, formId, responseId, isPrintHub = false) {
 			event.preventDefault();
 			const form = document.getElementById(formId);
