@@ -64,6 +64,7 @@ function hex2rgb($hex) {
     position: relative;
     margin-right: 15px;
     border: 2px solid #fff;
+    white-space: nowrap;
   }
   @keyframes sitemap-glow {
     0% { box-shadow: 0 0 5px var(--primary-color); transform: scale(1); }
@@ -78,6 +79,17 @@ function hex2rgb($hex) {
     animation: hand-wave-point-right 3s infinite;
     z-index: 1001;
     transform-origin: center;
+  }
+  @media (max-width: 767px) {
+    .sitemap-guide-btn {
+      padding: 6px 12px;
+      font-size: 10px;
+      margin-right: 5px;
+    }
+    .guide-hand {
+      left: -30px;
+      font-size: 18px;
+    }
   }
   @keyframes hand-wave-point-right {
     0%, 100% { transform: rotate(0deg) translateX(0); }
@@ -106,9 +118,9 @@ function hex2rgb($hex) {
        
 
         <li class="nav-item">
-          <a class="sitemap-guide-btn" href="<?php echo $web_http_host; ?>/bc-spadmin/SiteMap.php" title="Platform Guide &amp; Site Map">
+          <a class="sitemap-guide-btn" href="<?php echo $web_http_host; ?>/bc-spadmin/SiteMap.php" title="Platform Guide">
             <span class="guide-hand">👉</span>
-            SITEMAP / GUIDE
+            GUIDE
           </a>
         </li><!-- End SiteMap Icon -->
 

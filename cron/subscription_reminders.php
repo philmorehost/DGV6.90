@@ -77,7 +77,7 @@ if ($result && mysqli_num_rows($result) > 0) {
         
         global $mail_sender_name, $mail_sender_email, $mail_headers;
         $details_array = array();
-        $mail_html_body = mailDesignTemplate($email_subject, $email_body, $details_array);
+        $mail_html_body = mailDesignTemplate($email_subject, $email_body, $details_array, false);
         
         if (customBCMailSender($mail_sender_name, $email, $email_subject, $mail_html_body, $mail_headers)) {
             echo "Reminder email sent to " . htmlspecialchars($email) . "\n";

@@ -31,166 +31,214 @@ if (!empty($record['birthdate'])) {
     <meta name="viewport" content="width=device-width, initial-scale=1"/>
     <link href="../assets-2/vendor/bootstrap/css/bootstrap.min.css" rel="stylesheet">
     <style>
-        body { background: #f0f4f8; font-family: Arial, Helvetica, sans-serif; }
+        @import url('https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700;900&display=swap');
 
-        .nin-slip {
+        body { background: #f0f4f8; font-family: 'Roboto', Arial, Helvetica, sans-serif; -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
+
+        .nin-card {
             width: 85.6mm;
-            min-height: 53.98mm;
-            background: linear-gradient(135deg, #1a5276 0%, #117a65 100%);
-            color: #fff;
-            border-radius: 8px;
-            padding: 10px 12px 10px 12px;
+            height: 53.98mm;
             position: relative;
-            box-shadow: 0 8px 24px rgba(0,0,0,0.25);
+            border-radius: 12px;
             overflow: hidden;
-            margin: 0 auto;
+            margin: 20px auto;
+            box-shadow: 0 8px 24px rgba(0,0,0,0.15);
+            background-size: 100% 100%;
+            background-repeat: no-repeat;
+            color: #000;
         }
-        .nin-slip::before {
-            content: '';
+        .nin-card.front { background-image: url('../asset/NIN-front.png'); background-color: #fff; }
+        .nin-card.back { background-image: url('../asset/NIN-back.png'); background-color: #e8f5e9; }
+
+        .card-overlay {
             position: absolute;
-            top: -20px; right: -20px;
-            width: 100px; height: 100px;
-            border-radius: 50%;
-            background: rgba(255,255,255,0.07);
+            top: 0; left: 0; width: 100%; height: 100%;
+            padding: 10px 14px;
+            box-sizing: border-box;
         }
-        .nin-slip::after {
-            content: '';
-            position: absolute;
-            bottom: -30px; left: -10px;
-            width: 120px; height: 80px;
-            border-radius: 50%;
-            background: rgba(255,255,255,0.05);
+
+        .header-section {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 8px;
         }
-        .slip-header { display: flex; align-items: center; gap: 6px; margin-bottom: 8px; }
-        .slip-header .badge-logo { width: 28px; height: 28px; }
-        .slip-header h6 { font-size: 9px; font-weight: 700; margin: 0; letter-spacing: 0.5px; text-transform: uppercase; color: #a8e6cf; }
-        .slip-header span { font-size: 7px; color: rgba(255,255,255,0.7); display: block; }
-        .slip-body { display: flex; gap: 10px; align-items: flex-start; }
-        .slip-photo {
-            width: 44px; height: 52px;
+        .coa-logo { width: 32px; height: auto; }
+        .nimc-logo { width: 32px; height: auto; }
+        .header-titles { text-align: center; line-height: 1.1; flex: 1; }
+        .header-titles h1 { font-size: 8.5px; font-weight: 900; margin: 0; color: #1e4d2b; text-transform: uppercase; }
+        .header-titles p { font-size: 6.5px; margin: 0; color: #333; font-weight: 700; }
+        .header-titles .slip-type { font-size: 7.5px; color: #2e7d32; font-weight: 900; margin-top: 1px; letter-spacing: 0.5px; }
+
+        .body-section { display: flex; margin-top: 6px; }
+        .details-col { flex: 1; padding-right: 5px; }
+        .photo-col { width: 62px; text-align: right; }
+
+        .full-name { font-size: 10.5px; font-weight: 900; color: #000; margin-bottom: 6px; text-transform: uppercase; line-height: 1.2; }
+        .info-row { font-size: 7.5px; margin-bottom: 2.5px; color: #444; font-weight: 600; display: flex; }
+        .info-row .label { width: 55px; }
+        .info-row .val { color: #000; font-weight: 800; text-transform: uppercase; }
+
+        .id-photo {
+            width: 60px; height: 72px;
             border-radius: 4px;
-            border: 2px solid rgba(255,255,255,0.5);
+            border: 1px solid #1e4d2b;
             object-fit: cover;
-            flex-shrink: 0;
-            background: rgba(255,255,255,0.1);
+            background: #fff;
         }
-        .slip-photo-placeholder {
-            width: 44px; height: 52px;
+        .photo-placeholder {
+            width: 60px; height: 72px;
             border-radius: 4px;
-            border: 2px solid rgba(255,255,255,0.4);
-            flex-shrink: 0;
-            background: rgba(255,255,255,0.1);
+            border: 1px solid #ccc;
+            background: #eee;
             display: flex; align-items: center; justify-content: center;
-            font-size: 22px; color: rgba(255,255,255,0.5);
+            font-size: 30px; color: #ccc;
         }
-        .slip-info { flex: 1; min-width: 0; }
-        .slip-name { font-size: 10px; font-weight: 700; margin-bottom: 4px; letter-spacing: 0.3px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-        .slip-row { font-size: 7.5px; margin-bottom: 2px; color: rgba(255,255,255,0.85); }
-        .slip-row span { font-weight: 600; color: #fff; }
-        .slip-nin { font-size: 11px; font-weight: 700; letter-spacing: 2px; margin-top: 5px; color: #a8e6cf; }
-        .slip-footer { font-size: 6.5px; color: rgba(255,255,255,0.55); margin-top: 6px; text-align: center; }
+
+        .nin-section {
+            position: absolute;
+            bottom: 10px;
+            left: 14px;
+        }
+        .nin-label { font-size: 8.5px; font-weight: 900; color: #1e4d2b; margin-bottom: -1px; }
+        .nin-number { font-size: 17px; font-weight: 900; color: #1e4d2b; letter-spacing: 2.5px; font-family: 'Courier New', Courier, monospace; }
+
+        /* Back styling - The background image has text, so we might not need much overlay unless we want to enhance it */
+        .back-overlay {
+            position: absolute;
+            top: 0; left: 0; width: 100%; height: 100%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 15px;
+            box-sizing: border-box;
+            background-color: rgba(232, 245, 233, 0.4); /* Light green tint as requested */
+        }
 
         /* Print area */
         .print-wrapper {
-            max-width: 700px;
+            max-width: 800px;
             margin: 30px auto;
             background: #fff;
             border-radius: 12px;
-            padding: 30px;
+            padding: 40px;
             box-shadow: 0 4px 20px rgba(0,0,0,0.08);
         }
-        .action-bar { text-align: center; margin-bottom: 24px; }
+        .action-bar { text-align: center; margin-bottom: 30px; }
 
         @media print {
-            body { background: none; }
+            body { background: none; margin: 0; padding: 0; }
             .no-print { display: none !important; }
-            .print-wrapper { box-shadow: none; margin: 0; padding: 10mm; }
-            .nin-slip { box-shadow: none; }
+            .print-wrapper { box-shadow: none; margin: 0; padding: 0; width: 100%; max-width: none; }
+            .nin-card { box-shadow: none; margin: 5mm auto; break-inside: avoid; border: 0.2px solid #eee; }
+            .nin-card.front { background-image: url('../asset/NIN-front.png') !important; }
+            .nin-card.back { background-image: url('../asset/NIN-back.png') !important; }
         }
     </style>
 </head>
 <body>
     <div class="print-wrapper">
         <div class="action-bar no-print">
+            <a href="NINCardHistory.php" class="btn btn-light border me-2 rounded-pill px-4">
+                <i class="bi bi-arrow-left me-1"></i> Back
+            </a>
             <button onclick="window.print()" class="btn btn-success me-2 rounded-pill px-4">
                 <i class="bi bi-printer me-1"></i> Print Slip
             </button>
             <a href="NINCard.php" class="btn btn-outline-secondary rounded-pill px-4">
                 New Request
             </a>
-            <a href="NINCardHistory.php" class="btn btn-outline-primary rounded-pill px-4 ms-2">
-                History
-            </a>
         </div>
 
         <h6 class="text-center text-muted small mb-4 no-print">
             Reference: <strong><?php echo htmlspecialchars($record['reference']); ?></strong>
             &nbsp;|&nbsp; Generated: <?php echo date('d M Y, H:i', strtotime($record['date_created'])); ?>
-            &nbsp;|&nbsp; Fee paid: ₦<?php echo number_format($record['price'], 2); ?>
         </h6>
 
-        <!-- The NIN Slip Card -->
-        <div class="nin-slip">
-            <div class="slip-header">
-                <svg class="badge-logo" viewBox="0 0 28 28" fill="none" xmlns="http://www.w3.org/2000/svg">
-                    <rect width="28" height="28" rx="6" fill="rgba(255,255,255,0.15)"/>
-                    <path d="M9 8h10v2H9V8zm0 4h10v2H9v-2zm0 4h6v2H9v-2z" fill="white"/>
-                    <circle cx="20" cy="18" r="3" fill="#a8e6cf"/>
-                </svg>
-                <div>
-                    <h6>Federal Republic of Nigeria</h6>
-                    <span>National Identity Management Commission (NIMC)</span>
-                    <span>Digital Identity Slip</span>
+        <!-- FRONT OF CARD -->
+        <div class="nin-card front">
+            <div class="card-overlay">
+                <div class="header-section">
+                    <img src="../asset/nigeria-coa.svg" class="coa-logo">
+                    <div class="header-titles">
+                        <h1>Federal Republic of Nigeria</h1>
+                        <p>National Identity Management Commission</p>
+                        <div class="slip-type">NATIONAL IDENTITY SLIP</div>
+                    </div>
+                    <img src="../asset/nimc-logo.png" class="nimc-logo">
                 </div>
-            </div>
 
-            <div class="slip-body">
-                <?php if (!empty($record['photo_data'])): ?>
-                    <img class="slip-photo"
-                         src="data:image/jpeg;base64,<?php echo htmlspecialchars($record['photo_data']); ?>"
-                         alt="Photo">
-                <?php else: ?>
-                    <div class="slip-photo-placeholder">&#128100;</div>
-                <?php endif; ?>
+                <div class="body-section">
+                    <div class="details-col">
+                        <div class="full-name"><?php echo htmlspecialchars($fullname ?: '—'); ?></div>
 
-                <div class="slip-info">
-                    <div class="slip-name"><?php echo htmlspecialchars($fullname ?: '—'); ?></div>
+                        <?php if (!empty($dob_formatted)): ?>
+                        <div class="info-row">
+                            <span class="label">Date of Birth:</span>
+                            <span class="val"><?php echo htmlspecialchars($dob_formatted); ?></span>
+                        </div>
+                        <?php endif; ?>
 
-                    <?php if (!empty($dob_formatted)): ?>
-                    <div class="slip-row">DOB: <span><?php echo htmlspecialchars($dob_formatted); ?></span></div>
-                    <?php endif; ?>
+                        <?php if (!empty($record['gender'])): ?>
+                        <div class="info-row">
+                            <span class="label">Gender:</span>
+                            <span class="val"><?php echo htmlspecialchars(strtoupper($record['gender'])); ?></span>
+                        </div>
+                        <?php endif; ?>
 
-                    <?php if (!empty($record['gender'])): ?>
-                    <div class="slip-row">Gender: <span><?php echo htmlspecialchars($record['gender']); ?></span></div>
-                    <?php endif; ?>
+                        <div class="info-row">
+                            <span class="label">Nationality:</span>
+                            <span class="val">NIGERIAN</span>
+                        </div>
 
-                    <?php if (!empty($record['phone'])): ?>
-                    <div class="slip-row">Phone: <span><?php echo htmlspecialchars($record['phone']); ?></span></div>
-                    <?php endif; ?>
+                        <?php
+                        $address = $record['address'] ?? '';
+                        if (!empty($address) && stripos($address, 'not provided') === false):
+                        ?>
+                        <div class="info-row">
+                            <span class="label">Address:</span>
+                            <span class="val" style="font-size: 6.5px;"><?php echo htmlspecialchars(mb_substr($address, 0, 80)); ?></span>
+                        </div>
+                        <?php endif; ?>
 
-                    <?php if (!empty($record['state_of_origin'])): ?>
-                    <div class="slip-row">State of Origin: <span><?php echo htmlspecialchars($record['state_of_origin']); ?></span></div>
-                    <?php endif; ?>
-
-                    <?php if (!empty($record['address'])): ?>
-                    <div class="slip-row" style="font-size:7px;">Address: <span><?php echo htmlspecialchars(mb_substr($record['address'], 0, 55)); ?></span></div>
-                    <?php endif; ?>
-
-                    <div class="slip-nin"><?php echo chunk_split($record['nin_input'], 4, ' '); ?></div>
+                        <?php if (!empty($record['phone'])): ?>
+                        <div class="info-row">
+                            <span class="label">Mobile No:</span>
+                            <span class="val"><?php echo htmlspecialchars($record['phone']); ?></span>
+                        </div>
+                        <?php endif; ?>
+                    </div>
+                    <div class="photo-col">
+                        <?php
+                        $display_photo = !empty($record['user_portrait']) ? $record['user_portrait'] : ($record['photo_data'] ?? '');
+                        if (!empty($display_photo)):
+                        ?>
+                            <img class="id-photo"
+                                 src="data:image/jpeg;base64,<?php echo htmlspecialchars($display_photo); ?>"
+                                 alt="Photo">
+                        <?php else: ?>
+                            <div class="photo-placeholder">&#128100;</div>
+                        <?php endif; ?>
+                    </div>
                 </div>
-            </div>
 
-            <div class="slip-footer">
-                This is a digital NIN slip generated via a licensed data aggregator. Not an official government card.
-                &nbsp;|&nbsp; <?php echo date('d/m/Y'); ?>
+                <div class="nin-section">
+                    <div class="nin-label">NIN:</div>
+                    <div class="nin-number"><?php echo chunk_split($record['nin_input'], 4, ' '); ?></div>
+                </div>
             </div>
         </div>
 
-        <p class="text-center text-muted small mt-4 no-print">
-            <i class="bi bi-info-circle"></i>
-            This digital NIN slip is for personal identification reference only.
-            Always carry an official government-issued ID for formal purposes.
-        </p>
+        <!-- BACK OF CARD -->
+        <div class="nin-card back">
+            <div class="back-overlay">
+                <!-- The text is already on the background image asset/NIN-back.png -->
+            </div>
+        </div>
+
+        <div class="text-center text-muted small mt-5 no-print">
+            <p><i class="bi bi-info-circle"></i> This is a premium digital NIN slip. You can print it on a PVC card for better durability.</p>
+        </div>
     </div>
 </body>
 </html>

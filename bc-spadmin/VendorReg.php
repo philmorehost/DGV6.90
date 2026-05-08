@@ -42,11 +42,14 @@
         $order_sms_bridge = isset($_POST['order_sms_bridge']) ? 1 : 0;
         $domain_fee = (float)($_POST['domain_fee'] ?? 0);
         $total_amount = (float)($_POST['total_amount'] ?? 0);
+        $domain_option = $_POST['domain_option'] ?? 'register';
 
         $unrefined_website_url = mysqli_real_escape_string($connection_server, trim(strip_tags(strtolower($_POST["website-url"]))));
         $refined_website_url = trim(str_replace(["https","http",":/","/","www."," "],"",$unrefined_website_url));
         $website_url = !empty($app_base_url) ? $app_base_url : $refined_website_url;
         
+        if($domain_option == 'existing') $domain_fee = 0;
+
         if(!empty($first) && !empty($last) && !empty($address) && !empty($email) && !empty($pass) && !empty($phone) && !empty($website_url) && !empty($billing_package_id) && !empty($payment_method)){
             if(filter_var($email, FILTER_VALIDATE_EMAIL)){
                 $check_vendor_details_with_email = mysqli_query($connection_server, "SELECT * FROM sas_vendors WHERE email='$email'");
@@ -85,7 +88,7 @@
                             }
 
                             if ($payment_method == 'paystack') {
-                                // Server-side Total Verification (Protect against client manipulation)
+                                // Server-side Total Verification
                                 $v_package_id = mysqli_real_escape_string($connection_server, $billing_package_id);
                                 $v_pkg_res = mysqli_query($connection_server, "SELECT price FROM sas_billing_packages WHERE id='$v_package_id'");
                                 $v_pkg = mysqli_fetch_assoc($v_pkg_res);
@@ -96,28 +99,26 @@
                                 if($order_playstore) $calculated_total += $playstore_price;
                                 if($order_sms_bridge) $calculated_total += $sms_bridge_price;
 
-                                // Recalculate domain fee on server for security (handle multi-part TLDs)
-                                $actual_domain_fee = 0;
-                                if (!empty($app_base_url)) {
-                                    $first_dot = strpos($app_base_url, '.');
-                                    $ext = ($first_dot !== false) ? substr($app_base_url, $first_dot) : '';
-                                    $ext_esc = mysqli_real_escape_string($connection_server, $ext);
-                                    $q_ext = mysqli_query($connection_server, "SELECT price FROM sas_domain_extensions WHERE extension='$ext_esc' LIMIT 1");
-                                    if($r_ext = mysqli_fetch_assoc($q_ext)) {
-                                        $actual_domain_fee = (float)$r_ext['price'];
+                                if ($domain_option == 'register') {
+                                    $actual_domain_fee = 0;
+                                    if (!empty($app_base_url)) {
+                                        $first_dot = strpos($app_base_url, '.');
+                                        $ext = ($first_dot !== false) ? substr($app_base_url, $first_dot) : '';
+                                        $ext_esc = mysqli_real_escape_string($connection_server, $ext);
+                                        $q_ext = mysqli_query($connection_server, "SELECT price, promo_price FROM sas_domain_extensions WHERE extension='$ext_esc' LIMIT 1");
+                                        if($r_ext = mysqli_fetch_assoc($q_ext)) {
+                                            $actual_domain_fee = ($r_ext['promo_price'] > 0) ? (float)$r_ext['promo_price'] : (float)$r_ext['price'];
+                                        }
                                     }
+                                    $calculated_total += $actual_domain_fee;
                                 }
-                                $calculated_total += $actual_domain_fee;
 
-                                // Use total amount for payment initialization
                                 $amount_in_kobo = $calculated_total * 100;
 
-                                // Update record with correct calculated total if they differ
                                 if(abs($calculated_total - $total_amount) > 0.01) {
                                     mysqli_query($connection_server, "UPDATE sas_pending_vendors SET total_amount='$calculated_total' WHERE id='$pending_id'");
                                 }
 
-                                // Fetch Paystack secret key
                                 $gateway_res = mysqli_query($connection_server, "SELECT secret_key FROM sas_super_admin_payment_gateways WHERE gateway_name='paystack'");
                                 $gateway = mysqli_fetch_assoc($gateway_res);
                                 $secret_key = $gateway['secret_key'];
@@ -131,10 +132,7 @@
                                         'amount' => $amount_in_kobo,
                                         'callback_url' => $callback_url,
                                         'reference' => $reference,
-                                        'metadata' => [
-                                            'pending_vendor_id' => $pending_id,
-                                            'type' => 'vendor_subscription'
-                                        ]
+                                        'metadata' => ['pending_vendor_id' => $pending_id, 'type' => 'vendor_subscription']
                                     ];
 
                                     $curl = curl_init();
@@ -143,10 +141,7 @@
                                         CURLOPT_RETURNTRANSFER => true,
                                         CURLOPT_CUSTOMREQUEST => "POST",
                                         CURLOPT_POSTFIELDS => json_encode($post_data),
-                                        CURLOPT_HTTPHEADER => [
-                                            "Authorization: Bearer " . $secret_key,
-                                            "Content-Type: application/json"
-                                        ],
+                                        CURLOPT_HTTPHEADER => ["Authorization: Bearer " . $secret_key, "Content-Type: application/json"],
                                     ));
 
                                     $response = curl_exec($curl);
@@ -168,7 +163,7 @@
                                 } else {
                                      $_SESSION["product_purchase_response"] = "Paystack payment gateway is not configured. Please contact support.";
                                 }
-                            } else { // Manual bank deposit
+                            } else {
                                 header("Location: /web/manual_payment.php");
                                 exit();
                             }
@@ -193,14 +188,13 @@
         exit();
     }
 
-    // Set layout based on session
     $is_admin_session = isset($_SESSION["spadmin_session"]);
     $css_style_template_location = "/cssfile/template/bc-style-template-1.css";
 ?>
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <title>Vendor Registration | Super Admin</title>
+    <title>Vendor Onboarding | Platform Registration</title>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1"/>
     <link rel="stylesheet" href="<?php echo $css_style_template_location; ?>">
@@ -209,285 +203,495 @@
     <link href="../assets-2/vendor/bootstrap-icons/bootstrap-icons.css" rel="stylesheet">
     <link href="../assets-2/css/style.css" rel="stylesheet">
     <style>
-        .register-card { border: none; border-radius: 20px; }
-        .form-label { font-weight: 700; font-size: 0.75rem; color: #6c757d; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 8px; }
-        .input-group-text { background: #f8f9fa; border-right: none; color: #0d6efd; }
-        .form-control { border-left: none; background: #ffffff; }
-        .form-control:focus { box-shadow: 0 0 0 0.25rem rgba(13, 110, 253, 0.1); border-color: #86b7fe; }
-        .card { transition: transform 0.2s ease, box-shadow 0.2s ease; }
-        .card:hover { transform: translateY(-2px); box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.1) !important; }
-        .btn-primary { background-color: #0d6efd !important; border-color: #0d6efd !important; color: #fff !important; }
-        .btn-primary:hover { background-color: #0b5ed7 !important; border-color: #0a58ca !important; }
-        .form-check-input:checked { background-color: #0d6efd; border-color: #0d6efd; }
-        .cursor-pointer { cursor: pointer; }
-        @media (max-width: 991.98px) {
-            .pagetitle h1 { font-size: 1.5rem; text-align: center; margin-bottom: 20px; }
-            .card-header h5 { font-size: 1.1rem; }
+        :root {
+            --bs-primary: #0d6efd;
+            --bs-primary-rgb: 13, 110, 253;
+        }
+        body { background-color: #f6f9ff; font-family: 'Inter', sans-serif; }
+        .form-label { font-weight: 600; font-size: 0.85rem; color: #444; margin-bottom: 8px; }
+        .card { border: none; border-radius: 15px; box-shadow: 0 5px 20px rgba(0,0,0,0.05); overflow: hidden; }
+        .card-header { border-bottom: 1px solid #f0f0f0; background: #fff; padding: 1.25rem 1.5rem; }
+        .input-group-text { background: #f8f9fa; border-right: none; color: var(--bs-primary); }
+        .form-control, .form-select { border-radius: 10px; padding: 0.75rem 1rem; border-color: #e0e0e0; }
+        .form-control:focus, .form-select:focus { box-shadow: 0 0 0 0.25rem rgba(var(--bs-primary-rgb), 0.1); border-color: var(--bs-primary); }
+
+        .addon-card {
+            border: 2px solid #f0f0f0;
+            border-radius: 12px;
+            padding: 1.25rem;
+            height: 100%;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            position: relative;
+            background: #fff;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            text-align: center;
+        }
+        .addon-card:hover { border-color: var(--bs-primary); transform: translateY(-3px); }
+        .addon-trigger:checked + .addon-card {
+            border-color: var(--bs-primary);
+            background-color: rgba(var(--bs-primary-rgb), 0.02);
+            box-shadow: 0 10px 25px rgba(var(--bs-primary-rgb), 0.1);
+        }
+        .addon-icon {
+            width: 45px;
+            height: 45px;
+            background: #f0f7ff;
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.5rem;
+            color: var(--bs-primary);
+            margin-bottom: 0.75rem;
+        }
+        .addon-price {
+            font-size: 1.05rem;
+            font-weight: 800;
+            color: var(--bs-primary);
+            margin-top: 0.25rem;
+            white-space: nowrap;
+        }
+        @media (max-width: 576px) {
+            .addon-price { font-size: 0.85rem; }
+            .addon-card { padding: 1rem 0.5rem; }
+            .addon-icon { width: 35px; height: 35px; font-size: 1.2rem; }
+        }
+        .addon-check {
+            position: absolute;
+            top: 12px;
+            right: 12px;
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            border: 2px solid #ddd;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .addon-trigger:checked + .addon-card .addon-check {
+            background: var(--bs-primary);
+            border-color: var(--bs-primary);
+        }
+        .addon-trigger:checked + .addon-card .addon-check i {
+            color: #fff;
+            font-size: 12px;
+        }
+
+        .domain-option-card {
+            border: 2px solid #f0f0f0;
+            border-radius: 12px;
+            padding: 1.25rem;
+            cursor: pointer;
+            transition: all 0.2s;
+            background: #fff;
+            text-align: center;
+            height: 100%;
+            display: block;
+        }
+        .domain-option-trigger:checked + .domain-option-card {
+            border-color: var(--bs-primary);
+            background: rgba(var(--bs-primary-rgb), 0.03);
+        }
+        .domain-option-card i { font-size: 2rem; color: #666; margin-bottom: 0.5rem; display: block; }
+        .domain-option-trigger:checked + .domain-option-card i { color: var(--bs-primary); }
+
+        .checkout-summary {
+            background: #fff;
+            border-radius: 20px;
+            padding: 2rem;
+            border: 1px solid #eee;
+            position: sticky;
+            top: 20px;
+        }
+        .summary-item {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 1rem;
+            padding-bottom: 0.5rem;
+            border-bottom: 1px dashed #eee;
+        }
+        .summary-total {
+            font-size: 1.75rem;
+            font-weight: 900;
+            color: var(--bs-primary);
+        }
+
+        @media (max-width: 768px) {
+            .summary-total { font-size: 1.5rem; }
+            .checkout-summary { margin-top: 2rem; position: static; }
+        }
+
+        /* Explicit Button Styles for Visibility */
+        .btn-primary, #search-btn {
+            background-color: #0d6efd !important;
+            border-color: #0d6efd !important;
+            color: #ffffff !important;
+        }
+        .btn-primary:hover, #search-btn:hover {
+            background-color: #0b5ed7 !important;
+            border-color: #0a58ca !important;
+            color: #ffffff !important;
+        }
+
+        /* Payment Channel Buttons Explicit Fix */
+        .btn-outline-primary {
+            color: #0d6efd !important;
+            border-color: #0d6efd !important;
+            background-color: transparent !important;
+        }
+        .btn-check:checked + .btn-outline-primary {
+            background-color: #0d6efd !important;
+            color: #ffffff !important;
+            border-color: #0d6efd !important;
+        }
+        /* Fix Hover Visibility for Outline Buttons */
+        .btn-outline-primary:hover {
+            background-color: #0b5ed7 !important;
+            color: #ffffff !important;
+            border-color: #0b5ed7 !important;
+        }
+
+        #btn-submit {
+            background: linear-gradient(45deg, #0d6efd, #004dc7) !important;
+            border: none;
+            padding: 1.1rem 2rem;
+            font-weight: 800;
+            letter-spacing: 0.5px;
+            transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            color: #ffffff !important;
+            display: flex !important;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 10px 20px rgba(13, 110, 253, 0.3) !important;
+            opacity: 1 !important;
+            visibility: visible !important;
+            text-transform: uppercase;
+        }
+        #btn-submit:hover:not(:disabled) {
+            transform: translateY(-3px) scale(1.01);
+            box-shadow: 0 15px 30px rgba(13, 110, 253, 0.4) !important;
+            filter: brightness(1.1);
+            color: #ffffff !important;
+        }
+        #btn-submit:active {
+            transform: translateY(-1px);
+        }
+
+        .suggestion-btn {
+            font-size: 0.75rem;
+            padding: 0.5rem 1.25rem;
+            border: 1px solid #dee2e6;
+            background: #fff;
+            border-radius: 50px;
+            transition: all 0.2s;
+            word-break: break-all;
+            font-weight: 600;
+            color: #444;
+        }
+        .suggestion-btn:hover {
+            border-color: var(--bs-primary);
+            color: var(--bs-primary) !important;
+            background: rgba(var(--bs-primary-rgb), 0.05);
+            transform: scale(1.05);
+        }
+
+        .setup-instructions {
+            background: #f0f7ff;
+            border: 1px solid #cce3ff;
+            border-left: 5px solid #0d6efd;
+            border-radius: 12px;
+            padding: 1.5rem;
+        }
+
+        code.text-break {
+            word-wrap: break-word !important;
+            white-space: pre-wrap !important;
         }
     </style>
 </head>
-<body class="<?php echo !$is_admin_session ? 'bg-light' : ''; ?>">
+<body>
     <?php if($is_admin_session) include("../func/bc-spadmin-header.php"); ?>
 
-    <div class="<?php echo $is_admin_session ? '' : 'container min-vh-100 d-flex align-items-center justify-content-center py-5'; ?>">
-        <div class="<?php echo $is_admin_session ? '' : 'col-lg-9'; ?>">
+    <div class="container py-4 py-lg-5">
+        <?php if($is_admin_session): ?>
+        <div class="pagetitle mb-4">
+            <h1 class="h3 fw-900 text-dark">Onboard New Vendor</h1>
+            <nav>
+                <ol class="breadcrumb">
+                    <li class="breadcrumb-item"><a href="Dashboard.php">Home</a></li>
+                    <li class="breadcrumb-item active">Add Vendor</li>
+                </ol>
+            </nav>
+        </div>
+        <?php endif; ?>
 
-            <?php if($is_admin_session): ?>
-            <div class="pagetitle">
-                <h1>NEW VENDOR REGISTRATION</h1>
-                <nav>
-                    <ol class="breadcrumb">
-                        <li class="breadcrumb-item"><a href="Dashboard.php">Home</a></li>
-                        <li class="breadcrumb-item active">Add Vendor</li>
-                    </ol>
-                </nav>
-            </div>
-            <?php endif; ?>
-
-            <section class="section dashboard">
-                <div class="row g-4">
-                    <!-- Instructions Column -->
-                    <div class="col-lg-4">
-                        <div class="card shadow-sm border-0 rounded-4 mb-4">
-                            <div class="card-header bg-white py-3 border-0">
-                                <h5 class="card-title mb-0 d-flex align-items-center">
-                                    <i class="bi bi-info-circle me-2 text-primary"></i>Domain Instructions
-                                </h5>
-                            </div>
-                            <div class="card-body p-4">
-                                <div class="alert alert-warning border-0 shadow-sm rounded-4 mb-0">
-                                    <p class="small mb-3">Domain name registration is not free. Use our suggested registrar or any of your choice.</p>
-                                    <div class="bg-white bg-opacity-50 p-3 rounded-3 mb-3 border">
-                                        <div class="small fw-bold text-muted mb-1">REGISTRAR URL</div>
-                                        <a href="<?php echo htmlspecialchars($registrar_url); ?>" target="_blank" class="text-break fw-bold text-decoration-none"><?php echo htmlspecialchars($registrar_url); ?></a>
-                                    </div>
-                                    <div class="bg-white bg-opacity-50 p-3 rounded-3 mb-3 border">
-                                        <div class="small fw-bold text-muted mb-1">NAMESERVERS</div>
-                                        <code class="text-dark fw-bold"><?php echo nl2br(htmlspecialchars($nameservers)); ?></code>
-                                    </div>
-                                    <div class="bg-white bg-opacity-50 p-3 rounded-3 border">
-                                        <div class="small fw-bold text-muted mb-1">A-RECORD (IP)</div>
-                                        <code class="text-primary fw-bold"><?php echo htmlspecialchars($ip_address); ?></code>
-                                    </div>
+        <form method="post" action="" id="reg-form">
+            <div class="row g-4">
+                <div class="col-lg-8">
+                    <!-- Basic Info -->
+                    <div class="card mb-4 shadow-sm">
+                        <div class="card-header">
+                            <h5 class="mb-0 fw-bold"><i class="bi bi-person-badge me-2 text-primary"></i>1. Vendor Contact Information</h5>
+                        </div>
+                        <div class="card-body p-4">
+                            <div class="row g-3">
+                                <div class="col-md-6">
+                                    <label class="form-label text-uppercase small fw-bold">First Name</label>
+                                    <input type="text" name="first" class="form-control" placeholder="John" required>
+                                </div>
+                                <div class="col-md-6">
+                                    <label class="form-label text-uppercase small fw-bold">Last Name</label>
+                                    <input type="text" name="last" class="form-control" placeholder="Doe" required>
+                                </div>
+                                <div class="col-md-6">
+                                    <label class="form-label text-uppercase small fw-bold">Email Address</label>
+                                    <input type="email" name="email" class="form-control" placeholder="vendor@example.com" required>
+                                </div>
+                                <div class="col-md-6">
+                                    <label class="form-label text-uppercase small fw-bold">Phone Number</label>
+                                    <input type="text" name="phone" class="form-control" placeholder="081XXXXXXXX" pattern="[0-9]{11}" required>
+                                </div>
+                                <div class="col-12">
+                                    <label class="form-label text-uppercase small fw-bold">Address</label>
+                                    <textarea name="address" class="form-control" rows="2" placeholder="Full residential or business address" required></textarea>
                                 </div>
                             </div>
                         </div>
                     </div>
 
-                    <!-- Registration Form Column -->
-                    <div class="col-lg-8">
-                        <div class="card shadow-sm border-0 rounded-4 overflow-hidden">
-                            <div class="card-header bg-primary py-4 border-0 text-white">
-                                <h5 class="mb-1 fw-bold">Vendor Profile Setup</h5>
-                                <p class="mb-0 opacity-75 small">Fill in the details below to create a new sub-vendor account</p>
+                    <!-- Domain Config -->
+                    <div class="card mb-4 shadow-sm">
+                        <div class="card-header">
+                            <h5 class="mb-0 fw-bold"><i class="bi bi-globe me-2 text-primary"></i>2. Domain & URL Setup</h5>
+                        </div>
+                        <div class="card-body p-4">
+                            <div class="row g-3 mb-4">
+                                <div class="col-md-6">
+                                    <input type="radio" class="d-none domain-option-trigger" name="domain_option" id="opt_reg" value="register" checked onchange="toggleDomainView()">
+                                    <label class="domain-option-card" for="opt_reg">
+                                        <i class="bi bi-plus-circle-fill"></i>
+                                        <div class="fw-bold">Register New Domain</div>
+                                        <div class="x-small text-muted">Auto-registration by system</div>
+                                    </label>
+                                </div>
+                                <div class="col-md-6">
+                                    <input type="radio" class="d-none domain-option-trigger" name="domain_option" id="opt_exist" value="existing" onchange="toggleDomainView()">
+                                    <label class="domain-option-card" for="opt_exist">
+                                        <i class="bi bi-hdd-network-fill"></i>
+                                        <div class="fw-bold">Use Existing Domain</div>
+                                        <div class="x-small text-muted">Already registered elsewhere</div>
+                                    </label>
+                                </div>
                             </div>
-                            <div class="card-body p-4 p-md-5">
-                                <?php if(isset($_SESSION["product_purchase_response"])): ?>
-                                    <div class="alert alert-info alert-dismissible fade show rounded-4 border-0 shadow-sm mb-4" role="alert">
-                                        <i class="bi bi-info-circle me-2"></i><?php echo $_SESSION["product_purchase_response"]; unset($_SESSION["product_purchase_response"]); ?>
-                                        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
-                                    </div>
-                                <?php endif; ?>
 
-                                <form method="post" action="" class="row g-4">
-                                    <div class="col-md-6">
-                                        <label class="form-label">First Name</label>
-                                        <div class="input-group">
-                                            <span class="input-group-text"><i class="bi bi-person text-primary"></i></span>
-                                            <input type="text" name="first" class="form-control rounded-end-3" placeholder="First Name" required>
+                            <div id="register_view">
+                                <label class="form-label text-uppercase small fw-bold">Find Availability</label>
+                                <div class="row g-2">
+                                    <div class="col-sm-8">
+                                        <div class="input-group input-group-lg">
+                                            <span class="input-group-text bg-white">www.</span>
+                                            <input type="text" id="target_domain" name="website-url" class="form-control border-start-0" placeholder="mybrandname">
                                         </div>
                                     </div>
-                                    <div class="col-md-6">
-                                        <label class="form-label">Last Name</label>
-                                        <div class="input-group">
-                                            <span class="input-group-text"><i class="bi bi-person text-primary"></i></span>
-                                            <input type="text" name="last" class="form-control rounded-end-3" placeholder="Last Name" required>
-                                        </div>
-                                    </div>
-                                    <div class="col-12">
-                                        <label class="form-label">Home Address</label>
-                                        <div class="input-group">
-                                            <span class="input-group-text"><i class="bi bi-geo-alt text-primary"></i></span>
-                                            <input type="text" name="address" class="form-control rounded-end-3" placeholder="Full residential or business address" required>
-                                        </div>
-                                    </div>
-                                    <div class="col-md-6">
-                                        <label class="form-label">Email Address</label>
-                                        <div class="input-group">
-                                            <span class="input-group-text"><i class="bi bi-envelope text-primary"></i></span>
-                                            <input type="email" name="email" class="form-control rounded-end-3" placeholder="email@example.com" required>
-                                        </div>
-                                    </div>
-                                    <div class="col-md-6">
-                                        <label class="form-label">Phone Number</label>
-                                        <div class="input-group">
-                                            <span class="input-group-text"><i class="bi bi-phone text-primary"></i></span>
-                                            <input type="text" name="phone" class="form-control rounded-end-3" placeholder="08012345678" pattern="[0-9]{11}" required>
-                                        </div>
-                                    </div>
-                                    <div class="col-md-12">
-                                        <div class="d-flex justify-content-between">
-                                            <label class="form-label">Step 1: Choose Your Domain (App Base URL)</label>
-                                            <span id="domain_spinner" class="spinner-border spinner-border-sm text-primary d-none"></span>
-                                        </div>
-
-                                        <!-- Responsive Domain Search Layout -->
-                                        <div class="row g-2 align-items-stretch">
-                                            <div class="col-lg-9">
-                                                <div class="input-group input-group-lg shadow-sm h-100">
-                                                    <span class="input-group-text bg-white border-end-0"><i class="bi bi-search text-primary"></i></span>
-                                                    <input type="text" id="target_domain" name="website-url" class="form-control border-start-0 border-end-0" placeholder="e.g. mybusiness" style="font-weight: 600;" required>
-                                                    <select id="domain_extension" class="form-select border-start-0 fw-bold" style="max-width: 110px; background-color: #f8f9fa;" onchange="updateCheckoutTotal()">
-                                                        <?php
-                                                        $ext_res = mysqli_query($connection_server, "SELECT extension FROM sas_domain_extensions ORDER BY extension ASC");
-                                                        while($ext = mysqli_fetch_assoc($ext_res)) {
-                                                            echo "<option value='{$ext['extension']}'>{$ext['extension']}</option>";
-                                                        }
-                                                        ?>
-                                                    </select>
-                                                </div>
-                                            </div>
-                                            <div class="col-lg-3">
-                                                <button class="btn btn-primary btn-lg w-100 h-100 fw-bold shadow-sm domain-search-btn" type="button" onclick="lookupDomain()" style="background-color: #0d6efd !important; color: #ffffff !important; border: none; min-height: 48px;">
-                                                    <span class="d-none d-lg-inline">SEARCH</span>
-                                                    <span class="d-lg-none">CHECK AVAILABILITY</span>
-                                                </button>
-                                            </div>
-                                        </div>
-
-                                        <div id="domain_feedback" class="mt-2"></div>
-                                        <input type="hidden" name="domain_fee" id="domain_fee_input" value="0">
-                                        <input type="hidden" name="app_base_url" id="app_base_url_input">
-
-                                        <div class="alert border mt-3 mb-0 rounded-4" style="font-size: 12px; border-left: 5px solid #ffc107 !important; background: #fffcf0;">
-                                            <i class="bi bi-exclamation-triangle-fill text-warning me-2"></i>
-                                            <strong>APK Warning:</strong> This domain will be hardcoded as your <strong>App Base URL</strong>. While website domains can be changed, the App Base URL <strong>cannot be replaced</strong> without paying for a new build.
-                                        </div>
-                                    </div>
-
-                                    <div class="col-md-12 pt-2"><hr class="text-muted opacity-25"></div>
-
-                                    <div class="col-12">
-                                        <label class="form-label">Step 2: Mobile App Services (Optional Add-ons)</label>
-                                        <div class="row g-3">
-                                            <div class="col-md-4">
-                                                <div class="form-check border p-3 rounded-3 h-100">
-                                                    <input class="form-check-input addon-trigger" type="checkbox" name="order_apk" id="add_apk" data-price="<?php echo $apk_price ?>" onchange="updateCheckoutTotal()">
-                                                    <label class="form-check-label d-block cursor-pointer" for="add_apk">
-                                                        <div class="fw-bold text-dark mb-1">Android APK</div>
-                                                        <div class="text-primary small">₦<?php echo number_format($apk_price, 2) ?></div>
-                                                    </label>
-                                                </div>
-                                            </div>
-                                            <div class="col-md-4">
-                                                <div class="form-check border p-3 rounded-3 h-100">
-                                                    <input class="form-check-input addon-trigger" type="checkbox" name="order_ios" id="add_ios" data-price="<?php echo $ios_price ?>" onchange="updateCheckoutTotal()">
-                                                    <label class="form-check-label d-block cursor-pointer" for="add_ios">
-                                                        <div class="fw-bold text-dark mb-1">iOS App</div>
-                                                        <div class="text-primary small">₦<?php echo number_format($ios_price, 2) ?></div>
-                                                    </label>
-                                                </div>
-                                            </div>
-                                            <div class="col-md-4">
-                                                <div class="form-check border p-3 rounded-3 h-100">
-                                                    <input class="form-check-input addon-trigger" type="checkbox" name="order_playstore" id="add_playstore" data-price="<?php echo $playstore_price ?>" onchange="updateCheckoutTotal()">
-                                                    <label class="form-check-label d-block cursor-pointer" for="add_playstore">
-                                                        <div class="fw-bold text-dark mb-1">Play Store Listing</div>
-                                                        <div class="text-primary small">₦<?php echo number_format($playstore_price, 2) ?></div>
-                                                    </label>
-                                                </div>
-                                            </div>
-                                            <div class="col-md-4">
-                                                <div class="form-check border p-3 rounded-3 h-100">
-                                                    <input class="form-check-input addon-trigger" type="checkbox" name="order_sms_bridge" id="add_sms_bridge" data-price="<?php echo $sms_bridge_price ?>" onchange="updateCheckoutTotal()">
-                                                    <label class="form-check-label d-block cursor-pointer" for="add_sms_bridge">
-                                                        <div class="fw-bold text-dark mb-1">SMS Bridge APK</div>
-                                                        <div class="text-primary small">₦<?php echo number_format($sms_bridge_price, 2) ?></div>
-                                                    </label>
-                                                </div>
-                                            </div>
-                                        </div>
-                                    </div>
-
-                                    <div class="col-md-7">
-                                        <label class="form-label">Step 3: Subscription Package</label>
-                                        <select name="billing_package_id" id="billing_package_id" class="form-select rounded-3 py-2" required onchange="updateCheckoutTotal()">
-                                            <option value="" data-price="0" hidden selected>Choose a package...</option>
-                                            <?php
-                                                $packages_result = mysqli_query($connection_server, "SELECT * FROM sas_billing_packages ORDER BY price ASC");
-                                                while($package = mysqli_fetch_assoc($packages_result)) {
-                                                    echo "<option value='{$package['id']}' data-price='{$package['price']}'>".htmlspecialchars($package['name'])." - ₦".number_format($package['price'], 2)." (".$package['duration_days']." Days)</option>";
+                                    <div class="col-sm-4">
+                                        <div class="input-group input-group-lg h-100">
+                                            <select id="domain_extension" class="form-select fw-bold" onchange="updateCheckoutTotal()" style="border-top-right-radius: 0; border-bottom-right-radius: 0;">
+                                                <?php
+                                                $ext_res = mysqli_query($connection_server, "SELECT extension FROM sas_domain_extensions ORDER BY extension ASC");
+                                                while($ext = mysqli_fetch_assoc($ext_res)) {
+                                                    echo "<option value='{$ext['extension']}'>{$ext['extension']}</option>";
                                                 }
-                                            ?>
-                                        </select>
-                                    </div>
-
-                                    <div class="col-md-5">
-                                        <label class="form-label">Payment Method</label>
-                                        <div class="d-flex gap-3 pt-1">
-                                            <div class="form-check">
-                                                <input class="form-check-input" type="radio" name="payment_method" id="paystack" value="paystack" required>
-                                                <label class="form-check-label small fw-bold" for="paystack">Online</label>
-                                            </div>
-                                            <div class="form-check">
-                                                <input class="form-check-input" type="radio" name="payment_method" id="bank_deposit" value="bank_deposit">
-                                                <label class="form-check-label small fw-bold" for="bank_deposit">Manual</label>
-                                            </div>
+                                                ?>
+                                            </select>
+                                            <button class="btn btn-primary px-4 fw-bold" type="button" onclick="lookupDomain()" id="search-btn" style="border-top-left-radius: 0; border-bottom-left-radius: 0;">
+                                                <span id="btn-text">SEARCH</span>
+                                                <span id="btn-spinner" class="spinner-border spinner-border-sm d-none"></span>
+                                            </button>
                                         </div>
                                     </div>
+                                </div>
+                                <div id="domain_feedback" class="mt-3"></div>
+                            </div>
 
-                                    <div class="col-md-12">
-                                        <label class="form-label">Secure Password</label>
-                                        <div class="input-group">
-                                            <span class="input-group-text border-end-0"><i class="bi bi-lock text-primary"></i></span>
-                                            <input id="password-field" type="password" name="pass" class="form-control border-start-0 border-end-0" placeholder="Create account password" required>
-                                            <span class="input-group-text bg-white border-start-0 rounded-end-3" style="cursor: pointer;" onclick="togglePasswordVisibility('password-field', this)">
-                                                <i class="bi bi-eye text-muted"></i>
-                                            </span>
-                                        </div>
-                                    </div>
+                            <div id="existing_view" class="d-none">
+                                <label class="form-label text-uppercase small fw-bold">Specify Domain</label>
+                                <div class="input-group input-group-lg mb-4">
+                                    <span class="input-group-text bg-white">https://</span>
+                                    <input type="text" id="existing_domain" name="existing_url" class="form-control" placeholder="mywebsite.com" oninput="syncExistingDomain(this.value)">
+                                </div>
 
-                                    <div class="col-12">
-                                        <div class="bg-light p-4 rounded-4 border">
-                                            <div class="d-flex flex-column flex-md-row justify-content-between align-items-center gap-3">
-                                                <div class="text-center text-md-start">
-                                                    <h6 class="fw-bold text-muted mb-1 text-uppercase small">Checkout Summary</h6>
-                                                    <h4 class="fw-black text-primary mb-0" id="display_total" style="word-break: break-all;">₦0.00</h4>
+                                <div id="setup-instructions" class="setup-instructions shadow-sm">
+                                    <div class="d-flex align-items-start">
+                                        <i class="bi bi-info-square-fill text-primary fs-3 me-3"></i>
+                                        <div class="w-100">
+                                            <h6 class="fw-bold mb-3 text-dark">Point Your Domain (Instructions)</h6>
+                                            <div class="row g-3">
+                                                <div class="col-sm-6">
+                                                    <div class="x-small fw-bold text-muted mb-1">PRIMARY NAMESERVERS</div>
+                                                    <div class="bg-white p-2 border rounded">
+                                                        <code class="text-dark small text-break"><?php echo nl2br(htmlspecialchars($nameservers)); ?></code>
+                                                    </div>
                                                 </div>
-                                                <input type="hidden" name="total_amount" id="total_amount_input" value="0">
-                                                <button class="btn btn-primary btn-lg px-5 rounded-pill fw-bold shadow-sm w-100 w-md-auto" type="submit" name="create-profile" id="btn-submit">
-                                                    COMPLETE ORDER
-                                                </button>
+                                                <div class="col-sm-6">
+                                                    <div class="x-small fw-bold text-muted mb-1">A-RECORD (IPv4)</div>
+                                                    <div class="bg-white p-2 border rounded">
+                                                        <code class="text-primary small text-break"><?php echo htmlspecialchars($ip_address); ?></code>
+                                                    </div>
+                                                </div>
                                             </div>
                                         </div>
-                                        <?php if(!$is_admin_session): ?>
-                                        <div class="text-center mt-3">
-                                            <a href="/" class="small text-muted text-decoration-none"><i class="bi bi-arrow-left me-1"></i>Back to Home</a>
-                                        </div>
-                                        <?php endif; ?>
                                     </div>
-                                </form>
+                                </div>
+                            </div>
+
+                            <input type="hidden" name="domain_fee" id="domain_fee_input" value="0">
+                            <input type="hidden" name="app_base_url" id="app_base_url_input">
+                        </div>
+                    </div>
+
+                    <!-- Add-ons -->
+                    <div class="card mb-4 shadow-sm">
+                        <div class="card-header">
+                            <h5 class="mb-0 fw-bold"><i class="bi bi-app-indicator me-2 text-primary"></i>3. Mobile App Options</h5>
+                        </div>
+                        <div class="card-body p-4">
+                            <div class="row g-3">
+                                <?php
+                                $addons = [
+                                    ['id' => 'add_apk', 'name' => 'order_apk', 'label' => 'Android APK', 'price' => $apk_price, 'icon' => 'bi-android2'],
+                                    ['id' => 'add_ios', 'name' => 'order_ios', 'label' => 'iOS App', 'price' => $ios_price, 'icon' => 'bi-apple'],
+                                    ['id' => 'add_playstore', 'name' => 'order_playstore', 'label' => 'Play Store', 'price' => $playstore_price, 'icon' => 'bi-google-play'],
+                                    ['id' => 'add_sms_bridge', 'name' => 'order_sms_bridge', 'label' => 'SMS Bridge', 'price' => $sms_bridge_price, 'icon' => 'bi-chat-dots']
+                                ];
+                                foreach($addons as $addon):
+                                ?>
+                                <div class="col-6 col-md-3">
+                                    <input class="d-none addon-trigger" type="checkbox" name="<?php echo $addon['name'] ?>" id="<?php echo $addon['id'] ?>" data-price="<?php echo $addon['price'] ?>" onchange="updateCheckoutTotal()">
+                                    <label class="addon-card shadow-sm" for="<?php echo $addon['id'] ?>">
+                                        <div class="addon-check"><i class="bi bi-check"></i></div>
+                                        <div class="addon-icon shadow-sm"><i class="bi <?php echo $addon['icon'] ?>"></i></div>
+                                        <div class="fw-bold small text-dark"><?php echo $addon['label'] ?></div>
+                                        <div class="addon-price">₦<?php echo number_format($addon['price'], 0) ?></div>
+                                    </label>
+                                </div>
+                                <?php endforeach; ?>
                             </div>
                         </div>
                     </div>
                 </div>
-            </section>
-        </div>
+
+                <div class="col-lg-4">
+                    <div class="checkout-summary shadow-sm">
+                        <h5 class="fw-black mb-4"><i class="bi bi-cart-check me-2 text-primary"></i>Checkout</h5>
+
+                        <div class="mb-4">
+                            <label class="form-label text-uppercase small fw-bold">Subscription Plan</label>
+                            <select name="billing_package_id" id="billing_package_id" class="form-select bg-light border-0 py-3" required onchange="updateCheckoutTotal()">
+                                <option value="" data-price="0" hidden selected>Select Plan</option>
+                                <?php
+                                    $packages_result = mysqli_query($connection_server, "SELECT * FROM sas_billing_packages ORDER BY price ASC");
+                                    while($package = mysqli_fetch_assoc($packages_result)) {
+                                        echo "<option value='{$package['id']}' data-price='{$package['price']}'>".htmlspecialchars($package['name'])." (₦".number_format($package['price'], 0).")</option>";
+                                    }
+                                ?>
+                            </select>
+                        </div>
+
+                        <div id="summary-details">
+                            <div class="summary-item">
+                                <span class="text-muted">Plan Base</span>
+                                <span class="fw-bold" id="sum-pkg">₦0.00</span>
+                            </div>
+                            <div class="summary-item" id="domain-row">
+                                <span class="text-muted">Domain Name</span>
+                                <span class="fw-bold" id="sum-domain">₦0.00</span>
+                            </div>
+                            <div class="summary-item">
+                                <span class="text-muted">App Add-ons</span>
+                                <span class="fw-bold" id="sum-addons">₦0.00</span>
+                            </div>
+                        </div>
+
+                        <div class="d-flex justify-content-between align-items-center mt-4 mb-4 pt-3 border-top">
+                            <span class="fw-900 text-dark fs-5">TOTAL PAYABLE</span>
+                            <span class="summary-total" id="display_total">₦0.00</span>
+                        </div>
+
+                        <div class="mb-4">
+                            <label class="form-label text-uppercase small fw-bold">Payment Channel</label>
+                            <div class="row g-2">
+                                <div class="col-6">
+                                    <input type="radio" class="btn-check" name="payment_method" id="paystack" value="paystack" required>
+                                    <label class="btn btn-outline-primary w-100 fw-bold py-2 shadow-sm" for="paystack">ONLINE</label>
+                                </div>
+                                <div class="col-6">
+                                    <input type="radio" class="btn-check" name="payment_method" id="bank_deposit" value="bank_deposit">
+                                    <label class="btn btn-outline-primary w-100 fw-bold py-2 shadow-sm" for="bank_deposit">MANUAL</label>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="mb-4">
+                            <label class="form-label text-uppercase small fw-bold">Account Password</label>
+                            <input type="password" name="pass" class="form-control bg-light border-0 py-3" placeholder="Set password" required>
+                        </div>
+
+                        <input type="hidden" name="total_amount" id="total_amount_input" value="0">
+                        <button type="submit" name="create-profile" id="btn-submit" class="btn btn-primary w-100 rounded-pill py-3">
+                            COMPLETE ORDER & PAY <i class="bi bi-arrow-right-circle ms-2"></i>
+                        </button>
+
+                        <?php if(!$is_admin_session): ?>
+                        <div class="text-center mt-4">
+                            <a href="/" class="text-decoration-none text-muted small fw-bold"><i class="bi bi-house-door me-1"></i> Back to Home</a>
+                        </div>
+                        <?php endif; ?>
+                    </div>
+                </div>
+            </div>
+        </form>
     </div>
 
     <?php if($is_admin_session) include("../func/bc-spadmin-footer.php"); ?>
+
     <script src="../assets-2/vendor/bootstrap/js/bootstrap.bundle.min.js"></script>
     <script>
     let domainFee = 0;
 
-    function useSuggestedDomain(domain) {
-        // Split domain and extension
-        const parts = domain.split('.');
-        const name = parts[0];
-        const ext = "." + parts.slice(1).join('.');
+    function toggleDomainView() {
+        const option = document.querySelector('input[name="domain_option"]:checked').value;
+        const regView = document.getElementById('register_view');
+        const existView = document.getElementById('existing_view');
+        const domainRow = document.getElementById('domain-row');
 
-        document.getElementById('target_domain').value = name;
-        document.getElementById('domain_extension').value = ext;
+        if (option === 'register') {
+            regView.classList.remove('d-none');
+            existView.classList.add('d-none');
+            domainRow.classList.remove('d-none');
+            document.getElementById('target_domain').required = true;
+            document.getElementById('existing_domain').required = false;
+        } else {
+            regView.classList.add('d-none');
+            existView.classList.remove('d-none');
+            domainRow.classList.add('d-none');
+            document.getElementById('target_domain').required = false;
+            document.getElementById('existing_domain').required = true;
+            domainFee = 0;
+            updateCheckoutTotal();
+        }
+    }
+
+    function syncExistingDomain(val) {
+        document.getElementById('app_base_url_input').value = val.trim();
+    }
+
+    function useSuggestedDomain(domain) {
+        const parts = domain.split('.');
+        document.getElementById('target_domain').value = parts[0];
+        document.getElementById('domain_extension').value = "." + parts.slice(1).join('.');
         lookupDomain();
     }
 
@@ -495,15 +699,15 @@
         let domain = document.getElementById('target_domain').value.trim();
         const extension = document.getElementById('domain_extension').value;
         const feedback = document.getElementById('domain_feedback');
-        const spinner = document.getElementById('domain_spinner');
+        const spinner = document.getElementById('btn-spinner');
+        const btnText = document.getElementById('btn-text');
         const submitBtn = document.getElementById('btn-submit');
 
         if (domain === '') {
-            feedback.innerHTML = '<div class="text-danger small">Enter a domain name first</div>';
+            feedback.innerHTML = '<div class="alert alert-danger py-2 rounded-3 small fw-bold">Error: Enter a name first</div>';
             return;
         }
 
-        // Auto-fix if user included extension
         if (domain.includes('.')) {
             domain = domain.split('.')[0];
             document.getElementById('target_domain').value = domain;
@@ -511,30 +715,42 @@
 
         const fullDomain = domain + extension;
         spinner.classList.remove('d-none');
-        feedback.innerHTML = '<div class="text-muted small">Checking availability...</div>';
+        btnText.classList.add('d-none');
+        feedback.innerHTML = '<div class="text-primary small animate-pulse fw-bold"><i class="bi bi-cpu me-1"></i> Checking Availability...</div>';
         submitBtn.disabled = true;
 
         fetch('ajax-domain-check.php?domain=' + encodeURIComponent(fullDomain))
             .then(response => response.json())
             .then(data => {
                 spinner.classList.add('d-none');
+                btnText.classList.remove('d-none');
+
                 if (data.status === 'available') {
                     domainFee = parseFloat(data.price || 0);
                     document.getElementById('domain_fee_input').value = domainFee;
                     document.getElementById('app_base_url_input').value = fullDomain;
-                    feedback.innerHTML = `<div class="mt-2"><strong class="text-success" style="font-size: 1.1rem;">CONGRATULATIONS!!! ${fullDomain.toUpperCase()} IS AVAILABLE FOR REGISTRATION</strong><div class="text-muted small mt-1">Registration Fee: ₦${domainFee.toLocaleString()}</div></div>`;
+                    feedback.innerHTML = `<div class="alert alert-success border-0 shadow-sm rounded-4 p-3">
+                        <div class="d-flex align-items-center justify-content-between">
+                            <div><i class="bi bi-check-circle-fill me-2 fs-4" style="color:#198754;"></i> <strong class="fs-5" style="color:#198754;" class="text-success">${fullDomain.toUpperCase()}</strong> IS AVAILABLE!</div>
+                            <div class="fw-900 fs-5 text-dark">₦${domainFee.toLocaleString()}</div>
+                        </div>
+                    </div>`;
                     submitBtn.disabled = false;
                 } else {
                     domainFee = 0;
                     document.getElementById('domain_fee_input').value = 0;
                     document.getElementById('app_base_url_input').value = "";
-
-                    let html = `<div class="mt-2"><strong class="text-danger" style="font-size: 1.1rem;">${fullDomain.toUpperCase()} IS NOT AVAILABLE OR ALREADY REGISTERED</strong></div>`;
+                    let html = `<div class="alert alert-danger border-0 rounded-4 p-3 shadow-sm mb-3">
+                        <div class="d-flex align-items-center">
+                            <i class="bi bi-x-circle-fill me-2 fs-4" style="color:#dc3545;"></i>
+                            <strong class="fs-5" style="color:#dc3545;" class="text-danger">${fullDomain.toUpperCase()}</strong> IS TAKEN.
+                        </div>
+                    </div>`;
 
                     if(data.suggestions && data.suggestions.length > 0) {
-                        html += `<div class="mt-3"><div class="small fw-bold text-muted mb-2 text-uppercase">Try these instead:</div><div class="d-flex flex-wrap gap-2">`;
+                        html += `<div class="p-3 bg-white border rounded-4 shadow-sm"><div class="x-small fw-black text-muted mb-3 text-uppercase letter-spacing-1">Try available alternatives:</div><div class="d-flex flex-wrap gap-2">`;
                         data.suggestions.forEach(s => {
-                            html += `<button type="button" class="btn btn-sm btn-outline-primary rounded-pill px-3" onclick="useSuggestedDomain('${s}')">${s}</button>`;
+                            html += `<button type="button" class="suggestion-btn" onclick="useSuggestedDomain('${s}')"><i class="bi bi-plus me-1"></i>${s}</button>`;
                         });
                         html += `</div></div>`;
                     }
@@ -545,7 +761,8 @@
             })
             .catch(err => {
                 spinner.classList.add('d-none');
-                feedback.innerHTML = '<div class="text-danger small">Error connecting to registrar API.</div>';
+                btnText.classList.remove('d-none');
+                feedback.innerHTML = '<div class="alert alert-danger py-2 small fw-bold">System Error: Could not connect to domain registry.</div>';
             });
     }
 
@@ -559,22 +776,12 @@
         });
 
         const grandTotal = basePrice + domainFee + addOnTotal;
+
+        document.getElementById('sum-pkg').innerText = "₦" + basePrice.toLocaleString();
+        document.getElementById('sum-domain').innerText = "₦" + domainFee.toLocaleString();
+        document.getElementById('sum-addons').innerText = "₦" + addOnTotal.toLocaleString();
         document.getElementById('display_total').innerText = "₦" + grandTotal.toLocaleString(undefined, {minimumFractionDigits: 2});
         document.getElementById('total_amount_input').value = grandTotal;
-    }
-
-    function togglePasswordVisibility(fieldId, iconElement) {
-        const field = document.getElementById(fieldId);
-        const icon = iconElement.querySelector('i');
-        if (field.type === 'password') {
-            field.type = 'text';
-            icon.classList.remove('bi-eye');
-            icon.classList.add('bi-eye-slash');
-        } else {
-            field.type = 'password';
-            icon.classList.remove('bi-eye-slash');
-            icon.classList.add('bi-eye');
-        }
     }
     </script>
 </body>

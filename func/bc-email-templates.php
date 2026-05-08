@@ -1,224 +1,301 @@
 <?php
+    // Professional Skeleton for Email Templates
+    $email_skeleton = '<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <style>
+        body { margin: 0; padding: 0; background-color: #f4f7fa; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; }
+        .wrapper { width: 100%; table-layout: fixed; background-color: #f4f7fa; padding-bottom: 40px; }
+        .main { background-color: #ffffff; margin: 0 auto; width: 100%; max-width: 600px; border-spacing: 0; color: #1e293b; border-radius: 12px; overflow: hidden; margin-top: 20px; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1); }
+        .header { background-color: #ffffff; padding: 25px; text-align: center; border-bottom: 1px solid #f1f5f9; }
+        .content { padding: 30px 25px; line-height: 1.6; }
+        .footer { padding: 20px; text-align: center; color: #64748b; font-size: 12px; }
+        .button { display: inline-block; padding: 12px 24px; background-color: #287bff; color: #ffffff !important; text-decoration: none; border-radius: 8px; font-weight: bold; margin-top: 20px; }
+        .details-box { background-color: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 15px; margin: 20px 0; }
+        .details-row { display: flex; justify-content: space-between; margin-bottom: 8px; border-bottom: 1px solid #f1f5f9; padding-bottom: 4px; }
+        .details-label { font-weight: bold; color: #64748b; font-size: 14px; text-align: left; }
+        .details-value { color: #0f172a; font-size: 14px; text-align: right; }
+        @media only screen and (max-width: 600px) {
+            .main { width: 95% !important; margin-top: 10px !important; }
+        }
+    </style>
+</head>
+<body>
+    <div class="wrapper">
+        <table class="main" role="presentation">
+            <tr>
+                <td class="header">
+                    <h2 style="margin: 0; color: #287bff;">{{TITLE}}</h2>
+                </td>
+            </tr>
+            <tr>
+                <td class="content">
+                    <div style="color: #475569; font-size: 16px;">
+                        {{BODY}}
+                    </div>
+                    <div style="text-align: center; margin-top: 30px;">
+                        <a href="https://{website_url}/web/Dashboard.php" class="button">Go to Dashboard</a>
+                    </div>
+                </td>
+            </tr>
+            {{APP_SECTION}}
+            <tr>
+                <td class="footer">
+                    <p style="margin-bottom: 10px;">&copy; ' . date("Y") . ' {website_url}. All rights reserved.</p>
+                </td>
+            </tr>
+        </table>
+    </div>
+</body>
+</html>';
+
+    function getTemplateHtml($title, $body, $app_section = true) {
+        global $email_skeleton;
+        $app_html = $app_section ? '<tr>
+                <td style="padding: 20px 25px; background-color: #f8fafc; text-align: center;">
+                    <p style="margin: 0; font-size: 14px; color: #64748b; font-weight: bold;">DOWNLOAD AND INSTALL APP</p>
+                    <div style="margin-top: 10px;">
+                         <a href="#"><img src="https://upload.wikimedia.org/wikipedia/commons/7/78/Google_Play_Store_badge_EN.svg" height="40"></a>
+                    </div>
+                </td>
+            </tr>' : '';
+
+        $html = str_replace('{{TITLE}}', $title, $email_skeleton);
+        $html = str_replace('{{BODY}}', $body, $html);
+        $html = str_replace('{{APP_SECTION}}', $app_html, $html);
+        return $html;
+    }
+
 	//User Registration
 	createVendorEmailTemplateIfNotExists(
 		"user-reg",
 		"Welcome to Our Platform - Complete Your Registration",
-		"Dear {firstname} {lastname},\n\nThank you for registering with us. We are excited to have you on board!\n\nPlease find below the details you provided during registration:\n\n- Email address: {email}\n- Phone number: {phone}\n- Username: {username}\n- Home address: {address}\n\nIf you have any questions or need assistance, feel free to contact us.\n\nBest regards,\nThe Support Team"
+		getTemplateHtml("Welcome!", "Dear {firstname} {lastname},<br/><br/>Thank you for registering with us. We are excited to have you on board!<br/><br/>Please find below the details you provided during registration:<br/>
+        <div class=\"details-box\">
+            <div class=\"details-row\"><span class=\"details-label\">Email address:</span> <span class=\"details-value\">{email}</span></div>
+            <div class=\"details-row\"><span class=\"details-label\">Phone number:</span> <span class=\"details-value\">{phone}</span></div>
+            <div class=\"details-row\"><span class=\"details-label\">Username:</span> <span class=\"details-value\">{username}</span></div>
+            <div class=\"details-row\"><span class=\"details-label\">Home address:</span> <span class=\"details-value\">{address}</span></div>
+        </div>
+        If you have any questions or need assistance, feel free to contact us.")
 	);
 
 	//User Login
 	createVendorEmailTemplateIfNotExists(
 		"user-log",
 		"User Login Notification",
-		"Hello {firstname} {lastname},\n\nYour login details are as follows:\nUsername: {username}\nIP Address: {ip_address}\n\nThank you,\nThe Support Team"
+		getTemplateHtml("Login Alert", "Hello {firstname} {lastname},<br/><br/>Your login details are as follows:<br/>
+        <div class=\"details-box\">
+            <div class=\"details-row\"><span class=\"details-label\">Username:</span> <span class=\"details-value\">{username}</span></div>
+            <div class=\"details-row\"><span class=\"details-label\">IP Address:</span> <span class=\"details-value\">{ip_address}</span></div>
+        </div>")
 	);
 
 	//User Password Update
 	createVendorEmailTemplateIfNotExists(
 		"user-pass-update",
 		"Password Update Notification",
-		"Dear {firstname} {lastname},\n\nYour password has been successfully updated.\n\nIf you did not make this change, please contact our support team immediately.\n\nBest regards,\nThe Support Team"
-	);
-
-	//User Auto Password Generate (Forgot Password)
-	createVendorEmailTemplateIfNotExists(
-		"user-auto-pass-generate",
-		"Forgot Password Notification",
-		"Dear {firstname} {lastname},\n\nYour password has been successfully updated.\n\nYour new password is: {password}\n\nIf you did not make this change, please contact our support team immediately.\n\nBest regards,\nThe Support Team"
+		getTemplateHtml("Password Updated", "Dear {firstname} {lastname},<br/><br/>Your password has been successfully updated.<br/><br/>If you did not make this change, please contact our support team immediately.")
 	);
 
 	//User Account Update
 	createVendorEmailTemplateIfNotExists(
 		"user-account-update",
 		"Account Information Updated",
-		"Dear {firstname} {lastname},\n\nYour account information has been successfully updated.\n\nDetails:\nEmail: {email}\nPhone: {phone}\nAddress: {address}\nSecurity Answer: {security_answer}\n\nThank you for keeping your information up to date.\n\nSincerely,\nThe Support Team"
+		getTemplateHtml("Account Updated", "Dear {firstname} {lastname},<br/><br/>Your account information has been successfully updated.<br/><br/>
+        <div class=\"details-box\">
+            <div class=\"details-row\"><span class=\"details-label\">Email:</span> <span class=\"details-value\">{email}</span></div>
+            <div class=\"details-row\"><span class=\"details-label\">Phone:</span> <span class=\"details-value\">{phone}</span></div>
+            <div class=\"details-row\"><span class=\"details-label\">Address:</span> <span class=\"details-value\">{address}</span></div>
+            <div class=\"details-row\"><span class=\"details-label\">Security Answer:</span> <span class=\"details-value\">{security_answer}</span></div>
+        </div>")
 	);
 
 	//User Account Recovery
 	createVendorEmailTemplateIfNotExists(
 		"user-account-recovery",
 		"Password Recovery",
-		"Hello {firstname} {lastname},\n\nWe received a request to recover your account password.\n\nYour recovery code is: {recovery_code}\n\nPlease use this code to reset your password.\n\nBest regards,\nThe Support Team"
+		getTemplateHtml("Recovery Code", "Hello {firstname} {lastname},<br/><br/>We received a request to recover your account password.<br/><br/>Your recovery code is:<br/><h2 style=\"text-align:center; color:#287bff;\">{recovery_code}</h2><br/>Please use this code to reset your password.")
 	);
 
 	//User Account Status
 	createVendorEmailTemplateIfNotExists(
 		"user-account-status",
 		"User Account Status Update",
-		"Hello {firstname} {lastname},\n\nWe are writing to inform you about your account status.\n\nYour account is currently {account_status}.\n\nThank you.\n\nSincerely,\nThe Management"
+		getTemplateHtml("Account Status Update", "Hello {firstname} {lastname},<br/><br/>We are writing to inform you about your account status.<br/><br/>Your account is currently <strong>{account_status}</strong>.")
 	);
 
 	//User API Status
 	createVendorEmailTemplateIfNotExists(
 		"user-api-status",
 		"User API Status Update",
-		"Hello {firstname}, {lastname}\n\nWe wanted to inform you about the current status of your API:\n\n{api_status}\n\nBest regards,\nThe API Team"
+		getTemplateHtml("API Status Update", "Hello {firstname} {lastname},<br/><br/>We wanted to inform you about the current status of your API:<br/><br/>{api_status}")
 	);
 
 	//User 
 	createVendorEmailTemplateIfNotExists(
 		"user-upgrade",
 		"Upgrade Notification",
-		"Hello {firstname} {lastname},\n\nWe are pleased to inform you that your account has been upgraded to {account_level}. Thank you for choosing our service.\n\nBest regards,\nThe Team"
+		getTemplateHtml("Account Upgraded", "Hello {firstname} {lastname},<br/><br/>We are pleased to inform you that your account has been upgraded to <strong>{account_level}</strong>. Thank you for choosing our service.")
 	);
 
 	//User Referral Commission
 	createVendorEmailTemplateIfNotExists(
 		"user-referral-commission",
 		"Referral Commission Earned",
-		"Hello {firstname} {lastname},\n\nWe are pleased to inform you that you have earned a referral commission of {referral_commission}.\n\nThe commission was earned from your referral, {referree}, who is currently at {account_level} account level.\n\nThank you for your participation in our referral program!\n\nBest regards,\nThe Support Team"
+		getTemplateHtml("Commission Earned", "Hello {firstname} {lastname},<br/><br/>We are pleased to inform you that you have earned a referral commission of <strong>{referral_commission}</strong>.<br/><br/>
+        <div class=\"details-box\">
+            <div class=\"details-row\"><span class=\"details-label\">Referree:</span> <span class=\"details-value\">{referree}</span></div>
+            <div class=\"details-row\"><span class=\"details-label\">Account Level:</span> <span class=\"details-value\">{account_level}</span></div>
+        </div>")
 	);
 
 	//User Transaction (Admin)
 	createVendorEmailTemplateIfNotExists(
 		"user-transactions",
 		"Transaction Details",
-		"Hello {admin_firstname}, {admin_lastname}\n\nA transaction has been made by user {username}, {firstname}.\n\nPrevious balance: {balance_before}\nNew balance: {balance_after}\n\nAmount: {amount}\nDescription: {description}\nType: {type}"
+		getTemplateHtml("Transaction Alert", "Hello {admin_firstname} {admin_lastname},<br/><br/>A transaction has been made by user {username} ({firstname}).<br/><br/>
+        <div class=\"details-box\">
+            <div class=\"details-row\"><span class=\"details-label\">Previous balance:</span> <span class=\"details-value\">{balance_before}</span></div>
+            <div class=\"details-row\"><span class=\"details-label\">New balance:</span> <span class=\"details-value\">{balance_after}</span></div>
+            <div class=\"details-row\"><span class=\"details-label\">Amount:</span> <span class=\"details-value\">{amount}</span></div>
+            <div class=\"details-row\"><span class=\"details-label\">Type:</span> <span class=\"details-value\">{type}</span></div>
+        </div>
+        <strong>Description:</strong><br/>{description}")
 	);
 
 	//User Credit/Debit Transaction
 	createVendorEmailTemplateIfNotExists(
 		"user-funding",
 		"Account Update: Transaction Details",
-    	"Hello {firstname} {lastname},\n\nYour account has been updated with the following transaction details:\n\n- Balance Before: {balance_before}\n- Balance After: {balance_after}\n- Amount: {amount}\n- Description: {description}\n- Type: {type}\n\nIf you have any questions or concerns, feel free to reach out to us.\n\nBest regards,\nThe Support Team"
+	getTemplateHtml("Wallet Update", "Hello {firstname} {lastname},<br/><br/>Your account has been updated with the following transaction details:<br/><br/>
+        <div class=\"details-box\">
+            <div class=\"details-row\"><span class=\"details-label\">Balance Before:</span> <span class=\"details-value\">{balance_before}</span></div>
+            <div class=\"details-row\"><span class=\"details-label\">Balance After:</span> <span class=\"details-value\">{balance_after}</span></div>
+            <div class=\"details-row\"><span class=\"details-label\">Amount:</span> <span class=\"details-value\">{amount}</span></div>
+            <div class=\"details-row\"><span class=\"details-label\">Type:</span> <span class=\"details-value\">{type}</span></div>
+        </div>
+        <strong>Description:</strong><br/>{description}")
 	);
 
 	//User Refund
 	createVendorEmailTemplateIfNotExists(
 		"user-refund",
 		"Refund Notification",
-		"Dear {firstname} {lastname},\n\nWe are pleased to inform you that a refund has been processed for you.\n\nAmount: {amount}\nDescription: {description}\n\nIf you have any questions or concerns, feel free to reach out to our customer support team.\n\nBest regards,\nThe Support Team"
-	);
-
-	//User KYC Submitted
-	createVendorEmailTemplateIfNotExists(
-		"user-kyc-submitted",
-		"KYC Verification Submitted",
-		"Dear {firstname},\n\nYour KYC verification documents have been successfully submitted and are now under review. This process usually takes 24-48 hours.\n\nWe will notify you once the review is complete.\n\nBest regards,\nThe Support Team"
-	);
-
-	//User KYC Admin Alert
-	createVendorEmailTemplateIfNotExists(
-		"user-kyc-admin-alert",
-		"New KYC Submission for Review",
-		"Hello Admin,\n\nA new KYC verification has been submitted by user {username} ({firstname} {lastname}).\n\nPlease log in to the admin panel to review the documents.\n\nBest regards,\nSystem Monitor"
-	);
-
-	//User KYC Approved
-	createVendorEmailTemplateIfNotExists(
-		"user-kyc-approved",
-		"KYC Verification Approved",
-		"Dear {firstname},\n\nCongratulations! Your KYC verification has been approved. You now have full access to all platform features.\n\nBest regards,\nThe Team"
-	);
-
-	//User KYC Try Again
-	createVendorEmailTemplateIfNotExists(
-		"user-kyc-try-again",
-		"KYC Verification: Action Required",
-		"Dear {firstname},\n\nYour recent KYC verification attempt was not successful. The administrator has requested that you try again.\n\nReason: {reason}\n\nPlease log in and resubmit clear documents.\n\nBest regards,\nThe Support Team"
-	);
-
-	//User KYC Rejected
-	createVendorEmailTemplateIfNotExists(
-		"user-kyc-rejected",
-		"KYC Verification Rejected",
-		"Dear {firstname},\n\nWe regret to inform you that your KYC verification has been rejected.\n\nReason: {reason}\n\nPlease contact support for further assistance.\n\nBest regards,\nThe Management"
+		getTemplateHtml("Refund Processed", "Dear {firstname} {lastname},<br/><br/>We are pleased to inform you that a refund has been processed for you.<br/><br/>
+        <div class=\"details-box\">
+            <div class=\"details-row\"><span class=\"details-label\">Amount:</span> <span class=\"details-value\">{amount}</span></div>
+        </div>
+        <strong>Description:</strong><br/>{description}")
 	);
 
 	//Vendor Registration
 	createSuperAdminEmailTemplateIfNotExists(
 		"vendor-reg",
 		"Vendor Registration Confirmation",
-		"Hello,\n\nWe are delighted to welcome you as a potential vendor.\n\nPlease find below the details you provided:\n\nFirst Name: {firstname}\nLast Name: {lastname}\nEmail: {email}\nPhone: {phone}\nAddress: {address}\nWebsite: {website}\n\nThank you for your interest in partnering with us.\n\nBest regards,\nThe Vendor Registration Team"
+		getTemplateHtml("Vendor Application", "Hello,<br/><br/>We are delighted to welcome you as a potential vendor.<br/><br/>Please find below the details you provided:<br/>
+        <div class=\"details-box\">
+            <div class=\"details-row\"><span class=\"details-label\">Name:</span> <span class=\"details-value\">{firstname} {lastname}</span></div>
+            <div class=\"details-row\"><span class=\"details-label\">Email:</span> <span class=\"details-value\">{email}</span></div>
+            <div class=\"details-row\"><span class=\"details-label\">Phone:</span> <span class=\"details-value\">{phone}</span></div>
+            <div class=\"details-row\"><span class=\"details-label\">Website:</span> <span class=\"details-value\">{website}</span></div>
+        </div>", false)
 	);
 
 	//Vendor Login
 	createSuperAdminEmailTemplateIfNotExists(
 		"vendor-log",
 		"Vendor Login Notification",
-		"Hello {firstname}, {lastname},\n\nWe wanted to inform you that there has been a login to your vendor account. Here are the details:\n\nName: {firstname}, {lastname}\nEmail: {email}\nIP Address: {ip_address}\n\nIf this login was not authorized by you, please contact support immediately.\n\nBest regards,\nThe Vendor Management Team"
+		getTemplateHtml("Vendor Login Alert", "Hello {firstname} {lastname},<br/><br/>We wanted to inform you that there has been a login to your vendor account.<br/><br/>
+        <div class=\"details-box\">
+            <div class=\"details-row\"><span class=\"details-label\">IP Address:</span> <span class=\"details-value\">{ip_address}</span></div>
+        </div>", false)
 	);
 
 	//Vendor Password Update
 	createSuperAdminEmailTemplateIfNotExists(
 		"vendor-pass-update",
-		"Password Update Required",
-		"Hello {firstname} {lastname},\n\nWe kindly remind you to update your password as soon as possible. This is essential for the security of your account.\n\nThank you for your attention to this matter.\n\nBest regards,\nThe Vendor Team"
+		"Password Update Notification",
+		getTemplateHtml("Password Updated", "Hello {firstname} {lastname},<br/><br/>Your vendor account password has been updated successfully.", false)
 	);
 
 	//Vendor Account Update
 	createSuperAdminEmailTemplateIfNotExists(
 		"vendor-account-update",
 		"Vendor Account Update",
-		"Dear {firstname} {lastname},\n\nYour account information has been updated successfully.\n\nHere are your updated details:\nEmail: {email}\nPhone: {phone}\nAddress: {address}\nWebsite: {website}\n\nIf you have any questions or concerns, please feel free to reach out to us.\n\nBest regards,\nThe Vendor Management Team"
+		getTemplateHtml("Account Updated", "Dear {firstname} {lastname},<br/><br/>Your vendor account information has been updated successfully.<br/><br/>
+        <div class=\"details-box\">
+            <div class=\"details-row\"><span class=\"details-label\">Email:</span> <span class=\"details-value\">{email}</span></div>
+            <div class=\"details-row\"><span class=\"details-label\">Phone:</span> <span class=\"details-value\">{phone}</span></div>
+            <div class=\"details-row\"><span class=\"details-label\">Website:</span> <span class=\"details-value\">{website}</span></div>
+        </div>", false)
 	);
 
 	//Vendor Password Recovery
 	createSuperAdminEmailTemplateIfNotExists(
 		"vendor-account-recovery",
 		"Password Recovery",
-		"Hello {firstname} {lastname},\n\nYou have requested a password recovery for your vendor account.\n\nPlease use the following recovery code to reset your password: {recovery_code}\n\nIf you did not request this, please disregard this email.\n\nBest regards,\nThe Vendor Team"
+		getTemplateHtml("Recovery Code", "Hello {firstname} {lastname},<br/><br/>You have requested a password recovery for your vendor account.<br/><br/>Your recovery code is:<br/><h2 style=\"text-align:center; color:#287bff;\">{recovery_code}</h2>", false)
 	);
 
 	//Vendor Account Status
 	createSuperAdminEmailTemplateIfNotExists(
 		"vendor-account-status",
 		"Vendor Account Status",
-		"Hello {firstname}, {lastname}\n\nYour account status is: {account_status}"
+		getTemplateHtml("Account Status Update", "Hello {firstname} {lastname},<br/><br/>Your vendor account status is: <strong>{account_status}</strong>", false)
 	);
 
 	//Vendor Transaction (Super Admin)
 	createSuperAdminEmailTemplateIfNotExists(
 		"vendor-transactions",
 		"Vendor Transaction Details",
-		"Hello {admin_firstname} {admin_lastname},\n\nA new transaction has been made by a vendor. Here are the details:\n\nVendor Email: {email}\nVendor Name: {firstname}\nBalance Before Transaction: {balance_before}\nBalance After Transaction: {balance_after}\nTransaction Amount: {amount}\nDescription: {description}\nTransaction Type: {type}\n\nBest regards,\nThe Admin Team"
+		getTemplateHtml("Vendor Transaction Alert", "Hello {admin_firstname} {admin_lastname},<br/><br/>A new transaction has been made by a vendor.<br/><br/>
+        <div class=\"details-box\">
+            <div class=\"details-row\"><span class=\"details-label\">Vendor Name:</span> <span class=\"details-value\">{firstname}</span></div>
+            <div class=\"details-row\"><span class=\"details-label\">Vendor Email:</span> <span class=\"details-value\">{email}</span></div>
+            <div class=\"details-row\"><span class=\"details-label\">Amount:</span> <span class=\"details-value\">{amount}</span></div>
+            <div class=\"details-row\"><span class=\"details-label\">Type:</span> <span class=\"details-value\">{type}</span></div>
+        </div>
+        <strong>Description:</strong><br/>{description}", false)
 	);
 
 	//Vendor Credit/Debit
 	createSuperAdminEmailTemplateIfNotExists(
 		"vendor-funding",
 		"Vendor Credit/Debit Notification",
-		"Hello {firstname} {lastname},\n\nThis email is to inform you about a recent transaction on your account.\n\nBalance Before: {balance_before}\nBalance After: {balance_after}\nAmount: {amount}\nDescription: {description}\nType: {type}\n\nThank you.\n"
+		getTemplateHtml("Wallet Update", "Hello {firstname} {lastname},<br/><br/>This email is to inform you about a recent transaction on your vendor account.<br/><br/>
+        <div class=\"details-box\">
+            <div class=\"details-row\"><span class=\"details-label\">Balance Before:</span> <span class=\"details-value\">{balance_before}</span></div>
+            <div class=\"details-row\"><span class=\"details-label\">Balance After:</span> <span class=\"details-value\">{balance_after}</span></div>
+            <div class=\"details-row\"><span class=\"details-label\">Amount:</span> <span class=\"details-value\">{amount}</span></div>
+            <div class=\"details-row\"><span class=\"details-label\">Type:</span> <span class=\"details-value\">{type}</span></div>
+        </div>
+        <strong>Description:</strong><br/>{description}", false)
 	);
 
 	//Vendor Refund Notification
 	createSuperAdminEmailTemplateIfNotExists(
 		"vendor-refund",
 		"Vendor Refund Notification",
-		"Hello {firstname} {lastname},\n\nWe are writing to inform you that a refund has been issued to you in the amount of {amount} for the following reason:\n\n{description}\n\nThank you.\n\nSincerely,\nThe Management Team"
-	);
-
-	// New Vendor Pending - Admin Alert
-	createSuperAdminEmailTemplateIfNotExists(
-		"new-vendor-pending-admin-alert",
-		"New Vendor Registration Pending Approval",
-		"Hello Admin,\n\nA new vendor has registered and is awaiting your approval.\n\n- Name: {firstname} {lastname}\n- Email: {email}\n- Website: {website}\n\nPlease log in to the admin panel to review and approve their registration.\n\nBest regards,\nYour System"
+		getTemplateHtml("Refund Processed", "Hello {firstname} {lastname},<br/><br/>We are writing to inform you that a refund has been issued to your vendor account.<br/><br/>
+        <div class=\"details-box\">
+            <div class=\"details-row\"><span class=\"details-label\">Amount:</span> <span class=\"details-value\">{amount}</span></div>
+        </div>
+        <strong>Reason:</strong><br/>{description}", false)
 	);
 
 	// Vendor Welcome & Activation
 	createSuperAdminEmailTemplateIfNotExists(
 		"vendor-welcome-activated",
 		"Welcome! Your Vendor Account is Now Active",
-		"Dear {firstname} {lastname},\n\nCongratulations! Your vendor account has been approved and is now active.\n\nYou can now log in to your dashboard and start using our services.\n\nYour subscription is active until {expiry_date}.\n\nTo set up your domain, please use the following details:\n\nNameservers:\n{domain_nameservers}\n\nIf you intend to use a subdomain, please use the following IP for A records:\n{domain_ip_address}\n\nDomain name registration is not free. You can register your domain through our suggested registrar: {domain_registrar_url}\n\nBest regards,\nThe Team"
-	);
-
-	// Vendor Rejection
-	createSuperAdminEmailTemplateIfNotExists(
-		"vendor-rejection",
-		"Update on Your Vendor Application",
-		"Dear {firstname} {lastname},\n\nThank you for your interest in becoming a vendor. After careful review, we regret to inform you that we are unable to approve your application at this time.\n\nIf you have any questions, please contact our support team.\n\nSincerely,\nThe Vendor Management Team"
-	);
-
-	// Vendor Subscription Reminder
-	createSuperAdminEmailTemplateIfNotExists(
-		"vendor-subscription-reminder",
-		"Your Subscription is Expiring Soon",
-		"Dear {firstname} {lastname},\n\nThis is a reminder that your vendor subscription is due to expire on {expiry_date}.\n\nPlease renew your subscription to ensure uninterrupted access to our services.\n\nBest regards,\nThe Team"
-	);
-
-	// Vendor Subscription Expired
-	createSuperAdminEmailTemplateIfNotExists(
-		"vendor-subscription-expired",
-		"Your Subscription Has Expired",
-		"Dear {firstname} {lastname},\n\nYour vendor subscription has expired, and your account has been temporarily deactivated.\n\nPlease renew your subscription to reactivate your account and continue using our services.\n\nBest regards,\nThe Team"
+		getTemplateHtml("Welcome & Activation", "Dear {firstname} {lastname},<br/><br/>Congratulations! Your vendor account has been approved and is now active.<br/><br/>
+        Your subscription is active until <strong>{expiry_date}</strong>.<br/><br/>
+        <strong>To set up your domain, please use the following details:</strong><br/>
+        <div class=\"details-box\">
+            <div class=\"details-row\"><span class=\"details-label\">Nameservers:</span> <span class=\"details-value\">{domain_nameservers}</span></div>
+            <div class=\"details-row\"><span class=\"details-label\">IP Address (for A records):</span> <span class=\"details-value\">{domain_ip_address}</span></div>
+        </div>
+        Domain name registration is not free. You can register your domain through our suggested registrar: {domain_registrar_url}", false)
 	);

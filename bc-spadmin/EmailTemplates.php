@@ -3,7 +3,9 @@
     
     if(isset($_POST["update-template"])){
         $subject = mysqli_real_escape_string($connection_server, trim(strip_tags($_POST["subject"])));
-        $body = mysqli_real_escape_string($connection_server, trim(strip_tags($_POST["body"])));
+        // Allow some HTML tags for the email body (visual builder output)
+        $allowed_tags = '<div><p><br><span><img/><a><h1><h2><h3><h4><h5><h6><table><tbody><tr><td><th><ul><li><ol><strong><em><u><section><header><footer><style>';
+        $body = mysqli_real_escape_string($connection_server, trim(strip_tags($_POST["body"], $allowed_tags)));
         $email_type = mysqli_real_escape_string($connection_server, trim(strip_tags(strtolower($_POST["type"]))));
         
         if(!empty($subject) && !empty($body) && !empty($email_type)){
@@ -53,6 +55,29 @@
   <!-- Template Main CSS File -->
   <link href="../assets-2/css/style.css" rel="stylesheet">
 
+  <!-- GrapesJS -->
+  <link href="https://unpkg.com/grapesjs/dist/css/grapes.min.css" rel="stylesheet">
+  <script src="https://unpkg.com/grapesjs"></script>
+  <script src="https://unpkg.com/grapesjs-preset-newsletter"></script>
+
+  <style>
+    .gjs-cv-canvas {
+        top: 0;
+        width: 100%;
+        height: 100%;
+    }
+    #gjs {
+        border: 3px solid #444;
+    }
+    .modal-full {
+        min-width: 100%;
+        margin: 0;
+    }
+    .modal-full .modal-content {
+        min-height: 100vh;
+    }
+  </style>
+
 </head>
 <body>
     <?php include("../func/bc-spadmin-header.php"); ?>    
@@ -67,6 +92,25 @@
     </div><!-- End Page Title -->
 
     <section class="section dashboard">
+      <!-- GrapesJS Modal -->
+      <div class="modal fade" id="grapesModal" tabindex="-1" aria-hidden="true">
+          <div class="modal-dialog modal-full">
+              <div class="modal-content">
+                  <div class="modal-header">
+                      <h5 class="modal-title">Email Builder</h5>
+                      <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                  </div>
+                  <div class="modal-body p-0">
+                      <div id="gjs"></div>
+                  </div>
+                  <div class="modal-footer">
+                      <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                      <button type="button" class="btn btn-primary" id="save-builder">Save Template</button>
+                  </div>
+              </div>
+          </div>
+      </div>
+
       <div class="row g-4">
         <div class="col-lg-12">
             <div class="card shadow-sm border-0 rounded-4 overflow-hidden mb-4">
@@ -128,7 +172,10 @@
                                 </div>
                                 <div class="mb-4">
                                     <label class="form-label small fw-bold text-muted">EMAIL BODY (HTML ALLOWED)</label>
-                                    <textarea name="body" class="form-control rounded-4" rows="12" required><?php echo getSuperAdminEmailTemplate($key, 'body'); ?></textarea>
+                                    <textarea id="body-<?php echo $key; ?>" name="body" class="form-control rounded-4 mb-3" rows="12" required><?php echo getSuperAdminEmailTemplate($key, 'body'); ?></textarea>
+                                    <button type="button" class="btn btn-info text-white rounded-pill px-4 fw-bold shadow-sm me-2" onclick="openBuilder('<?php echo $key; ?>')">
+                                        <i class="bi bi-brush me-2"></i> Open Builder
+                                    </button>
                                 </div>
                                 <button name="update-template" type="submit" class="btn btn-primary rounded-pill px-5 fw-bold shadow-sm">
                                     <i class="bi bi-save me-2"></i> Update <?php echo $label; ?> Template
@@ -145,5 +192,38 @@
         
     <?php include("../func/bc-spadmin-footer.php"); ?>
     
+    <script>
+        let editor;
+        let currentTargetId;
+
+        function openBuilder(key) {
+            currentTargetId = 'body-' + key;
+            const content = document.getElementById(currentTargetId).value;
+
+            if (!editor) {
+                editor = grapesjs.init({
+                    container: '#gjs',
+                    fromElement: false,
+                    height: '70vh',
+                    width: 'auto',
+                    storageManager: false,
+                    plugins: ['grapesjs-preset-newsletter'],
+                    pluginsOpts: {
+                        'grapesjs-preset-newsletter': {}
+                    }
+                });
+            }
+
+            editor.setComponents(content);
+            const modal = new bootstrap.Modal(document.getElementById('grapesModal'));
+            modal.show();
+        }
+
+        document.getElementById('save-builder').addEventListener('click', function() {
+            const html = editor.runCommand('gjs-get-inlined-html');
+            document.getElementById(currentTargetId).value = html;
+            bootstrap.Modal.getInstance(document.getElementById('grapesModal')).hide();
+        });
+    </script>
 </body>
 </html>

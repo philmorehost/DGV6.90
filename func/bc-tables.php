@@ -191,6 +191,13 @@ $create_vendor_paid_bills_table = mysqli_query($connection_server, "CREATE TABLE
 //Create Domain Extensions Table
 $create_domain_extensions_table = mysqli_query($connection_server, "CREATE TABLE IF NOT EXISTS sas_domain_extensions (id INT NOT NULL AUTO_INCREMENT, extension VARCHAR(20) NOT NULL, price DECIMAL(10,2) NOT NULL, PRIMARY KEY (id), UNIQUE(extension))");
 
+if ($create_domain_extensions_table) {
+    $check_promo_col = mysqli_query($connection_server, "SHOW COLUMNS FROM `sas_domain_extensions` LIKE 'promo_price'");
+    if (mysqli_num_rows($check_promo_col) == 0) {
+        mysqli_query($connection_server, "ALTER TABLE `sas_domain_extensions` ADD COLUMN promo_price DECIMAL(10,2) DEFAULT 0.00 AFTER price");
+    }
+}
+
 //Create Pending Vendors Table
 $create_pending_vendors_table = mysqli_query($connection_server, "
 CREATE TABLE IF NOT EXISTS sas_pending_vendors (
@@ -628,8 +635,23 @@ $create_super_admin_site_detail_table = mysqli_query($connection_server, "CREATE
 //Create Email Template Table
 $create_email_template_table = mysqli_query($connection_server, "CREATE TABLE IF NOT EXISTS sas_email_templates (id INT NOT NULL AUTO_INCREMENT, vendor_id INT UNSIGNED NOT NULL, email_type VARCHAR(225) NOT NULL, subject VARCHAR(225) NOT NULL, body LONGTEXT NOT NULL, PRIMARY KEY (id))");
 
+if ($create_email_template_table) {
+    // Add unique constraint for vendor isolation
+    $check_idx = mysqli_query($connection_server, "SHOW INDEX FROM sas_email_templates WHERE Key_name = 'idx_vendor_email_type'");
+    if (mysqli_num_rows($check_idx) == 0) {
+        mysqli_query($connection_server, "ALTER TABLE sas_email_templates ADD UNIQUE INDEX idx_vendor_email_type (vendor_id, email_type)");
+    }
+}
+
 //Create Super Admin Email Template Table
 $create_super_admin_email_template_table = mysqli_query($connection_server, "CREATE TABLE IF NOT EXISTS sas_super_admin_email_templates (id INT NOT NULL AUTO_INCREMENT, email_type VARCHAR(225) NOT NULL, subject VARCHAR(225) NOT NULL, body LONGTEXT NOT NULL, PRIMARY KEY (id))");
+
+if ($create_super_admin_email_template_table) {
+    $check_idx = mysqli_query($connection_server, "SHOW INDEX FROM sas_super_admin_email_templates WHERE Key_name = 'idx_email_type'");
+    if (mysqli_num_rows($check_idx) == 0) {
+        mysqli_query($connection_server, "ALTER TABLE sas_super_admin_email_templates ADD UNIQUE INDEX idx_email_type (email_type)");
+    }
+}
 
 //Create Vendor Style Template Table
 $create_vendor_style_templates_table = mysqli_query($connection_server, "CREATE TABLE IF NOT EXISTS sas_vendor_style_templates (vendor_id INT UNSIGNED NOT NULL, template_name VARCHAR(225) NOT NULL, date TIMESTAMP DEFAULT CURRENT_TIMESTAMP)");
@@ -1432,7 +1454,7 @@ if ($check_vc_set && mysqli_num_rows($check_vc_set) == 0) {
 }
 
 // --- NIN Card Service ---
-mysqli_query($connection_server, "CREATE TABLE IF NOT EXISTS `sas_nin_card_requests` (
+$create_nin_requests_table = mysqli_query($connection_server, "CREATE TABLE IF NOT EXISTS `sas_nin_card_requests` (
     `id` INT AUTO_INCREMENT PRIMARY KEY,
     `vendor_id` INT UNSIGNED NOT NULL,
     `user_id` INT UNSIGNED NOT NULL,
@@ -1450,10 +1472,18 @@ mysqli_query($connection_server, "CREATE TABLE IF NOT EXISTS `sas_nin_card_reque
     `residence_state` VARCHAR(100) DEFAULT '',
     `price` DECIMAL(10,2) NOT NULL DEFAULT 0.00,
     `provider` VARCHAR(20) DEFAULT '',
+    `user_portrait` MEDIUMTEXT DEFAULT NULL,
     `status` ENUM('success','failed','pending') NOT NULL DEFAULT 'pending',
     `date_created` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     UNIQUE KEY `uniq_ref` (`reference`)
 )");
+
+if ($create_nin_requests_table) {
+    $check_portrait = mysqli_query($connection_server, "SHOW COLUMNS FROM `sas_nin_card_requests` LIKE 'user_portrait'");
+    if (mysqli_num_rows($check_portrait) == 0) {
+        mysqli_query($connection_server, "ALTER TABLE `sas_nin_card_requests` ADD COLUMN `user_portrait` MEDIUMTEXT DEFAULT NULL AFTER `photo_data` ");
+    }
+}
 
 mysqli_query($connection_server, "CREATE TABLE IF NOT EXISTS `sas_bvn_verify_requests` (
     `id` INT AUTO_INCREMENT PRIMARY KEY,

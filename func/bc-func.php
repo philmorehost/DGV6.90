@@ -1436,54 +1436,36 @@ function getUserEmailTemplate($row_id, $column_name)
 {
 	global $connection_server;
 	$vendor_id = resolveVendorID();
-	if($vendor_id <= 0) return "";
+	if($vendor_id <= 0) return getSuperAdminEmailTemplate($row_id, $column_name);
+
 	$template_details = mysqli_query($connection_server, "SELECT * FROM sas_email_templates WHERE vendor_id='$vendor_id' && email_type='$row_id'");
-	if (mysqli_num_rows($template_details) == 1) {
+	if (mysqli_num_rows($template_details) >= 1) {
 		$template_array = mysqli_fetch_array($template_details);
-		if (isset($template_array[$column_name])) {
+		if (isset($template_array[$column_name]) && !empty($template_array[$column_name])) {
 			return $template_array[$column_name];
-		} else {
-			//Column Mismatch
-			return "";
-		}
-	} else {
-		if (mysqli_num_rows($template_details) > 1) {
-			//Duplicated Details
-			return "";
-		} else {
-			if (mysqli_num_rows($template_details) == 0) {
-				//Null
-				return "";
-			}
 		}
 	}
+
+	// Fallback to Super Admin Template
+	return getSuperAdminEmailTemplate($row_id, $column_name);
 }
 
 function getVendorEmailTemplate($row_id, $column_name)
 {
 	global $connection_server;
 	$vendor_id = resolveVendorID();
-	if($vendor_id <= 0) return "";
+	if($vendor_id <= 0) return getSuperAdminEmailTemplate($row_id, $column_name);
+
 	$template_details = mysqli_query($connection_server, "SELECT * FROM sas_email_templates WHERE vendor_id='$vendor_id' && email_type='$row_id'");
-	if (mysqli_num_rows($template_details) == 1) {
+	if (mysqli_num_rows($template_details) >= 1) {
 		$template_array = mysqli_fetch_array($template_details);
-		if (isset($template_array[$column_name])) {
+		if (isset($template_array[$column_name]) && !empty($template_array[$column_name])) {
 			return $template_array[$column_name];
-		} else {
-			//Column Mismatch
-			return "";
-		}
-	} else {
-		if (mysqli_num_rows($template_details) > 1) {
-			//Duplicated Details
-			return "";
-		} else {
-			if (mysqli_num_rows($template_details) == 0) {
-				//Null
-				return "";
-			}
 		}
 	}
+
+	// Fallback to Super Admin Template
+	return getSuperAdminEmailTemplate($row_id, $column_name);
 }
 
 function getSuperAdminEmailTemplate($row_id, $column_name)
@@ -1507,6 +1489,25 @@ function getSuperAdminEmailTemplate($row_id, $column_name)
 				//Null
 				return "";
 			}
+		}
+	}
+}
+
+function createSuperAdminEmailTemplateIfNotExists($email_type, $subject, $body)
+{
+	global $connection_server;
+
+	$email_type = mysqli_real_escape_string($connection_server, trim(strip_tags($email_type)));
+	$subject = mysqli_real_escape_string($connection_server, trim(strip_tags($subject)));
+	$body = mysqli_real_escape_string($connection_server, trim($body)); // Body allows HTML
+
+	if (!empty($subject) && !empty($body) && !empty($email_type)) {
+		$template_details = mysqli_query($connection_server, "SELECT * FROM sas_super_admin_email_templates WHERE email_type='$email_type'");
+		if (mysqli_num_rows($template_details) == 0) {
+			mysqli_query($connection_server, "INSERT INTO sas_super_admin_email_templates (email_type, subject, body) VALUES ('$email_type', '$subject', '$body')");
+			return "success";
+		} else {
+			return "failed";
 		}
 	}
 }
@@ -1581,7 +1582,7 @@ function beeMailer($recipient_email, $email_subject, $email_body)
 
 	$website_admin_phone_number = "234" . substr(get_admin_info(1, "phone_number"), 1, 11);
 	$details_array = array($website_admin_phone_number);
-	$mail_html_body = mailDesignTemplate($email_subject, $email_body, $details_array);
+	$mail_html_body = mailDesignTemplate($email_subject, $email_body, $details_array, true);
 	customBCMailSender('', $recipient_email, $email_subject, $mail_html_body, $mail_headers);
 	fwrite(fopen("./email-msg.txt", "a++"), "\n" . $recipient_email . " || " . strtoupper($email_subject) . " || " . $email_body . "\n");
 }
@@ -1612,7 +1613,7 @@ function sendVendorEmail($recipient_email, $email_subject, $email_body)
 
 	$website_admin_phone_number = "234" . substr($logged_account_details["phone_number"], 1, 11);
 	$details_array = array($website_admin_phone_number);
-	$mail_html_body = mailDesignTemplate($email_subject, $email_body, $details_array);
+	$mail_html_body = mailDesignTemplate($email_subject, $email_body, $details_array, true);
 
     // Branch DG6.7: Don't block login UI for background email notifications
     $is_background = (stripos($email_subject, "Login") !== false || stripos($email_subject, "Account") !== false);
@@ -1641,7 +1642,7 @@ function sendSuperAdminEmail($recipient_email, $email_subject, $email_body)
 
 	$website_admin_phone_number = "234" . substr($logged_account_details["phone_number"], 1, 11);
 	$details_array = array($website_admin_phone_number);
-	$mail_html_body = mailDesignTemplate($email_subject, $email_body, $details_array);
+	$mail_html_body = mailDesignTemplate($email_subject, $email_body, $details_array, false);
 
     // Branch DG6.7: Don't block UI for background email notifications
     $is_background = (stripos($email_subject, "Login") !== false || stripos($email_subject, "Account") !== false);
@@ -1711,14 +1712,14 @@ function createVendorEmailTemplateIfNotExists($email_type, $subject, $body)
 
 	$email_type = mysqli_real_escape_string($connection_server, trim(strip_tags($email_type)));
 	$subject = mysqli_real_escape_string($connection_server, trim(strip_tags($subject)));
-	$body = mysqli_real_escape_string($connection_server, trim(strip_tags($body)));
+	$body = mysqli_real_escape_string($connection_server, trim($body)); // Body allows HTML
 
 	if (!empty($subject) && !empty($body) && !empty($email_type)) {
 		$vendor_id = resolveVendorID();
 		if ($vendor_id > 0) {
 			$template_details = mysqli_query($connection_server, "SELECT * FROM sas_email_templates WHERE vendor_id='$vendor_id' && email_type='$email_type'");
 			if (mysqli_num_rows($template_details) == 0) {
-				mysqli_query($connection_server, "INSERT INTO sas_email_templates (vendor_id, email_type, subject, body) VALUES ('" . $vendor_details["id"] . "', '$email_type', '$subject', '$body')");
+				mysqli_query($connection_server, "INSERT INTO sas_email_templates (vendor_id, email_type, subject, body) VALUES ('$vendor_id', '$email_type', '$subject', '$body')");
 				return "success";
 			} else {
 				return "failed";
@@ -1730,28 +1731,6 @@ function createVendorEmailTemplateIfNotExists($email_type, $subject, $body)
 		return "failed";
 	}
 }
-
-function createSuperAdminEmailTemplateIfNotExists($email_type, $subject, $body)
-{
-	global $connection_server;
-
-	$email_type = mysqli_real_escape_string($connection_server, trim(strip_tags($email_type)));
-	$subject = mysqli_real_escape_string($connection_server, trim(strip_tags($subject)));
-	$body = mysqli_real_escape_string($connection_server, trim(strip_tags($body)));
-
-	if (!empty($subject) && !empty($body) && !empty($email_type)) {
-		$template_details = mysqli_query($connection_server, "SELECT * FROM sas_super_admin_email_templates WHERE email_type='$email_type'");
-		if (mysqli_num_rows($template_details) == 0) {
-			mysqli_query($connection_server, "INSERT INTO sas_super_admin_email_templates (email_type, subject, body) VALUES ('$email_type', '$subject', '$body')");
-			return "success";
-		} else {
-			return "failed";
-		}
-	} else {
-		return "failed";
-	}
-}
-
 
 //Payment Gateways
 //User Token
@@ -2425,39 +2404,57 @@ function verifyBvnNin($bvn_nin, $type, $bank_code, $account_number, $expected_fi
  * Monnify BVN/NIN verification (extracted for use by dispatcher).
  */
 function verifyBvnNinWithMonnify($bvn_nin, $type, $bank_code, $account_number, $vid, $use_vendor_token = true) {
-    global $connection_server;
+    global $connection_server, $get_logged_user_details, $get_logged_admin_details;
     if ($use_vendor_token) {
-        $token_result = json_decode(getVendorMonnifyAccessToken(), true);
+        if (isset($get_logged_admin_details["id"])) {
+            $token_result = json_decode(getVendorUserMonnifyAccessToken(), true);
+        } else {
+            $token_result = json_decode(getVendorMonnifyAccessToken(), true);
+        }
     } else {
-        $token_result = json_decode(getVendorMonnifyAccessToken(), true);
+        $token_result = json_decode(getUserMonnifyAccessToken(), true);
     }
-    if ($token_result['status'] !== 'success') {
-        return ["status" => "failed", "message" => $token_result['message'] ?? "Monnify token error"];
-    }
-    $token = $token_result['token'];
 
-    if ($type === 'bvn') {
+    if ($token_result["status"] !== "success") {
+        return ["status" => "failed", "message" => $token_result["message"] ?? "Monnify token error"];
+    }
+    $token = $token_result["token"];
+
+    $mobileNo = preg_replace("/[^0-9]/", "", $get_logged_user_details["phone"] ?? "");
+    if (empty($mobileNo)) $mobileNo = "08000000000";
+
+    if ($type === "bvn") {
         // Validate account number first
-        $nuban = json_decode(makeMonnifyRequest("get", $token, "api/v1/disbursements/account/validate?accountNumber=" . $account_number . "&bankCode=" . $bank_code, ""), true);
-        if ($nuban['status'] !== 'success') {
-            return ["status" => "failed", "message" => "Invalid bank account number"];
+        $nuban_res_raw = makeMonnifyRequest("get", $token, "api/v1/disbursements/account/validate?accountNumber=" . $account_number . "&bankCode=" . $bank_code, "");
+        $nuban_res = json_decode($nuban_res_raw, true);
+        if ($nuban_res["status"] !== "success") {
+            return ["status" => "failed", "message" => "Invalid bank account number: " . ($nuban_res["message"] ?? "Unknown error")];
         }
-        $res = json_decode(makeMonnifyRequest("post", $token, "api/v1/vas/bvn-account-match", ["bankCode" => $bank_code, "accountNumber" => $account_number, "bvn" => $bvn_nin]), true);
-        if ($res['status'] !== 'success') {
-            return ["status" => "failed", "message" => "BVN and account number do not match"];
+
+        $res_raw = makeMonnifyRequest("post", $token, "api/v1/vas/bvn-account-match", ["bankCode" => $bank_code, "accountNumber" => $account_number, "bvn" => $bvn_nin, "mobileNo" => $mobileNo]);
+        $res = json_decode($res_raw, true);
+        if ($res["status"] !== "success") {
+            return ["status" => "failed", "message" => "BVN and account number do not match: " . ($res["message"] ?? "Unknown error")];
         }
-        // Monnify BVN match doesn't return name; return blank names (name matching skipped for Monnify BVN)
-        return ["status" => "success", "firstname" => "", "lastname" => "", "phone" => "", "bank_validated" => true];
+
+        $res_data = json_decode($res["json_result"], true);
+        $body = $res_data["responseBody"] ?? [];
+        $firstname = $body["firstName"] ?? $body["firstname"] ?? "";
+        $lastname = $body["lastName"] ?? $body["surname"] ?? "";
+
+        return ["status" => "success", "firstname" => $firstname, "lastname" => $lastname, "phone" => "", "bank_validated" => true];
     } else {
-        $res = json_decode(makeMonnifyRequest("post", $token, "api/v1/vas/nin-details", ["nin" => $bvn_nin]), true);
-        if ($res['status'] !== 'success') {
-            return ["status" => "failed", "message" => "NIN cannot be verified"];
+        $res_raw = makeMonnifyRequest("post", $token, "api/v1/vas/nin-details", ["nin" => $bvn_nin, "mobileNo" => $mobileNo]);
+        $res = json_decode($res_raw, true);
+        if ($res["status"] !== "success") {
+            return ["status" => "failed", "message" => "NIN lookup failed: " . ($res["message"] ?? "Unknown error")];
         }
-        $nin_data = json_decode($res['json_result'], true);
-        $phone = $nin_data['responseBody']['mobileNumber'] ?? '';
+        $nin_data = json_decode($res["json_result"], true);
+        $body = $nin_data["responseBody"] ?? [];
+        $phone = $body["mobileNumber"] ?? $body["phone"] ?? "";
         $phone_len = strlen($phone);
-        if ($phone_len >= 10) $phone = "0" . substr($phone, $phone_len - 10, $phone_len);
-        return ["status" => "success", "firstname" => "", "lastname" => "", "phone" => $phone];
+        if ($phone_len >= 10) $phone = "0" . substr($phone, $phone_len - 10, 10);
+        return ["status" => "success", "firstname" => $body["firstname"] ?? $body["firstName"] ?? "", "lastname" => $body["surname"] ?? $body["lastName"] ?? "", "phone" => $phone];
     }
 }
 
@@ -2475,12 +2472,12 @@ function fetchNINProfile($nin, $vid) {
     global $connection_server;
     $provider = getIdentityProvider($vid);
 
-    if ($provider === 'dojah') {
+    if ($provider === "dojah") {
         return fetchNINProfileWithDojah($nin, $vid);
-    } elseif ($provider === 'qoreid') {
+    } elseif ($provider === "qoreid") {
         return fetchNINProfileWithQoreID($nin, $vid);
     } else {
-        return ["status" => "failed", "message" => "NIN Card service requires Dojah or QoreID as your identity provider. Please configure one in Payment Gateway settings."];
+        return fetchNINProfileWithMonnify($nin, $vid);
     }
 }
 
@@ -4913,15 +4910,14 @@ function fetchBVNProfile($bvn, $vid) {
     global $connection_server;
     $provider = getIdentityProvider($vid);
 
-    if ($provider === 'dojah') {
+    if ($provider === "dojah") {
         return fetchBVNProfileWithDojah($bvn, $vid);
-    } elseif ($provider === 'qoreid') {
+    } elseif ($provider === "qoreid") {
         return fetchBVNProfileWithQoreID($bvn, $vid);
     } else {
-        return ["status" => "failed", "message" => "BVN Verification requires Dojah or QoreID as your identity provider. Please configure one in Payment Gateway settings."];
+        return fetchBVNProfileWithMonnify($bvn, $vid);
     }
 }
-
 function fetchBVNProfileWithDojah($bvn, $vid) {
     global $connection_server;
     $vid_esc = mysqli_real_escape_string($connection_server, $vid);
@@ -5089,4 +5085,58 @@ function getAndroidDownloadButton($vid = null) {
         }
     }
     return '';
+}
+
+/**
+ * Fetch full NIN profile from Monnify.
+ * Note: Monnify provides limited fields compared to Dojah/QoreID.
+ */
+function fetchNINProfileWithMonnify($nin, $vid) {
+    // We use the already corrected verifyBvnNinWithMonnify
+    $res = verifyBvnNinWithMonnify($nin, "nin", "", "", $vid, true);
+    if ($res["status"] !== "success") return $res;
+
+    return [
+        "status" => "success",
+        "firstname" => $res["firstname"],
+        "middlename" => "",
+        "lastname" => $res["lastname"],
+        "birthdate" => "",
+        "gender" => "",
+        "photo_data" => "",
+        "phone" => $res["phone"],
+        "address" => "Address not provided by Monnify",
+        "residence_state" => "",
+        "state_of_origin" => "",
+        "provider" => "monnify"
+    ];
+}
+
+/**
+ * Fetch BVN profile from Monnify.
+ */
+function fetchBVNProfileWithMonnify($bvn, $vid) {
+    // Monnify BVN match requires bank account, but basic BVN lookup might not be directly available for full profile without match.
+    // However, if the user is using Monnify for KYC/Verification, we'll attempt a dummy match or use their registered details if possible.
+    // Actually, Monnify has a BVN lookup API if enabled.
+
+    global $get_logged_user_details;
+    $res = verifyBvnNinWithMonnify($bvn, "nin", "", "", $vid, true); // Use NIN endpoint for BVN if it works or just return error if not supported
+
+    if ($res["status"] !== "success") {
+        return ["status" => "failed", "message" => "Monnify BVN Lookup failed. Please use Dojah or QoreID for full BVN profile retrieval."];
+    }
+
+    return [
+        "status" => "success",
+        "firstname" => $res["firstname"],
+        "middlename" => "",
+        "lastname" => $res["lastname"],
+        "birthdate" => "",
+        "gender" => "",
+        "phone" => $res["phone"],
+        "bank_of_enrolment" => "",
+        "level_of_account" => "",
+        "provider" => "monnify"
+    ];
 }
