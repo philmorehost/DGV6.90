@@ -1,10 +1,19 @@
 import SwiftUI
+import Speech
+import AVFoundation
 
 struct AIChatView: View {
     @State private var prompt: String = ""
     @State private var chatHistory: [ChatMessage] = []
     @State private var isLoading: Bool = false
     @Environment(\.presentationMode) var presentationMode
+    
+    // Speech Recognition properties
+    @State private var isRecording = false
+    private let speechRecognizer = SFSpeechRecognizer(locale: Locale(identifier: "en-US"))
+    @State private var recognitionRequest: SFSpeechAudioBufferRecognitionRequest?
+    @State private var recognitionTask: SFSpeechRecognitionTask?
+    private let audioEngine = AVAudioEngine()
     
     struct ChatMessage: Identifiable {
         let id = UUID()
@@ -44,11 +53,20 @@ struct AIChatView: View {
                 }
                 
                 HStack {
-                    TextField("Ask me anything...", text: $prompt)
+                    TextField(isRecording ? "Listening..." : "Ask me anything...", text: $prompt)
                         .padding(12)
                         .background(Color(UIColor.systemGray6))
                         .cornerRadius(20)
                         .disabled(isLoading)
+                    
+                    Button(action: toggleRecording) {
+                        Image(systemName: isRecording ? "mic.fill" : "mic")
+                            .foregroundColor(.white)
+                            .padding(12)
+                            .background(isRecording ? Color.red : Color.gray)
+                            .clipShape(Circle())
+                    }
+                    .disabled(isLoading)
                     
                     Button(action: sendMessage) {
                         if isLoading {
@@ -69,12 +87,19 @@ struct AIChatView: View {
             .navigationTitle("AI Assistant")
             .navigationBarTitleDisplayMode(.inline)
             .navigationBarItems(trailing: Button("Close") {
+                if isRecording { stopRecording() }
                 presentationMode.wrappedValue.dismiss()
             })
+            .onAppear {
+                SFSpeechRecognizer.requestAuthorization { authStatus in
+                    // Handle authorization if needed
+                }
+            }
         }
     }
     
     func sendMessage() {
+        if isRecording { stopRecording() }
         let userMsg = prompt.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !userMsg.isEmpty else { return }
         
@@ -84,7 +109,6 @@ struct AIChatView: View {
         
         let params: [String: Any] = ["prompt": userMsg, "page_context": "ios_app"]
         
-        // Use AppNetworkService to hit the ai-handler endpoint
         AppNetworkService.shared.request("app-backend/ai-handler", params: params) { (result: Result<APIResponse, Error>) in
             DispatchQueue.main.async {
                 self.isLoading = false
@@ -100,5 +124,70 @@ struct AIChatView: View {
                 }
             }
         }
+    }
+    
+    func toggleRecording() {
+        if isRecording {
+            stopRecording()
+            // Auto send after recording stops
+            if !prompt.isEmpty {
+                sendMessage()
+            }
+        } else {
+            do {
+                try startRecording()
+            } catch {
+                print("Audio engine error: \(error.localizedDescription)")
+            }
+        }
+    }
+    
+    func startRecording() throws {
+        recognitionTask?.cancel()
+        self.recognitionTask = nil
+        
+        let audioSession = AVAudioSession.sharedInstance()
+        try audioSession.setCategory(.record, mode: .measurement, options: .duckOthers)
+        try audioSession.setActive(true, options: .notifyOthersOnDeactivation)
+        
+        let inputNode = audioEngine.inputNode
+        recognitionRequest = SFSpeechAudioBufferRecognitionRequest()
+        
+        guard let recognitionRequest = recognitionRequest else {
+            fatalError("Unable to create an SFSpeechAudioBufferRecognitionRequest object")
+        }
+        recognitionRequest.shouldReportPartialResults = true
+        
+        recognitionTask = speechRecognizer?.recognitionTask(with: recognitionRequest, resultHandler: { (result, error) in
+            var isFinal = false
+            
+            if let result = result {
+                self.prompt = result.bestTranscription.formattedString
+                isFinal = result.isFinal
+            }
+            
+            if error != nil || isFinal {
+                self.audioEngine.stop()
+                inputNode.removeTap(onBus: 0)
+                self.recognitionRequest = nil
+                self.recognitionTask = nil
+                self.isRecording = false
+            }
+        })
+        
+        let recordingFormat = inputNode.outputFormat(forBus: 0)
+        inputNode.installTap(onBus: 0, bufferSize: 1024, format: recordingFormat) { (buffer, when) in
+            self.recognitionRequest?.append(buffer)
+        }
+        
+        audioEngine.prepare()
+        try audioEngine.start()
+        isRecording = true
+    }
+    
+    func stopRecording() {
+        audioEngine.stop()
+        recognitionRequest?.endAudio()
+        isRecording = false
     }
 }

@@ -1,24 +1,37 @@
 package com.dgv6.app.ui.dashboard
 
+import android.Manifest
+import android.content.Intent
+import android.content.pm.PackageManager
 import android.os.Bundle
+import android.speech.RecognitionListener
+import android.speech.RecognizerIntent
+import android.speech.SpeechRecognizer
+import android.view.MotionEvent
 import android.widget.Button
 import android.widget.EditText
+import android.widget.ImageButton
 import android.widget.TextView
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
+import androidx.core.app.ActivityCompat
+import androidx.core.content.ContextCompat
 import androidx.lifecycle.lifecycleScope
 import com.dgv6.app.R
-import com.dgv6.app.api.RetrofitClient
 import com.dgv6.app.util.PreferenceManager
 import kotlinx.coroutines.launch
+import java.util.Locale
 
 class AIChatActivity : AppCompatActivity() {
     private lateinit var tvLog: TextView
     private lateinit var etPrompt: EditText
     private lateinit var btnSend: Button
+    private lateinit var btnMic: ImageButton
     private lateinit var prefs: PreferenceManager
     
     private val chatHistory = StringBuilder()
+    private var speechRecognizer: SpeechRecognizer? = null
+    private val REQUEST_RECORD_AUDIO_PERMISSION = 200
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -28,6 +41,7 @@ class AIChatActivity : AppCompatActivity() {
         tvLog = findViewById(R.id.tv_chat_log)
         etPrompt = findViewById(R.id.et_prompt)
         btnSend = findViewById(R.id.btn_send)
+        btnMic = findViewById(R.id.btn_mic)
         
         btnSend.setOnClickListener {
             val prompt = etPrompt.text.toString().trim()
@@ -36,6 +50,66 @@ class AIChatActivity : AppCompatActivity() {
                 etPrompt.setText("")
                 sendToAi(prompt)
             }
+        }
+        
+        setupSpeechRecognizer()
+    }
+    
+    private fun setupSpeechRecognizer() {
+        if (SpeechRecognizer.isRecognitionAvailable(this)) {
+            speechRecognizer = SpeechRecognizer.createSpeechRecognizer(this)
+            val speechRecognizerIntent = Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH)
+            speechRecognizerIntent.putExtra(RecognizerIntent.EXTRA_LANGUAGE_MODEL, RecognizerIntent.LANGUAGE_MODEL_FREE_FORM)
+            speechRecognizerIntent.putExtra(RecognizerIntent.EXTRA_LANGUAGE, Locale.getDefault())
+
+            speechRecognizer?.setRecognitionListener(object : RecognitionListener {
+                override fun onReadyForSpeech(params: Bundle?) {
+                    etPrompt.hint = "Listening..."
+                }
+                override fun onBeginningOfSpeech() {}
+                override fun onRmsChanged(rmsdB: Float) {}
+                override fun onBufferReceived(buffer: ByteArray?) {}
+                override fun onEndOfSpeech() {
+                    etPrompt.hint = "Ask me anything..."
+                    btnMic.alpha = 1.0f
+                }
+                override fun onError(error: Int) {
+                    etPrompt.hint = "Ask me anything..."
+                    btnMic.alpha = 1.0f
+                    Toast.makeText(this@AIChatActivity, "Speech Recognition Error: $error", Toast.LENGTH_SHORT).show()
+                }
+                override fun onResults(results: Bundle?) {
+                    val data = results?.getStringArrayList(SpeechRecognizer.RESULTS_RECOGNITION)
+                    if (!data.isNullOrEmpty()) {
+                        val spokenText = data[0]
+                        etPrompt.setText(spokenText)
+                        // Auto-send voice
+                        btnSend.performClick()
+                    }
+                }
+                override fun onPartialResults(partialResults: Bundle?) {}
+                override fun onEvent(eventType: Int, params: Bundle?) {}
+            })
+
+            btnMic.setOnClickListener {
+                if (ContextCompat.checkSelfPermission(this, Manifest.permission.RECORD_AUDIO) != PackageManager.PERMISSION_GRANTED) {
+                    ActivityCompat.requestPermissions(this, arrayOf(Manifest.permission.RECORD_AUDIO), REQUEST_RECORD_AUDIO_PERMISSION)
+                } else {
+                    btnMic.alpha = 0.5f
+                    speechRecognizer?.startListening(speechRecognizerIntent)
+                }
+            }
+        } else {
+            btnMic.setOnClickListener {
+                Toast.makeText(this, "Speech Recognition not available", Toast.LENGTH_SHORT).show()
+            }
+        }
+    }
+
+    override fun onRequestPermissionsResult(requestCode: Int, permissions: Array<out String>, grantResults: IntArray) {
+        super.onRequestPermissionsResult(requestCode, permissions, grantResults)
+        if (requestCode == REQUEST_RECORD_AUDIO_PERMISSION && grantResults.isNotEmpty() && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
+            btnMic.performClick()
         }
     }
     
@@ -50,9 +124,6 @@ class AIChatActivity : AppCompatActivity() {
         
         lifecycleScope.launch {
             try {
-                // We use RetrofitClient to make a custom call or we can just add an endpoint to VtuApiService
-                // Since adding it to VtuApiService requires recompiling Retrofit interfaces across multiple apps,
-                // we'll just do a raw OkHttp request to avoid breaking the Retrofit graph if it doesn't compile perfectly.
                 val client = okhttp3.OkHttpClient()
                 val json = """{"prompt": "", "page_context": "mobile_app"}"""
                 val body = okhttp3.RequestBody.create(okhttp3.MediaType.parse("application/json"), json)
@@ -93,5 +164,10 @@ class AIChatActivity : AppCompatActivity() {
                 btnSend.text = "Send"
             }
         }
+    }
+
+    override fun onDestroy() {
+        super.onDestroy()
+        speechRecognizer?.destroy()
     }
 }
