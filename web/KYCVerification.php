@@ -144,35 +144,83 @@ if (isset($_POST['submit_media'])) {
                     </div>
                     <?php endif; ?>
 
-                    <!-- Media Verification Section -->
-                    <?php if(($kyc_settings['govt_id'] ?? 0) == 1 || ($kyc_settings['liveliness_video'] ?? 0) == 1): ?>
-                    <div class="col-md-6">
-                        <div class="card kyc-card h-100">
+                    <!-- AI Interview Section -->
+                    <div class="col-md-12">
+                        <div class="card kyc-card" style="background: linear-gradient(135deg, #1e1b4b, #312e81); color: white;">
                             <div class="card-body p-4">
-                                <h6 class="fw-bold mb-3"><i class="bi bi-camera me-2 text-primary"></i>Document Upload</h6>
-                                <form method="post" enctype="multipart/form-data">
-                                    <?php if(($kyc_settings['govt_id'] ?? 0) == 1): ?>
-                                    <div class="mb-3">
-                                        <label class="form-label small fw-bold">Government ID (Passport/License)</label>
-                                        <input type="file" name="govt_id" class="form-control rounded-3 shadow-sm" accept="image/*">
+                                <div class="row align-items-center">
+                                    <div class="col-md-8">
+                                        <h5 class="fw-bold mb-2"><i class="bi bi-robot me-2"></i>Titanium AI Interview</h5>
+                                        <p class="small text-white-50">Short on time? Complete your KYC by simply talking to our AI Compliance Officer. No forms required.</p>
+                                        <button type="button" class="btn btn-light rounded-pill px-4 fw-bold shadow-sm" data-bs-toggle="modal" data-bs-target="#aiKycModal">
+                                            Start AI Interview
+                                        </button>
                                     </div>
-                                    <?php endif; ?>
-                                    <?php if(($kyc_settings['liveliness_picture'] ?? 0) == 1): ?>
-                                    <div class="mb-3">
-                                        <label class="form-label small fw-bold">Live Selfie (Facial Match)</label>
-                                        <input type="file" name="selfie" class="form-control rounded-3 shadow-sm" accept="image/*">
+                                    <div class="col-md-4 text-center d-none d-md-block">
+                                        <i class="bi bi-mic-fill display-4 opacity-50"></i>
                                     </div>
-                                    <?php endif; ?>
-                                    <button name="submit_media" type="submit" class="btn btn-outline-primary w-100 rounded-pill fw-bold border-2">Submit Documents</button>
-                                </form>
+                                </div>
                             </div>
                         </div>
                     </div>
-                    <?php endif; ?>
                 </div>
             </div>
         </div>
     </section>
+
+    <!-- AI KYC Modal -->
+    <div class="modal fade" id="aiKycModal" tabindex="-1">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content rounded-4 border-0">
+                <div class="modal-header border-0 pb-0">
+                    <h6 class="modal-title fw-bold">AI Compliance Interview</h6>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <div id="aiChatLog" class="mb-3 p-3 bg-light rounded-3" style="height: 300px; overflow-y: auto;">
+                        <p class="small mb-2"><b>AI:</b> Hello! I'm here to help you complete your KYC. What is your full name as it appears on your ID?</p>
+                    </div>
+                    <div class="input-group">
+                        <input type="text" id="aiKycInput" class="form-control rounded-start-pill border-2" placeholder="Type or speak...">
+                        <button class="btn btn-primary rounded-end-pill px-4" onclick="sendToAiKyc()">Send</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let kycHistory = [{role: 'assistant', content: "Hello! I'm here to help you complete your KYC. What is your full name as it appears on your ID?"}];
+        
+        async function sendToAiKyc() {
+            const input = document.getElementById('aiKycInput');
+            const log = document.getElementById('aiChatLog');
+            const msg = input.value.trim();
+            if(!msg) return;
+
+            log.innerHTML += `<p class='small mb-2'><b>You:</b> ${msg}</p>`;
+            kycHistory.push({role: 'user', content: msg});
+            input.value = '';
+            log.scrollTop = log.scrollHeight;
+
+            const response = await fetch('/api/app-backend/ai-kyc-interview.php', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({message: msg, history: kycHistory})
+            });
+            const data = await response.json();
+            
+            if(data.success) {
+                log.innerHTML += `<p class='small mb-2'><b>AI:</b> ${data.response}</p>`;
+                kycHistory.push({role: 'assistant', content: data.response});
+                if(data.completed) {
+                    input.disabled = true;
+                    setTimeout(() => window.location.reload(), 3000);
+                }
+            }
+            log.scrollTop = log.scrollHeight;
+        }
+    </script>
 
     <?php include("../func/bc-footer.php"); ?>
 </body>

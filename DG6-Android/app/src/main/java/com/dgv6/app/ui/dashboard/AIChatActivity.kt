@@ -3,12 +3,18 @@ package com.dgv6.app.ui.dashboard
 import android.Manifest
 import android.content.Intent
 import android.content.pm.PackageManager
+import android.graphics.Bitmap
+import android.graphics.BitmapFactory
+import android.net.Uri
 import android.os.Bundle
+import android.provider.MediaStore
 import android.speech.RecognitionListener
 import android.speech.RecognizerIntent
 import android.speech.SpeechRecognizer
+import android.util.Base64
 import android.view.View
 import android.widget.*
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.app.ActivityCompat
@@ -19,7 +25,7 @@ import com.dgv6.app.api.RetrofitClient
 import com.dgv6.app.util.Constants
 import com.dgv6.app.util.PreferenceManager
 import kotlinx.coroutines.launch
-import org.json.JSONObject
+import java.io.ByteArrayOutputStream
 import java.util.Locale
 
 class AIChatActivity : AppCompatActivity() {
@@ -27,12 +33,16 @@ class AIChatActivity : AppCompatActivity() {
     private lateinit var etPrompt: EditText
     private lateinit var btnSend: Button
     private lateinit var btnMic: ImageButton
-    private lateinit var progressBar: ProgressBar
+    private lateinit var btnImage: ImageButton
     private lateinit var prefs: PreferenceManager
     
     private val chatHistory = StringBuilder()
     private var speechRecognizer: SpeechRecognizer? = null
     private val REQUEST_RECORD_AUDIO_PERMISSION = 200
+
+    private val pickImageLauncher = registerForActivityResult(ActivityResultContracts.GetContent()) { uri: Uri? ->
+        uri?.let { processImage(it) }
+    }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -43,11 +53,9 @@ class AIChatActivity : AppCompatActivity() {
         etPrompt = findViewById(R.id.et_prompt)
         btnSend = findViewById(R.id.btn_send)
         btnMic = findViewById(R.id.btn_mic)
+        btnImage = findViewById(R.id.btn_image)
         
-        // Add a progress bar to the layout programmatically if not present, 
-        // but for now let's just use the Send button text
-        
-        appendLog("AI: Hello! I am your AI Assistant. You can type or use your voice to perform transactions. How can I help you today?")
+        appendLog("AI: Hello! I am your Titanium AI Assistant. You can type, use your voice, or upload a screenshot of a receipt to perform transactions.")
         
         btnSend.setOnClickListener {
             val prompt = etPrompt.text.toString().trim()
@@ -57,17 +65,61 @@ class AIChatActivity : AppCompatActivity() {
                 processIntent(prompt)
             }
         }
+
+        btnImage.setOnClickListener {
+            pickImageLauncher.launch("image/*")
+        }
         
         setupSpeechRecognizer()
         checkAutonomousStatus()
     }
 
+    private fun processImage(uri: Uri) {
+        setLoading(true)
+        appendLog("System: Analyzing your screenshot...")
+        
+        lifecycleScope.launch {
+            try {
+                val inputStream = contentResolver.openInputStream(uri)
+                val bitmap = BitmapFactory.decodeStream(inputStream)
+                val base64 = bitmapToBase64(bitmap)
+                
+                val service = RetrofitClient.getService()
+                val token = "Bearer " + prefs.getApiKey()
+                val response = service.parseAiVision(token, mapOf("image" to base64))
+                
+                if (response.isSuccessful && response.body() != null) {
+                    val body = response.body()!!
+                    val success = body["success"] as? Boolean ?: false
+                    if (success) {
+                        val intent = body["intent"] as? Map<String, Any>
+                        if (intent != null) {
+                            handleVtuIntent(intent, true)
+                        }
+                    } else {
+                        appendLog("AI: Sorry, I couldn't extract transaction details from that image.")
+                    }
+                }
+            } catch (e: Exception) {
+                appendLog("Error: " + e.localizedMessage)
+            } finally {
+                setLoading(false)
+            }
+        }
+    }
+
+    private fun bitmapToBase64(bitmap: Bitmap): String {
+        val outputStream = ByteArrayOutputStream()
+        bitmap.compress(Bitmap.CompressFormat.JPEG, 70, outputStream)
+        return Base64.encodeToString(outputStream.toByteArray(), Base64.NO_WRAP)
+    }
+
     private fun checkAutonomousStatus() {
         val voiceStatus = prefs.getAiVoiceStatus()
         if (voiceStatus != 2) {
-            appendLog("System: Note - You are currently in 'Guided Mode'. You can ask questions, but autonomous transactions require approval. Your trust score is ${prefs.getTrustScore()}/100.")
+            appendLog("System: Note - You are in 'Guided Mode'. Trust Score: ${prefs.getTrustScore()}/100.")
         } else {
-            appendLog("System: Autonomous Access Active. I can perform transactions directly based on your voice commands.")
+            appendLog("System: Autonomous Access Active.")
         }
     }
     
@@ -126,22 +178,18 @@ class AIChatActivity : AppCompatActivity() {
                 if (response.isSuccessful && response.body() != null) {
                     val body = response.body()!!
                     val success = body["success"] as? Boolean ?: false
-                    
                     if (success) {
                         val intent = body["intent"] as? Map<String, Any>
                         val needsConfirm = body["needs_confirmation"] as? Boolean ?: true
-                        
                         if (intent != null && intent["service"] != null) {
                             handleVtuIntent(intent, needsConfirm)
                         } else {
-                            val aiResponse = body["response"] as? String ?: "I'm not sure how to help with that yet."
+                            val aiResponse = body["response"] as? String ?: "How can I help?"
                             appendLog("AI: $aiResponse")
                         }
                     } else {
                         appendLog("Error: " + (body["error"] ?: "Unknown error"))
                     }
-                } else {
-                    appendLog("Error: Server returned " + response.code())
                 }
             } catch (e: Exception) {
                 appendLog("Error: " + e.localizedMessage)
@@ -152,7 +200,7 @@ class AIChatActivity : AppCompatActivity() {
     }
 
     private fun handleVtuIntent(intent: Map<String, Any>, needsConfirm: Boolean) {
-        val service = intent["service"] as String
+        val service = intent["service"] as? String ?: return
         val amount = intent["amount"]?.toString() ?: "0"
         val phone = intent["phone"]?.toString() ?: ""
         val network = intent["network"]?.toString() ?: ""
@@ -185,10 +233,6 @@ class AIChatActivity : AppCompatActivity() {
                     "network" to (intent["network"] ?: "")
                 )
                 
-                // Add specific fields
-                intent["plan_type"]?.let { params["plan_type"] = it }
-                intent["smartcard"]?.let { params["smartcard"] = it }
-                
                 val response = when(serviceType) {
                     "airtime" -> api.purchaseAirtime(params)
                     "data" -> api.purchaseData(params)
@@ -201,8 +245,6 @@ class AIChatActivity : AppCompatActivity() {
                     val resBody = response.body()
                     val msg = resBody?.get("desc")?.toString() ?: "Transaction processed"
                     appendLog("AI Result: $msg")
-                } else {
-                    appendLog("Execution Error: " + (response?.code() ?: "Unsupported service"))
                 }
             } catch (e: Exception) {
                 appendLog("Execution Failed: " + e.localizedMessage)
@@ -220,7 +262,6 @@ class AIChatActivity : AppCompatActivity() {
     private fun appendLog(msg: String) {
         chatHistory.append(msg).append("\n\n")
         tvLog.text = chatHistory.toString()
-        // Scroll to bottom
         findViewById<ScrollView>(R.id.sv_chat).post {
             findViewById<ScrollView>(R.id.sv_chat).fullScroll(View.FOCUS_DOWN)
         }

@@ -95,9 +95,35 @@ class AIEngine
             return $this->errorResult('Invalid JSON from Ollama', $model, $duration_ms);
         }
 
-        $response_text = $data['response'] ?? '';
+    /**
+     * Generate response with vision (image support)
+     */
+    public function generateWithVision(string $model, string $prompt, array $images, array $options = []): array
+    {
+        $payload = json_encode([
+            'model'   => $model,
+            'prompt'  => $prompt,
+            'images'  => $images, // Array of base64 strings
+            'stream'  => false,
+            'options' => array_merge([
+                'temperature' => 0.2,
+                'num_predict' => 256,
+            ], $options),
+        ]);
 
-        if (empty($response_text)) {
+        $start = microtime(true);
+        $raw = $this->curlPost($this->base_url . '/generate', $payload, $this->timeout_generate);
+        $duration_ms = (int)((microtime(true) - $start) * 1000);
+
+        if ($raw === false) return $this->errorResult('Ollama not reachable', $model, $duration_ms);
+        $data = json_decode($raw, true);
+        return [
+            'status' => 'success',
+            'response' => $data['response'] ?? '',
+            'model' => $model,
+            'duration_ms' => $duration_ms
+        ];
+    }
             return $this->errorResult('Empty response from model', $model, $duration_ms);
         }
 

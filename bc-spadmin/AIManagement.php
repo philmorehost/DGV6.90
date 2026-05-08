@@ -67,6 +67,7 @@ $model_catalog = [
     ['name' => 'llama4-scout',      'size' => '~6GB',   'desc' => 'Meta\'s Llama 4 Scout — fast & capable.',               'tier' => 'Standard'],
     ['name' => 'qwen3:4b',          'size' => '~3GB',   'desc' => 'Alibaba\'s Qwen 3 4B — excellent for structured tasks.', 'tier' => 'Standard'],
     ['name' => 'deepseek-r1:1.5b',  'size' => '~1.5GB', 'desc' => 'Tiny reasoning model — great for intent parsing.',       'tier' => 'Free'],
+    ['name' => 'llava',             'size' => '~4.5GB', 'desc' => 'Multimodal Vision Model — Required for Image-to-VTU.',  'tier' => 'Titanium'],
 ];
 
 // Revenue from AI this month

@@ -188,6 +188,12 @@ interface VtuApiService {
         @Header("Authorization") token: String,
         @Body body: @JvmSuppressWildcards Map<String, Any>
     ): Response<Map<String, Any>>
+
+    @POST("api/app-backend/ai-vision-parser.php")
+    suspend fun parseAiVision(
+        @Header("Authorization") token: String,
+        @Body body: @JvmSuppressWildcards Map<String, Any>
+    ): Response<Map<String, Any>>
 }
 
 
