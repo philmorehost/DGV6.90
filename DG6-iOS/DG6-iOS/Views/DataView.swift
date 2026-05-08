@@ -57,7 +57,7 @@ struct DataView: View {
 
     func fetchPlans() {
         // Fetch plans for selected network
-        AppNetworkService.shared.request("fetch_plans.php", params: ["network": selectedNetwork.lowercased()]) { (result: Result<[DataPlan], Error>) in
+        AppNetworkService.shared.request("fetch_plans", params: ["network": selectedNetwork.lowercased()]) { (result: Result<[DataPlan], Error>) in
             switch result {
             case .success(let fetchedPlans):
                 self.plans = fetchedPlans
@@ -79,7 +79,7 @@ struct DataView: View {
             "action": "data"
         ]
 
-        AppNetworkService.shared.request("purchase.php", params: params) { (result: Result<APIResponse, Error>) in
+        AppNetworkService.shared.request("purchase", params: params) { (result: Result<APIResponse, Error>) in
             isLoading = false
             switch result {
             case .success(let response):
@@ -96,3 +96,4 @@ struct DataPlan: Codable {
     let price: String
     let plan_code: String
 }
+

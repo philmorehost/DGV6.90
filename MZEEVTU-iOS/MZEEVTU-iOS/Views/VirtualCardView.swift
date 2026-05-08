@@ -65,7 +65,7 @@ struct VirtualCardView: View {
 
     func fetchCards() {
         isLoading = true
-        AppNetworkService.shared.request("virtual-card.php", params: ["action": "list"]) { (result: Result<CardListResponse, Error>) in
+        AppNetworkService.shared.request("virtual-card", params: ["action": "list"]) { (result: Result<CardListResponse, Error>) in
             isLoading = false
             switch result {
             case .success(let response):
@@ -123,7 +123,7 @@ struct CreateCardView: View {
             "provider": selectedProvider
         ]
 
-        AppNetworkService.shared.request("virtual-card.php", params: params) { (result: Result<APIResponse, Error>) in
+        AppNetworkService.shared.request("virtual-card", params: params) { (result: Result<APIResponse, Error>) in
             isLoading = false
             switch result {
             case .success(let response):
@@ -149,3 +149,4 @@ struct VirtualCard: Codable, Identifiable {
     let balance_usd: String
     let provider: String
 }
+

@@ -63,7 +63,7 @@ struct BillPaymentView: View {
 
     func fetchProviders() {
         let type = selectedCategory == "Electricity" ? "electric" : "cable"
-        AppNetworkService.shared.request("fetch_providers.php", params: ["type": type]) { (result: Result<[BillProvider], Error>) in
+        AppNetworkService.shared.request("fetch_providers", params: ["type": type]) { (result: Result<[BillProvider], Error>) in
             switch result {
             case .success(let fetchedProviders):
                 self.providers = fetchedProviders
@@ -86,7 +86,7 @@ struct BillPaymentView: View {
             "action": "bill_payment"
         ]
 
-        AppNetworkService.shared.request("purchase.php", params: params) { (result: Result<APIResponse, Error>) in
+        AppNetworkService.shared.request("purchase", params: params) { (result: Result<APIResponse, Error>) in
             isLoading = false
             switch result {
             case .success(let response):
@@ -102,3 +102,4 @@ struct BillProvider: Codable {
     let name: String
     let code: String
 }
+

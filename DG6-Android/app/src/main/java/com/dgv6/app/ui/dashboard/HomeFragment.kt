@@ -24,6 +24,13 @@ class HomeFragment : Fragment(R.layout.fragment_home) {
     private lateinit var prefs: PreferenceManager
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
+        val fab = view.findViewById<View>(com.dgv6.app.R.id.fab_ai)
+        if (prefs.getAiStatus() == 1) {
+            fab?.visibility = View.VISIBLE
+        } else {
+            fab?.visibility = View.GONE
+        }
+        fab?.setOnClickListener { requireContext().startActivity(android.content.Intent(requireContext(), AIChatActivity::class.java)) }
         super.onViewCreated(view, savedInstanceState)
         _binding = FragmentHomeBinding.bind(view)
         prefs = PreferenceManager(requireContext())
@@ -148,3 +155,5 @@ class HomeFragment : Fragment(R.layout.fragment_home) {
         _binding = null
     }
 }
+
+

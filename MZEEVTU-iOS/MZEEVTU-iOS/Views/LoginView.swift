@@ -71,7 +71,7 @@ struct LoginView: View {
             "pass": password
         ]
 
-        AppNetworkService.shared.request("login.php", params: params) { (result: Result<LoginResponse, Error>) in
+        AppNetworkService.shared.request("login", params: params) { (result: Result<LoginResponse, Error>) in
             isLoading = false
             switch result {
             case .success(let response):
@@ -100,3 +100,4 @@ struct UserData: Codable {
     let username: String
     let api_key: String
 }
+

@@ -63,7 +63,7 @@ struct AirtimeView: View {
             "action": "airtime"
         ]
 
-        AppNetworkService.shared.request("purchase.php", params: params) { (result: Result<APIResponse, Error>) in
+        AppNetworkService.shared.request("purchase", params: params) { (result: Result<APIResponse, Error>) in
             isLoading = false
             switch result {
             case .success(let response):
@@ -74,3 +74,4 @@ struct AirtimeView: View {
         }
     }
 }
+

@@ -39,7 +39,7 @@ struct TransactionHistoryView: View {
 
     func fetchHistory() {
         isLoading = true
-        AppNetworkService.shared.request("transactions.php", params: [:]) { (result: Result<TransactionResponse, Error>) in
+        AppNetworkService.shared.request("transactions", params: [:]) { (result: Result<TransactionResponse, Error>) in
             isLoading = false
             switch result {
             case .success(let response):
@@ -63,3 +63,4 @@ struct Transaction: Codable, Identifiable {
     let date: String
     let status: String
 }
+

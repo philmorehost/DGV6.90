@@ -1,6 +1,8 @@
 import SwiftUI
 
 struct DashboardView: View {
+    @State private var showAIChat = false
+    @State private var aiStatus: Int = 0
     @EnvironmentObject var session: SessionManager
     @State private var balance: Double = 0.0
     @State private var isLoading = false
@@ -70,11 +72,12 @@ struct DashboardView: View {
 
     func fetchBalance() {
         isLoading = true
-        AppNetworkService.shared.request("profile.php", params: [:]) { (result: Result<ProfileResponse, Error>) in
+        AppNetworkService.shared.request("profile", params: [:]) { (result: Result<ProfileResponse, Error>) in
             isLoading = false
             if case .success(let response) = result {
                 if let data = response.data {
                     self.balance = Double(data.balance) ?? 0.0
+                      self.aiStatus = data.ai_status ?? 0
                 }
             }
         }
@@ -88,6 +91,7 @@ struct ProfileResponse: Codable {
 
 struct ProfileData: Codable {
     let balance: String
+    let ai_status: Int?
 }
 
 struct ServiceItem: View {
@@ -109,3 +113,6 @@ struct ServiceItem: View {
         }
     }
 }
+
+
+

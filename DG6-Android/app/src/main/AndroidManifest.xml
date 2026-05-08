@@ -65,6 +65,8 @@
             </intent-filter>
         </service>
 
+        <activity android:name=".ui.dashboard.AIChatActivity" android:exported="false" android:theme="@style/Theme.AppCompat.Light.NoActionBar"/>
     </application>
 
 </manifest>
+

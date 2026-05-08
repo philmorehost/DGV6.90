@@ -67,7 +67,8 @@ if (mysqli_num_rows($check_user) == 1) {
                     "phone" => $user_detail['phone_number'],
                     "kyc_verified" => $is_kyc_compliant ? "Yes" : "No",
                     "kyc_status" => (int)$user_detail['kyc_status'],
-                    "security_pin_set" => $pin_set
+                    "security_pin_set" => $pin_set,
+                    "ai_status" => (int)$get_vendor['ai_status']
                 ]
             ]);
         } else {
