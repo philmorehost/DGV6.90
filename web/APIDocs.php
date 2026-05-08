@@ -400,6 +400,7 @@ if (isset($_POST["generate-apikey"])) {
 						<a class="nav-link api-link" href="#printhub">Print Hub API</a>
 						<a class="nav-link api-link" href="#bvn-verify">BVN Verification</a>
 						<a class="nav-link api-link" href="#requery">Requery API</a>
+						<a class="nav-link api-link" href="#ai-service">AI Assistant Service</a>
 					</nav>
 
 					<h6 class="text-uppercase text-muted fw-bold mb-3 mt-4 small">Mobile APK Support</h6>
@@ -1283,6 +1284,58 @@ if (isset($_POST["generate-apikey"])) {
 								</div>
 							</form>
 							<div id="test-print-res" class="test-response">
+								<pre><code class="language-json"></code></pre>
+							</div>
+						</div>
+					</div>
+				</div>
+
+				<!-- AI Assistant Service -->
+				<div id="ai-service" class="card card-api">
+					<div class="card-body">
+						<h3 class="fw-bold section-title">AI Assistant Service</h3>
+						<p>Integrate our powerful, intelligent AI directly into your own websites and applications. The AI can answer VTU queries, help with technical troubleshooting, or serve as a general assistant for your users.</p>
+
+						<div class="alert alert-info border-0 rounded-4 mb-4">
+							<h6 class="fw-bold mb-1"><i class="bi bi-wallet2 me-2"></i>Billing & Cost</h6>
+							<p class="small mb-0">Unlike the Mobile App which uses a separate AI Tokens balance, this API endpoint deducts the cost directly from your <b>Main Wallet Balance</b>. The standard cost is <b>₦<?php echo (float)(isset($get_vendor_details['ai_per_tx_cost']) ? $get_vendor_details['ai_per_tx_cost'] : getSuperAdminOption('ai_price_per_request', '5')); ?></b> per successful request.</p>
+						</div>
+
+						<div class="endpoint-box">
+							<span class="badge-method badge-post">POST</span>
+							<span class="endpoint-url"><?php echo $web_http_host; ?>/web/api/ai-chat.php</span>
+						</div>
+
+						<h6 class="fw-bold small text-muted text-uppercase mb-3">Parameters (JSON)</h6>
+						<div class="table-responsive">
+							<table class="table param-table">
+								<thead><tr><th>Parameter</th><th>Required</th><th>Description</th></tr></thead>
+								<tbody>
+									<tr><td><code>api_key</code></td><td>Yes</td><td>Your API Key</td></tr>
+									<tr><td><code>prompt</code></td><td>Yes</td><td>The message or question you want to send to the AI.</td></tr>
+								</tbody>
+							</table>
+						</div>
+
+						<!-- Test Section -->
+						<div class="test-section">
+							<h5><i class="bi bi-play-circle-fill text-primary"></i> Try it out</h5>
+							<form id="test-ai-form" onsubmit="runTest(event, '/web/api/ai-chat.php', 'test-ai-form', 'test-ai-res')">
+								<div class="row g-3">
+									<div class="col-md-12">
+										<label class="small fw-bold">API Key</label>
+										<input type="text" name="api_key" class="form-control" required value="<?php echo (isset($get_logged_user_details) && $get_logged_user_details['account_level'] == 3 && $get_logged_user_details['api_status'] == 1) ? $get_logged_user_details['api_key'] : ''; ?>">
+									</div>
+									<div class="col-md-12">
+										<label class="small fw-bold">Your Prompt</label>
+										<textarea name="prompt" class="form-control" rows="3" placeholder="e.g. What is the current price for 1GB MTN SME?" required></textarea>
+									</div>
+									<div class="col-12 mt-4">
+										<button type="submit" class="btn btn-test w-100"><i class="bi bi-robot me-2"></i> Send to AI Engine</button>
+									</div>
+								</div>
+							</form>
+							<div id="test-ai-res" class="test-response">
 								<pre><code class="language-json"></code></pre>
 							</div>
 						</div>

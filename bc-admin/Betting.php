@@ -43,6 +43,23 @@ if (isset($_POST["update-key"])) {
 include_once("../func/bc-product-actions.php");
 handle_product_actions($connection_server, $get_logged_admin_details);
 
+// ─── AI Security Sentinel Hook ───────────────────────────────────────────────
+if (function_exists('ai_sentinel_evaluate') && !empty($get_logged_admin_details['ai_status'])) {
+    $s_username  = $_SESSION['admin_session'] ?? '';
+    $s_vendor_id = (int)($get_logged_admin_details['id'] ?? 0);
+    $s_amount    = (float)($_POST['amount'] ?? $_GET['amount'] ?? 0);
+    $sentinel_decision = ai_sentinel_evaluate($s_username, $s_vendor_id, 'betting', $s_amount);
+    if ($sentinel_decision === 'BLOCK') {
+        $_SESSION['product_purchase_response'] = '🔒 Transaction blocked by AI Security Sentinel. Contact your administrator.';
+        header('Location: Betting.php'); exit();
+    }
+    if ($sentinel_decision === 'FLAG_FOR_APPROVAL') {
+        $_SESSION['product_purchase_response'] = '⏳ This transaction has been flagged for manual review. Please try again shortly.';
+        header('Location: Betting.php'); exit();
+    }
+}
+// ─────────────────────────────────────────────────────────────────────────────
+
 if (isset($_POST["install-product"])) {
     $products_array = array("msport", "naijabet", "nairabet", "bet9ja-agent", "betland", "betlion", "supabet", "bet9ja", "bangbet", "betking", "1xbet", "betway", "merrybet", "mlotto", "western-lotto", "hallabet", "green-lotto");
     $account_level_table_name_arrays = array("sas_smart_parameter_values", "sas_agent_parameter_values", "sas_api_parameter_values");

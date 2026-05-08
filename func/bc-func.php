@@ -364,13 +364,42 @@ function chargeUser($type, $product_unique_id, $type_alternative, $reference, $a
 	if (isset($get_logged_user_det["balance"]) && is_numeric($get_logged_user_det["balance"]) && !empty($amount) && is_numeric($amount) && !empty($discounted_amount) && is_numeric($discounted_amount) && ($discounted_amount > 0) && $get_logged_user_det["status"] == 1) {
 		if (in_array($type, $transactionTypeArray) && !empty($product_unique_id) && !empty($type_alternative) && !empty($reference) && !empty($description) && is_numeric($status) && in_array($status, $statusArray)) {
 			if ($type === "debit") {
-				if (($get_logged_user_det["balance"] > 0) && ($amount > 0) && ($get_logged_user_det["balance"] >= $amount) && ($get_logged_user_det["balance"] >= $discounted_amount)) {
-					$user_balance_before_debit = $get_logged_user_det["balance"];
-					$user_balance_after_debit = ($user_balance_before_debit - $discounted_amount);
+				// ─── AI Edition: Atomic Wallet Debit (Race Condition Fix) ───────────────
+				// Use bc_atomic_debit_user() which wraps the balance read+write in a
+				// MySQL transaction with SELECT FOR UPDATE. This prevents double-spend
+				// when concurrent requests hit simultaneously.
+				// Pre-check: fast balance check before acquiring the lock
+				if (($get_logged_user_det["balance"] > 0) && ($amount > 0) && ($get_logged_user_det["balance"] >= $discounted_amount)) {
 
+					// Acquire lock and debit atomically
+					$atomic_result = function_exists('bc_atomic_debit_user')
+						? bc_atomic_debit_user((int)$get_logged_user_det["vendor_id"], $get_logged_user_det["username"], (float)$discounted_amount, $reference)
+						: 'legacy'; // Fallback if security lib not loaded (shouldn't happen)
+
+					if ($atomic_result === 'insufficient_balance') {
+						return "failed"; // Balance changed between pre-check and lock — safe rejection
+					}
+					if ($atomic_result === 'failed') {
+						return "failed"; // DB error — safe rejection
+					}
+
+					// Atomic debit succeeded — fetch fresh balance for accurate records
+					$fresh_user_q = mysqli_query($connection_server, "SELECT balance FROM sas_users WHERE vendor_id='" . (int)$get_logged_user_det["vendor_id"] . "' AND username='" . mysqli_real_escape_string($connection_server, $get_logged_user_det["username"]) . "' LIMIT 1");
+					$fresh_user   = $fresh_user_q ? mysqli_fetch_assoc($fresh_user_q) : null;
+					$user_balance_before_debit = $get_logged_user_det["balance"]; // Original read (for email/log)
+					$user_balance_after_debit  = $fresh_user ? (float)$fresh_user["balance"] : ($user_balance_before_debit - (float)$discounted_amount);
+
+					// Legacy fallback path (if bc_atomic_debit_user not available)
+					if ($atomic_result === 'legacy') {
+						$user_balance_after_debit = $user_balance_before_debit - (float)$discounted_amount;
+						mysqli_query($connection_server, "UPDATE sas_users SET balance='$user_balance_after_debit' WHERE vendor_id='" . $get_logged_user_det["vendor_id"] . "' && username='" . $get_logged_user_det["username"] . "'");
+					}
+
+					// Insert transaction record
 					$insert_transaction = mysqli_query($connection_server, "INSERT INTO sas_transactions (vendor_id, product_unique_id, type_alternative, reference, api_reference, username, amount, discounted_amount, balance_before, balance_after, description, mode, api_website, status) VALUES ('" . $get_logged_user_det["vendor_id"] . "', '$product_unique_id', '$type_alternative', '$reference', '$api_reference', '" . $get_logged_user_det["username"] . "', '$amount', '$discounted_amount', '$user_balance_before_debit', '$user_balance_after_debit', '$description', '$mode', '$api_website', '$status')");
-					$charge_user = mysqli_query($connection_server, "UPDATE sas_users SET balance='$user_balance_after_debit' WHERE vendor_id='" . $get_logged_user_det["vendor_id"] . "' && username='" . $get_logged_user_det["username"] . "'");
-					if (($user_balance_before_debit !== false) && ($charge_user == true)) {
+
+					$charge_user = true; // Debit already committed by atomic function
+					if ($insert_transaction) {
 						// Email Beginning
 						$funding_template_encoded_text_array = array("{firstname}" => $get_logged_user_det["firstname"], "{lastname}" => $get_logged_user_det["lastname"], "{balance_before}" => toDecimal($user_balance_before_debit, 2), "{balance_after}" => toDecimal($user_balance_after_debit, 2), "{amount}" => toDecimal($amount, 2) . " @ " . toDecimal($discounted_amount, 2), "{type}" => $type, "{description}" => $description);
 						$raw_funding_template_subject = getUserEmailTemplate('user-funding', 'subject');

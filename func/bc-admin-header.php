@@ -587,6 +587,41 @@ function hex2rgb($hex) {
         </ul>
       </li>
 
+      <!-- AI Business Suite Nav Item -->
+      <?php if (isset($get_logged_admin_details) && !empty($get_logged_admin_details['ai_status'])): ?>
+      <li class="nav-item">
+        <a class="nav-link <?php echo in_array($current_page, ['AISettings.php','AIMarketing.php']) ? '' : 'collapsed'; ?>"
+           data-bs-target="#ai-suite-nav" data-bs-toggle="collapse" href="#">
+          <i class="bi bi-cpu-fill" style="color:#7c3aed"></i>
+          <span style="font-weight:700;color:#7c3aed">AI Business Suite</span>
+          <span class="badge ms-auto rounded-pill" style="font-size:.6rem;background:#7c3aed;color:#fff">ON</span>
+          <i class="bi bi-chevron-down ms-1 small"></i>
+        </a>
+        <ul id="ai-suite-nav" class="nav-content collapse <?php echo in_array($current_page, ['AISettings.php','AIMarketing.php']) ? 'show' : ''; ?>">
+          <li>
+            <a href="<?php echo $web_http_host; ?>/bc-admin/AISettings.php" class="<?php echo $current_page == 'AISettings.php' ? 'active' : ''; ?>">
+              <i class="bi bi-circle"></i><span>AI Settings & Tokens</span>
+            </a>
+          </li>
+          <li>
+            <a href="<?php echo $web_http_host; ?>/bc-admin/AIMarketing.php" class="<?php echo $current_page == 'AIMarketing.php' ? 'active' : ''; ?>">
+              <i class="bi bi-circle"></i><span>AI Marketing Studio</span>
+            </a>
+          </li>
+        </ul>
+      </li>
+      <?php else: ?>
+      <li class="nav-item">
+        <a class="nav-link collapsed" href="<?php echo $web_http_host; ?>/bc-admin/AISettings.php" title="Enable AI Features">
+          <i class="bi bi-cpu" style="color:#9ca3af"></i>
+          <span style="color:#9ca3af">AI Business Suite</span>
+          <span class="badge bg-secondary ms-auto rounded-pill" style="font-size:.6rem;">OFF</span>
+        </a>
+      </li>
+      <?php endif; ?>
+
+
+
       <li class="nav-item">
         <a class="nav-link collapsed" href="javascript:void(0)" onclick="startAdminGuide()">
           <i class="bi bi-question-circle"></i>
@@ -594,6 +629,22 @@ function hex2rgb($hex) {
         </a>
       </li>
       <?php } ?>
-  </aside><!-- End Sidebar--> 
-  
+  </aside><!-- End Sidebar-->
+
+<?php
+// DGV6.90 AI Edition: Inject AI assistant widget (deferred, zero performance impact)
+$_ai_vendor_enabled = isset($get_logged_admin_details['ai_status']) && (int)$get_logged_admin_details['ai_status'] === 1;
+if ($_ai_vendor_enabled):
+    $ai_token_bal = (int)($get_logged_admin_details['ai_token_balance'] ?? 0);
+?>
+<script>
+  window.__ai_enabled     = true;
+  window.__ai_page_slug   = '<?php echo preg_replace("/[^a-z0-9_]/", "_", strtolower(basename($_SERVER["PHP_SELF"], ".php"))); ?>';
+  window.__ai_handler_url = '/web/ai-handler.php';
+  window.__ai_guide_url   = '/web/ai-guide-cache.php';
+  window.__ai_tokens      = <?php echo $ai_token_bal; ?>;
+</script>
+<script src="/jsfile/ai-assistant.js" defer></script>
+<?php endif; ?>
+
    <main id="main" class="main">

@@ -892,8 +892,10 @@ $email_share = "mailto:?subject=" . $share_text . "&body=" . urlencode($current_
 </head>
 <body>
 
+<?php if(isServiceEnabled('crypto_hub')): ?>
 <script defer src="https://www.livecoinwatch.com/static/lcw-widget.js"></script>
 <div class="livecoinwatch-widget-5" lcw-base="USD" lcw-color-tx="#0f172a" lcw-marquee-1="coins" lcw-marquee-2="movers" lcw-marquee-items="15" lcw-font-weight="600" style="border-bottom: 1px solid #e2e8f0; background: #ffffff;"></div>
+<?php endif; ?>
 
 <!-- FLOATING SOCIAL SHARE -->
 <div class="float-share">

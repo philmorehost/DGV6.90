@@ -1,16 +1,22 @@
 <?php
+// ─── PHP 8.3 Compatibility Shim — must be first ──────────────────────────────
+// Sets up secure session params, custom error handlers, polyfills, security headers
+require_once __DIR__ . '/bc-php-compat.php';
+
 // Standardize session_start across the platform
 if (session_status() === PHP_SESSION_NONE) {
-	session_start();
+    session_start();
 }
 
 if (isset($_SERVER["HTTPS"]) && ($_SERVER["HTTPS"] == "on")) {
-	$web_http_host = "https://" . $_SERVER["HTTP_HOST"];
+    $web_http_host = "https://" . $_SERVER["HTTP_HOST"];
 } else {
-	$web_http_host = "http://" . $_SERVER["HTTP_HOST"];
+    $web_http_host = "http://" . $_SERVER["HTTP_HOST"];
 }
 
 include_once(__DIR__ . "/bc-connect.php");
+include_once(__DIR__ . "/bc-security.php"); // DGV6.90 AI Edition — Security utilities
+include_once(__DIR__ . "/bc-url.php");      // DGV6.90 v7.0 — Clean URL helper (bc_url())
 
 if (!$connection_server) {
 	if (!in_array(explode("?", trim($_SERVER["REQUEST_URI"]))[0], array("/index.php"))) {
@@ -22,7 +28,7 @@ if (!$connection_server) {
 if ($connection_server) {
     // Branch DG6.7 Optimization: Only run migrations if not already done globally or in current session
     // This significantly improves site-wide page load speeds by skipping redundant DB structural checks.
-    define('SYSTEM_VERSION', '6.9.1');
+    define('SYSTEM_VERSION', '6.9.2-ai'); // DGV6.90 AI Edition — triggers AI schema migrations
     $current_mig_v = $_SESSION['migrations_completed_version'] ?? '0';
 
     // Global Migration Check to avoid redundant checks for new visitors

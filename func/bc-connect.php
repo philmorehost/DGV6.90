@@ -1,6 +1,8 @@
 <?php
-    error_reporting(0);
-    ini_set('display_errors', 0);
+    // ─── PHP 8 MySQLi Exception Mode ─────────────────────────────────────────────
+    // Errors are now thrown as mysqli_sql_exception instead of silent failures.
+    // Error display is controlled by bc-php-compat.php (ENV-aware).
+    mysqli_report(MYSQLI_REPORT_ERROR | MYSQLI_REPORT_STRICT);
 
 	date_default_timezone_set('Africa/Lagos');
 	include_once(__DIR__ . "/db-dtl.php");
@@ -10,16 +12,19 @@
     $connection = null;
     $connection_server = null;
 
-    // Branch DG6.7 Optimization: Only connect once and remove redundant CREATE DATABASE check on every request.
     try {
 	    $connection_server = mysqli_connect($mySqlServer, $mySqlUser, $mySqlPass, $mySqlDBName);
         if ($connection_server) {
             mysqli_set_charset($connection_server, "utf8mb4");
         }
         $connection = $connection_server;
-    } catch (Exception $e) {
-        // Silent fail, handled by checking $connection_server downstream
+    } catch (mysqli_sql_exception $e) {
+        // Log DB connection failure without exposing credentials
+        error_log('[DGV-DB] Connection failed: ' . $e->getMessage());
+        $connection_server = null;
+        $connection = null;
     }
+
 
     // Now include functions that may depend on $connection_server
     include_once(__DIR__ . "/bc-func.php");

@@ -70,6 +70,23 @@
     include_once("../func/bc-product-actions.php");
     handle_product_actions($connection_server, $get_logged_admin_details);
 
+    // ─── AI Security Sentinel Hook ───────────────────────────────────────────────
+    if (function_exists('ai_sentinel_evaluate') && !empty($get_logged_admin_details['ai_status'])) {
+        $s_username  = $_SESSION['admin_session'] ?? '';
+        $s_vendor_id = (int)($get_logged_admin_details['id'] ?? 0);
+        $s_amount    = (float)($_POST['amount'] ?? $_GET['amount'] ?? 0);
+        $sentinel_decision = ai_sentinel_evaluate($s_username, $s_vendor_id, 'cable', $s_amount);
+        if ($sentinel_decision === 'BLOCK') {
+            $_SESSION['product_purchase_response'] = '🔒 Transaction blocked by AI Security Sentinel. Contact your administrator.';
+            header('Location: Cable.php'); exit();
+        }
+        if ($sentinel_decision === 'FLAG_FOR_APPROVAL') {
+            $_SESSION['product_purchase_response'] = '⏳ This transaction has been flagged for manual review. Please try again shortly.';
+            header('Location: Cable.php'); exit();
+        }
+    }
+    // ─────────────────────────────────────────────────────────────────────────────
+
     if(isset($_POST["clear-all-plans"])){
         $vid = $get_logged_admin_details["id"];
         $api_q = mysqli_query($connection_server, "SELECT id FROM sas_apis WHERE vendor_id='$vid' AND api_type='cable'");

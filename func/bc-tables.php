@@ -1529,3 +1529,176 @@ mysqli_query($connection_server, "CREATE TABLE IF NOT EXISTS `sas_bvn_verify_req
     `date_created` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     UNIQUE KEY `uniq_bvn_ref` (`reference`)
 )");
+
+// ═══════════════════════════════════════════════════════════
+// DGV6.90 AI EDITION — Database Schema Migrations
+// Sprint 0: Security Tables  |  Sprint 1: AI Economy Tables
+// ═══════════════════════════════════════════════════════════
+
+// ─── RATE LIMITS TABLE (Sprint 0 — Security) ───────────────
+mysqli_query($connection_server, "CREATE TABLE IF NOT EXISTS `sas_rate_limits` (
+    `id`           INT AUTO_INCREMENT PRIMARY KEY,
+    `action`       VARCHAR(100) NOT NULL,
+    `rate_key`     VARCHAR(150) NOT NULL,
+    `attempted_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    INDEX `idx_lookup` (`action`, `rate_key`, `attempted_at`)
+)");
+
+// ─── SECURITY AUDIT LOG TABLE (Sprint 0 — Security) ────────
+mysqli_query($connection_server, "CREATE TABLE IF NOT EXISTS `sas_ai_audit_log` (
+    `id`          BIGINT AUTO_INCREMENT PRIMARY KEY,
+    `event_type`  VARCHAR(50)  NOT NULL,
+    `action`      VARCHAR(100) NOT NULL,
+    `actor`       VARCHAR(100) NOT NULL,
+    `detail`      VARCHAR(500) DEFAULT '',
+    `ip_address`  VARCHAR(45)  DEFAULT '',
+    `created_at`  TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    INDEX `idx_event_time` (`event_type`, `created_at`),
+    INDEX `idx_actor`      (`actor`)
+)");
+
+// ─── AI INSTALL QUEUE TABLE (Sprint 2 — AI Engine) ─────────
+mysqli_query($connection_server, "CREATE TABLE IF NOT EXISTS `sas_ai_install_queue` (
+    `id`           INT AUTO_INCREMENT PRIMARY KEY,
+    `model_name`   VARCHAR(100) NOT NULL,
+    `status`       ENUM('pending','downloading','ready','failed') DEFAULT 'pending',
+    `admin_email`  VARCHAR(225) DEFAULT '',
+    `started_at`   TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    `completed_at` TIMESTAMP NULL,
+    UNIQUE KEY `uniq_model` (`model_name`)
+)");
+
+// ─── WHATSAPP GATEWAY TABLE (Sprint 7 — WhatsApp) ──────────
+mysqli_query($connection_server, "CREATE TABLE IF NOT EXISTS `sas_whatsapp_gateway` (
+    `id`            INT AUTO_INCREMENT PRIMARY KEY,
+    `phone_number`  VARCHAR(30)  NOT NULL,
+    `status`        ENUM('offline','connecting','online') DEFAULT 'offline',
+    `session_data`  LONGTEXT DEFAULT NULL,
+    `last_ping`     TIMESTAMP NULL,
+    `created_at`    TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+)");
+
+// ─── AI TRANSACTIONS TABLE (Sprint 3 — Token Economy) ──────
+mysqli_query($connection_server, "CREATE TABLE IF NOT EXISTS `sas_ai_transactions` (
+    `id`            BIGINT AUTO_INCREMENT PRIMARY KEY,
+    `vendor_id`     INT UNSIGNED NOT NULL,
+    `username`      VARCHAR(225) NOT NULL,
+    `action_type`   VARCHAR(50)  NOT NULL,
+    `model_used`    VARCHAR(100) DEFAULT '',
+    `tokens_burned` INT          DEFAULT 0,
+    `cost_naira`    DECIMAL(10,2) DEFAULT 0.00,
+    `prompt_hash`   VARCHAR(64)  DEFAULT '',
+    `status`        ENUM('success','failed') DEFAULT 'success',
+    `created_at`    TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    INDEX `idx_vendor_user`  (`vendor_id`, `username`),
+    INDEX `idx_created`      (`created_at`)
+)");
+
+// ─── AI PAGE GUIDES CACHE TABLE (Sprint 5 — Guides) ────────
+mysqli_query($connection_server, "CREATE TABLE IF NOT EXISTS `sas_ai_page_guides` (
+    `id`           INT AUTO_INCREMENT PRIMARY KEY,
+    `page_slug`    VARCHAR(100) NOT NULL,
+    `vendor_id`    INT UNSIGNED NOT NULL,
+    `guide_text`   MEDIUMTEXT   NOT NULL,
+    `last_updated` TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    UNIQUE KEY `uniq_page_vendor` (`page_slug`, `vendor_id`)
+)");
+
+// ─── AI TRUST SCORE HISTORY TABLE (Sprint 4 — Sentinel) ────
+mysqli_query($connection_server, "CREATE TABLE IF NOT EXISTS `sas_ai_trust_scores` (
+    `id`          BIGINT AUTO_INCREMENT PRIMARY KEY,
+    `vendor_id`   INT UNSIGNED NOT NULL,
+    `username`    VARCHAR(225) NOT NULL,
+    `score`       DECIMAL(5,2) DEFAULT 50.00,
+    `reason`      VARCHAR(500) DEFAULT '',
+    `computed_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    INDEX `idx_user_score` (`vendor_id`, `username`, `computed_at`)
+)");
+
+// ─── CUSTOMER VIP WHITELIST TABLE (Sprint 4 — Sentinel) ────
+mysqli_query($connection_server, "CREATE TABLE IF NOT EXISTS `sas_customer_whitelist` (
+    `id`                   INT AUTO_INCREMENT PRIMARY KEY,
+    `vendor_id`            INT UNSIGNED NOT NULL,
+    `product_id`           VARCHAR(100) NOT NULL,
+    `is_whitelisted`       TINYINT(1) DEFAULT 1,
+    `daily_limit_override` DECIMAL(20,2) DEFAULT 0.00,
+    `override_expiry`      DATETIME NULL,
+    `created_at`           TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE KEY `uniq_vendor_product` (`vendor_id`, `product_id`)
+)");
+
+// ─── AGGREGATOR HEALTH MONITOR TABLE (Sprint 6 — Failover) ─
+mysqli_query($connection_server, "CREATE TABLE IF NOT EXISTS `sas_aggregator_health` (
+    `id`               INT AUTO_INCREMENT PRIMARY KEY,
+    `provider_name`    VARCHAR(100) NOT NULL,
+    `vendor_id`        INT UNSIGNED NOT NULL DEFAULT 0,
+    `success_rate_1h`  DECIMAL(5,2) DEFAULT 100.00,
+    `latency_ms`       INT DEFAULT 0,
+    `is_active`        TINYINT(1) DEFAULT 1,
+    `last_checked`     TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    UNIQUE KEY `uniq_provider_vendor` (`provider_name`, `vendor_id`)
+)");
+
+// ─── AI COLUMN MIGRATIONS: sas_users ───────────────────────
+$ai_user_cols = mysqli_query($connection_server, "SHOW COLUMNS FROM sas_users");
+$ai_user_existing = [];
+while ($c = mysqli_fetch_assoc($ai_user_cols)) $ai_user_existing[] = $c['Field'];
+
+$ai_user_new_cols = [
+    'ai_status'            => "TINYINT(1) DEFAULT 0 COMMENT 'AI service enabled for this user'",
+    'ai_token_balance'     => "INT DEFAULT 0 COMMENT 'Current AI token balance'",
+    'ai_quota_limit'       => "INT DEFAULT 1000 COMMENT 'Monthly AI request quota'",
+    'ai_requests_used'     => "INT DEFAULT 0 COMMENT 'Monthly AI requests used'",
+    'onboarding_stage'     => "TINYINT(1) DEFAULT 0 COMMENT '0=new,1=api,2=pricing,3=done'",
+    'speech_vtu_enabled'   => "TINYINT(1) DEFAULT 0 COMMENT 'Voice-to-VTU feature enabled'",
+    'successful_tx_count'  => "INT DEFAULT 0 COMMENT 'Cumulative successful transaction count'",
+    'trust_score'          => "DECIMAL(5,2) DEFAULT 50.00 COMMENT 'AI trust score 0-100'",
+    'last_trust_audit'     => "DATETIME NULL COMMENT 'Last time trust score was computed'",
+];
+foreach ($ai_user_new_cols as $col => $def) {
+    if (!in_array($col, $ai_user_existing)) {
+        mysqli_query($connection_server, "ALTER TABLE sas_users ADD COLUMN `$col` $def");
+    }
+}
+
+// ─── AI COLUMN MIGRATIONS: sas_vendors ─────────────────────
+$ai_vendor_cols = mysqli_query($connection_server, "SHOW COLUMNS FROM sas_vendors");
+$ai_vendor_existing = [];
+while ($c = mysqli_fetch_assoc($ai_vendor_cols)) $ai_vendor_existing[] = $c['Field'];
+
+$ai_vendor_new_cols = [
+    'ai_per_tx_cost'          => "INT DEFAULT 5 COMMENT 'AI tokens burned per successful AI call'",
+    'voice_tx_threshold'      => "INT DEFAULT 100 COMMENT 'Successful txns required to unlock voice'",
+    'ai_price_per_1k_tokens'  => "DECIMAL(10,2) DEFAULT 100.00 COMMENT 'NGN price for 1000 AI tokens'",
+    'ai_model_assigned'       => "VARCHAR(50) DEFAULT 'phi4-mini' COMMENT 'Ollama model assigned to vendor tier'",
+];
+foreach ($ai_vendor_new_cols as $col => $def) {
+    if (!in_array($col, $ai_vendor_existing)) {
+        mysqli_query($connection_server, "ALTER TABLE sas_vendors ADD COLUMN `$col` $def");
+    }
+}
+
+// ─── AI GLOBAL OPTIONS: sas_super_admin_options ────────────
+// Insert only if key does not already exist
+$ai_global_options = [
+    'ai_global_enabled'         => '0',
+    'ai_default_model'          => 'phi4-mini',
+    'ai_price_per_request'      => '5',
+    'ai_whatsapp_number'        => '',
+    'ai_voice_unlock_threshold' => '100',
+    'ai_ollama_host'            => 'http://127.0.0.1:11434',
+];
+// Only attempt if the options table exists
+$check_options_table = mysqli_query($connection_server, "SHOW TABLES LIKE 'sas_super_admin_options'");
+if ($check_options_table && mysqli_num_rows($check_options_table) > 0) {
+    foreach ($ai_global_options as $key => $val) {
+        $esc_key = mysqli_real_escape_string($connection_server, $key);
+        $esc_val = mysqli_real_escape_string($connection_server, $val);
+        $exists_q = mysqli_query($connection_server, "SELECT id FROM sas_super_admin_options WHERE option_name='$esc_key' LIMIT 1");
+        if ($exists_q && mysqli_num_rows($exists_q) === 0) {
+            mysqli_query($connection_server, "INSERT INTO sas_super_admin_options (option_name, option_value) VALUES ('$esc_key', '$esc_val')");
+        }
+    }
+}
+
+} // end if ($connection_server)
