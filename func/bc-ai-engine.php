@@ -95,6 +95,20 @@ class AIEngine
             return $this->errorResult('Invalid JSON from Ollama', $model, $duration_ms);
         }
 
+        $response_text = $data['response'] ?? '';
+
+        if (empty($response_text) && !$stream) {
+            return $this->errorResult('Empty response from model', $model, $duration_ms);
+        }
+
+        return [
+            'status'      => 'success',
+            'response'    => trim($response_text),
+            'model'       => $model,
+            'duration_ms' => $duration_ms,
+        ];
+    }
+
     /**
      * Generate response with vision (image support)
      */
@@ -122,16 +136,6 @@ class AIEngine
             'response' => $data['response'] ?? '',
             'model' => $model,
             'duration_ms' => $duration_ms
-        ];
-    }
-            return $this->errorResult('Empty response from model', $model, $duration_ms);
-        }
-
-        return [
-            'status'      => 'success',
-            'response'    => trim($response_text),
-            'model'       => $model,
-            'duration_ms' => $duration_ms,
         ];
     }
 
