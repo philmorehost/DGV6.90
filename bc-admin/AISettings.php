@@ -5,6 +5,16 @@ include_once("../func/bc-ai-engine.php");
 $vid = $get_logged_admin_details["id"];
 $esc_vid = (int)$vid;
 
+// Quick DB Migration for Voice-to-VTU threshold
+$check_col = mysqli_query($connection_server, "SHOW COLUMNS FROM sas_vendors LIKE 'ai_voice_min_tx'");
+if (mysqli_num_rows($check_col) == 0) {
+    mysqli_query($connection_server, "ALTER TABLE sas_vendors ADD COLUMN ai_voice_min_tx INT DEFAULT 50");
+}
+$check_col2 = mysqli_query($connection_server, "SHOW COLUMNS FROM sas_users LIKE 'ai_voice_status'");
+if (mysqli_num_rows($check_col2) == 0) {
+    mysqli_query($connection_server, "ALTER TABLE sas_users ADD COLUMN ai_voice_status TINYINT DEFAULT 0");
+}
+
 // ── Handle: Buy AI Tokens ───────────────────────────────────
 if (isset($_POST["buy-ai-tokens"])) {
     bc_validate_csrf();
@@ -109,6 +119,10 @@ $usage_q = mysqli_query($connection_server,
      WHERE vendor_id='$esc_vid' AND MONTH(created_at)=MONTH(NOW()) AND status='success'"
 );
 $usage = $usage_q ? mysqli_fetch_assoc($usage_q) : ['used' => 0, 'calls' => 0];
+
+// Voice Settings
+$voice_min_tx = (int)($get_logged_admin_details["ai_voice_min_tx"] ?? 50);
+$voice_apps_q = mysqli_query($connection_server, "SELECT id, username, email, phone_number, ai_voice_status FROM sas_users WHERE vendor_id='$esc_vid' AND ai_voice_status IN (1,2) ORDER BY ai_voice_status ASC, id DESC LIMIT 20");
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -327,6 +341,77 @@ $usage = $usage_q ? mysqli_fetch_assoc($usage_q) : ['used' => 0, 'calls' => 0];
         </div>
     </div>
 
+        <!-- VOICE TO VTU SETTINGS -->
+    <div class="col-lg-12">
+        <div class="card ai-card">
+            <div class="card-header bg-white py-3 border-0 d-flex justify-content-between align-items-center">
+                <h5 class="fw-bold mb-0"><i class="bi bi-mic-fill me-2 text-danger"></i>Autonomous Voice-to-VTU Approvals</h5>
+            </div>
+            <div class="card-body p-4 row g-4">
+                <div class="col-md-5">
+                    <div class="alert alert-light border rounded-4">
+                        <h6 class="fw-bold mb-2">Access Threshold</h6>
+                        <p class="small text-muted mb-3">Set how many successful transactions a user must have before they can apply for Zero-Click Voice access.</p>
+                        <form method="post" class="d-flex gap-2">
+                            <?php echo bc_csrf_field(); ?>
+                            <input type="number" name="ai_voice_min_tx" class="form-control fw-bold" value="<?php echo $voice_min_tx; ?>" min="1">
+                            <button type="submit" name="set-voice-limit" class="btn btn-primary px-4 rounded-3">Save</button>
+                        </form>
+                    </div>
+                </div>
+                <div class="col-md-7">
+                    <h6 class="fw-bold mb-3">Pending & Approved Applications</h6>
+                    <div class="table-responsive" style="max-height:200px;">
+                        <table class="table table-sm align-middle mb-0">
+                            <thead class="table-light"><tr><th>User</th><th>Status</th><th class="text-end">Action</th></tr></thead>
+                            <tbody>
+                            <?php if ($voice_apps_q && mysqli_num_rows($voice_apps_q) > 0): 
+                                while ($app = mysqli_fetch_assoc($voice_apps_q)): ?>
+                                <tr>
+                                    <td>
+                                        <div class="fw-bold small"><?php echo htmlspecialchars($app['username']); ?></div>
+                                        <div class="text-muted" style="font-size:0.75rem;"><?php echo htmlspecialchars($app['phone_number']); ?></div>
+                                    </td>
+                                    <td>
+                                        <?php if ($app['ai_voice_status'] == 1): ?>
+                                            <span class="badge bg-warning text-dark">Pending</span>
+                                        <?php else: ?>
+                                            <span class="badge bg-success">Approved</span>
+                                        <?php endif; ?>
+                                    </td>
+                                    <td class="text-end">
+                                        <?php if ($app['ai_voice_status'] == 1): ?>
+                                        <form method="post" class="d-inline">
+                                            <?php echo bc_csrf_field(); ?>
+                                            <input type="hidden" name="user_id" value="<?php echo $app['id']; ?>">
+                                            <button type="submit" name="process-voice-app" value="approve" class="btn btn-success btn-sm py-0 px-2"><i class="bi bi-check2"></i></button>
+                                            <button type="submit" name="process-voice-app" value="reject" class="btn btn-danger btn-sm py-0 px-2 ms-1"><i class="bi bi-x-lg"></i></button>
+                                            <input type="hidden" name="app_action" value="approve" id="act_<?php echo $app['id']; ?>">
+                                        </form>
+                                        <script>
+                                            // Handle multiple submit buttons cleanly
+                                            document.querySelectorAll('button[name="process-voice-app"]').forEach(btn => {
+                                                btn.addEventListener('click', function() {
+                                                    this.closest('form').querySelector('input[name="app_action"]').value = this.value;
+                                                });
+                                            });
+                                        </script>
+                                        <?php else: ?>
+                                            <span class="small text-muted"><i class="bi bi-shield-check text-success"></i> Trusted</span>
+                                        <?php endif; ?>
+                                    </td>
+                                </tr>
+                            <?php endwhile; else: ?>
+                                <tr><td colspan="3" class="text-center py-3 text-muted small">No applications yet.</td></tr>
+                            <?php endif; ?>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <!-- AI USAGE HISTORY -->
     <div class="col-12">
         <div class="card ai-card">
@@ -379,3 +464,4 @@ function updateTokenCost() {
 </script>
 </body>
 </html>
+

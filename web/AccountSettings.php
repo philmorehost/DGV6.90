@@ -203,6 +203,26 @@ if (isset($_POST["update-user-security"])) {
     header("Location: " . $_SERVER["REQUEST_URI"]);
     exit();
 }
+
+if (isset($_POST["apply-ai-voice"])) {
+    $uid = $get_logged_user_details['id'];
+    // Re-verify the count
+    $tx_count_q = mysqli_query($connection_server, "SELECT COUNT(id) as c FROM transactions WHERE username='".$get_logged_user_details["username"]."' AND status='success'");
+    $tx_count = mysqli_fetch_assoc($tx_count_q)['c'];
+    
+    // Get vendor limit
+    $v_limit_q = mysqli_query($connection_server, "SELECT ai_voice_min_tx FROM sas_vendors WHERE id='".$get_logged_user_details["vendor_id"]."'");
+    $v_limit = mysqli_fetch_assoc($v_limit_q)['ai_voice_min_tx'] ?? 50;
+
+    if ($tx_count >= $v_limit) {
+        mysqli_query($connection_server, "UPDATE sas_users SET ai_voice_status=1 WHERE id='$uid'");
+        $_SESSION["product_purchase_response"] = "Application submitted successfully! Your account is pending review by the admin.";
+    } else {
+        $_SESSION["product_purchase_response"] = "You have not met the transaction requirement to apply.";
+    }
+    header("Location: " . $_SERVER["REQUEST_URI"]);
+    exit();
+}
 ?>
 <!DOCTYPE html>
 <head>
@@ -218,7 +238,15 @@ if (isset($_POST["update-user-security"])) {
     <meta name="dc.creator" content="Philmore Codes">
     
       
-    <!-- Google Fonts -->
+        <!-- Google Fonts -->
+<?php
+    $tx_count_q = mysqli_query($connection_server, "SELECT COUNT(id) as c FROM transactions WHERE username='".$get_logged_user_details["username"]."' AND status='success'");
+    $tx_count = mysqli_fetch_assoc($tx_count_q)['c'];
+    $v_limit_q = mysqli_query($connection_server, "SELECT ai_voice_min_tx FROM sas_vendors WHERE id='".$get_logged_user_details["vendor_id"]."'");
+    $v_limit = mysqli_fetch_assoc($v_limit_q)['ai_voice_min_tx'] ?? 50;
+    $ai_voice_status = (int)$get_logged_user_details['ai_voice_status'];
+    $progress = min(100, ($tx_count / $v_limit) * 100);
+?>
   <link href="https://fonts.gstatic.com" rel="preconnect">
   <link
     href="https://fonts.googleapis.com/css?family=Open+Sans:300,300i,400,400i,600,600i,700,700i|Nunito:300,300i,400,400i,600,600i,700,700i|Poppins:300,300i,400,400i,500,500i,600,600i,700,700i"
@@ -344,6 +372,36 @@ if (isset($_POST["update-user-security"])) {
                         UPDATE PASSWORD
                     </button>
                 </form>
+            </div>
+
+                        <div class="card shadow-sm border-0 p-4 rounded-4 mt-4" style="background: linear-gradient(135deg, #f8fafc, #f1f5f9);">
+                <h5 class="fw-bold mb-3"><i class="bi bi-mic-fill me-2 text-primary"></i>Autonomous AI Access</h5>
+                <p class="small text-muted mb-3">Unlock "Zero-Click" Voice commands. Earn this feature by completing successful transactions.</p>
+                
+                <div class="d-flex justify-content-between small fw-bold mb-1">
+                    <span>Progress</span>
+                    <span><?php echo $tx_count; ?> / <?php echo $v_limit; ?> Tx</span>
+                </div>
+                <div class="progress mb-3" style="height: 10px; border-radius: 5px;">
+                    <div class="progress-bar bg-primary" role="progressbar" style="width: <?php echo $progress; ?>%"></div>
+                </div>
+
+                <?php if ($ai_voice_status == 2): ?>
+                    <div class="alert alert-success border-0 small py-2 mb-0"><i class="bi bi-shield-check me-1"></i> You are Approved! Tap the microphone in the AI Assistant to buy VTU with your voice.</div>
+                <?php elseif ($ai_voice_status == 1): ?>
+                    <div class="alert alert-warning border-0 small py-2 mb-0"><i class="bi bi-hourglass-split me-1"></i> Application Pending Review...</div>
+                <?php elseif ($ai_voice_status == 3): ?>
+                    <div class="alert alert-danger border-0 small py-2 mb-3"><i class="bi bi-x-circle me-1"></i> Application Revoked.</div>
+                <?php endif; ?>
+
+                <?php if ($ai_voice_status == 0 || $ai_voice_status == 3): ?>
+                    <form method="post">
+                        <?php echo bc_csrf_field(); ?>
+                        <button type="submit" name="apply-ai-voice" class="btn btn-primary btn-sm w-100 fw-bold rounded-pill" <?php if ($tx_count < $v_limit) echo 'disabled'; ?>>
+                            <?php echo $tx_count >= $v_limit ? 'Apply Now' : 'Locked'; ?>
+                        </button>
+                    </form>
+                <?php endif; ?>
             </div>
 
             <div class="card shadow-sm border-0 p-4 rounded-4 mt-4 bg-primary text-white">
