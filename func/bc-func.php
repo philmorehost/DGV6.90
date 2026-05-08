@@ -1658,7 +1658,7 @@ function sendVendorEmailSpecific($mailto_type, $email_subject, $email_body)
 		$select_users = mysqli_query($connection_server, "SELECT * FROM sas_users WHERE vendor_id='" . $get_logged_admin_details["id"] . "' && " . $mailto_array[$mailto_type]);
 		if (mysqli_num_rows($select_users) >= 1) {
 			while ($each_user = mysqli_fetch_assoc($select_users)) {
-				$reg_template_encoded_text_array = array("{firstname}" => $each_user["firstname"], "{lastname}" => $each_user["lastname"], "{username}" => $each_user["username"], "{address}" => $each_user["home_address"], "{email}" => $each_user["email"], "{phone}" => $each_user["phone_number"]);
+				$reg_template_encoded_text_array = array("{firstname}" => $each_user["firstname"], "{lastname}" => $each_user["lastname"], "{username}" => $each_user["username"], "{address}" => $each_user["home_address"], "{email}" => $each_user["email"], "{phone}" => $each_user["phone_number"], "{balance}" => toDecimal($each_user["balance"], 2), "{website}" => $get_logged_admin_details["website_url"]);
 				$raw_reg_template_subject = $email_subject;
 				$raw_reg_template_body = $email_body;
 				foreach ($reg_template_encoded_text_array as $array_key => $array_val) {
@@ -1686,7 +1686,7 @@ function sendSuperAdminEmailSpecific($mailto_type, $email_subject, $email_body)
 		$select_vendors = mysqli_query($connection_server, "SELECT * FROM sas_vendors WHERE " . $mailto_array[$mailto_type]);
 		if (mysqli_num_rows($select_vendors) >= 1) {
 			while ($each_vendor = mysqli_fetch_assoc($select_vendors)) {
-				$reg_template_encoded_text_array = array("{firstname}" => $each_vendor["firstname"], "{lastname}" => $each_vendor["lastname"], "{address}" => $each_vendor["home_address"], "{email}" => $each_vendor["email"], "{phone}" => $each_vendor["phone_number"]);
+				$reg_template_encoded_text_array = array("{firstname}" => $each_vendor["firstname"], "{lastname}" => $each_vendor["lastname"], "{address}" => $each_vendor["home_address"], "{email}" => $each_vendor["email"], "{phone}" => $each_vendor["phone_number"], "{website}" => $each_vendor["website_url"], "{balance}" => toDecimal($each_vendor["balance"], 2));
 				$raw_reg_template_subject = $email_subject;
 				$raw_reg_template_body = $email_body;
 				foreach ($reg_template_encoded_text_array as $array_key => $array_val) {
