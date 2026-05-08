@@ -101,16 +101,16 @@ $stats = [
     'total_vendors'      => safe_query_val($connection_server, "SELECT COUNT(*) c FROM sas_vendors", 'c'),
     'total_users'        => safe_query_val($connection_server, "SELECT COUNT(*) c FROM sas_users", 'c'),
     'total_transactions' => safe_query_val($connection_server, "SELECT COUNT(*) c FROM sas_transactions", 'c'),
-    'monthly_tx'         => safe_query_val($connection_server, "SELECT COUNT(*) c FROM sas_transactions WHERE DATE(created_at) BETWEEN '$last_month_start' AND '$last_month_end'", 'c'),
-    'monthly_revenue'    => safe_query_val($connection_server, "SELECT COALESCE(SUM(discounted_amount),0) c FROM sas_transactions WHERE status=1 AND DATE(created_at) BETWEEN '$last_month_start' AND '$last_month_end'", 'c'),
-    'failed_tx_rate'     => safe_query_val($connection_server, "SELECT ROUND(SUM(status=3)/COUNT(*)*100,1) c FROM sas_transactions WHERE DATE(created_at) BETWEEN '$last_month_start' AND '$last_month_end'", 'c'),
-    'new_users_monthly'  => safe_query_val($connection_server, "SELECT COUNT(*) c FROM sas_users WHERE DATE(created_at) BETWEEN '$last_month_start' AND '$last_month_end'", 'c'),
+    'monthly_tx'         => safe_query_val($connection_server, "SELECT COUNT(*) c FROM sas_transactions WHERE DATE(date) BETWEEN '$last_month_start' AND '$last_month_end'", 'c'),
+    'monthly_revenue'    => safe_query_val($connection_server, "SELECT COALESCE(SUM(discounted_amount),0) c FROM sas_transactions WHERE status=1 AND DATE(date) BETWEEN '$last_month_start' AND '$last_month_end'", 'c'),
+    'failed_tx_rate'     => safe_query_val($connection_server, "SELECT ROUND(SUM(status=3)/COUNT(*)*100,1) c FROM sas_transactions WHERE DATE(date) BETWEEN '$last_month_start' AND '$last_month_end'", 'c'),
+    'new_users_monthly'  => safe_query_val($connection_server, "SELECT COUNT(*) c FROM sas_users WHERE DATE(reg_date) BETWEEN '$last_month_start' AND '$last_month_end'", 'c'),
     'ai_tx_monthly'      => safe_query_val($connection_server, "SELECT COUNT(*) c FROM sas_ai_transactions WHERE DATE(created_at) BETWEEN '$last_month_start' AND '$last_month_end'", 'c'),
 ];
 
 // Top services by volume
 $top_services_q = @mysqli_query($connection_server,
-    "SELECT type_alternative, COUNT(*) cnt FROM sas_transactions WHERE status=1 AND DATE(created_at) BETWEEN '$last_month_start' AND '$last_month_end' GROUP BY type_alternative ORDER BY cnt DESC LIMIT 5");
+    "SELECT type_alternative, COUNT(*) cnt FROM sas_transactions WHERE status=1 AND DATE(date) BETWEEN '$last_month_start' AND '$last_month_end' GROUP BY type_alternative ORDER BY cnt DESC LIMIT 5");
 $top_services = [];
 if ($top_services_q) {
     while ($ts = mysqli_fetch_assoc($top_services_q)) $top_services[] = "{$ts['type_alternative']} ({$ts['cnt']} tx)";

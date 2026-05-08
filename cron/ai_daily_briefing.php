@@ -53,8 +53,7 @@ while ($vendor = mysqli_fetch_assoc($vendors_q)) {
             SUM(CASE WHEN status=3 THEN 1 ELSE 0 END) as failed,
             SUM(CASE WHEN status=1 THEN discounted_amount ELSE 0 END) as revenue,
             COUNT(DISTINCT username) as unique_users
-         FROM sas_transactions
-         WHERE vendor_id='$vid' AND DATE(created_at)='$yesterday'"
+         WHERE vendor_id='$vid' AND DATE(date)='$yesterday'"
     );
     $stats = mysqli_fetch_assoc($stats_q);
     if (!$stats || $stats['total_tx'] == 0) {
@@ -66,7 +65,7 @@ while ($vendor = mysqli_fetch_assoc($vendors_q)) {
     $top_q = mysqli_query($connection_server,
         "SELECT type_alternative, COUNT(*) cnt, SUM(discounted_amount) rev
          FROM sas_transactions
-         WHERE vendor_id='$vid' AND DATE(created_at)='$yesterday' AND status=1
+         WHERE vendor_id='$vid' AND DATE(date)='$yesterday' AND status=1
          GROUP BY type_alternative ORDER BY cnt DESC LIMIT 3");
     $top_services = [];
     while ($t = mysqli_fetch_assoc($top_q)) {

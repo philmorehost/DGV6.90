@@ -439,6 +439,15 @@ PROMPT;
         return preg_replace('/[^a-zA-Z0-9\-\.:_]/', '', trim($model));
     }
 
+    /**
+     * Compatibility alias for 'generate' that returns only the raw string.
+     */
+    public function chat(string $prompt, string $model = 'phi4-mini'): string
+    {
+        $res = $this->generate($model, $prompt);
+        return $res['response'] ?? '';
+    }
+
     private function errorResult(string $message, string $model = '', int $duration_ms = 0): array
     {
         if ($this->debug) error_log("[AIEngine] Error: $message");
@@ -449,6 +458,15 @@ PROMPT;
             'model'       => $model,
             'duration_ms' => $duration_ms,
         ];
+    }
+}
+
+/**
+ * Compatibility Wrapper for legacy BcAiEngine calls
+ */
+class BcAiEngine {
+    public static function getInstance() {
+        return ai_engine();
     }
 }
 

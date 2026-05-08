@@ -431,11 +431,11 @@ function bc_calculate_user_trust_score(string $username): int {
     // 3. Success Rate
     $tx_q = mysqli_query($connection_server, "SELECT 
         COUNT(*) as total,
-        SUM(CASE WHEN status='success' THEN 1 ELSE 0 END) as success
-        FROM transactions WHERE username='$user_esc'");
+        SUM(CASE WHEN status=1 THEN 1 ELSE 0 END) as success
+        FROM sas_transactions WHERE username='$user_esc'");
     $stats = mysqli_fetch_assoc($tx_q);
     
-    if ($stats['total'] > 5) {
+    if ($stats && $stats['total'] > 5) {
         $rate = ($stats['success'] / $stats['total']) * 100;
         if ($rate > 90) $score += 10;
         elseif ($rate < 50) $score -= 20;

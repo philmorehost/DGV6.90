@@ -39,12 +39,12 @@ while ($vendor = mysqli_fetch_assoc($vendors_q)) {
 
     // ── Find dormant users (no successful transaction in 14 days) ─────────────
     $dormant_q = mysqli_query($connection_server,
-        "SELECT u.firstname, u.phone, u.username,
-                MAX(t.created_at) as last_tx,
+        "SELECT u.firstname, u.phone_number, u.username,
+                MAX(t.date) as last_tx,
                 SUM(CASE WHEN t.status=1 THEN 1 ELSE 0 END) as total_tx
          FROM sas_users u
          LEFT JOIN sas_transactions t ON t.vendor_id=u.vendor_id AND t.username=u.username AND t.status=1
-         WHERE u.vendor_id='$vid' AND u.status=1 AND u.phone != ''
+         WHERE u.vendor_id='$vid' AND u.status=1 AND u.phone_number != ''
          HAVING (last_tx IS NULL OR last_tx < DATE_SUB(NOW(), INTERVAL 14 DAY))
             AND total_tx > 0
          LIMIT 50"
@@ -54,7 +54,7 @@ while ($vendor = mysqli_fetch_assoc($vendors_q)) {
 
     while ($user = mysqli_fetch_assoc($dormant_q)) {
         $name  = ucfirst($user['firstname'] ?? 'Valued Customer');
-        $phone = preg_replace('/[^0-9]/', '', $user['phone'] ?? '');
+        $phone = preg_replace('/[^0-9]/', '', $user['phone_number'] ?? '');
         if (strlen($phone) < 10) { $skip++; continue; }
 
         // ── Generate personalized message ──────────────────────────────────────
