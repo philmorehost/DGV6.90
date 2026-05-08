@@ -398,3 +398,83 @@ function bc_firewall_prompt(string $raw_prompt, bool $strict_mode = false): stri
 
     return $system_context . $prompt;
 }
+
+// ─────────────────────────────────────────────────────────────
+// 8. SECURITY SENTINEL: TRUST SCORING
+// ─────────────────────────────────────────────────────────────
+
+/**
+ * Calculates a dynamic Trust Score (0-100) for a user.
+ * 
+ * Factors:
+ * - Success Rate (Success / Total Tx)
+ * - Account Age (Days since registration)
+ * - Total Volume (Total successful Naira spent)
+ * 
+ * @param string $username
+ * @return int 0-100
+ */
+function bc_calculate_user_trust_score(string $username): int {
+    global $connection_server;
+    if (!$connection_server) return 50;
+
+    $user_esc = mysqli_real_escape_string($connection_server, $username);
+    
+    // 1. Fetch user data
+    $u_q = mysqli_query($connection_server, "SELECT id, created_at, trust_score FROM sas_users WHERE username='$user_esc' LIMIT 1");
+    $user = mysqli_fetch_assoc($u_q);
+    if (!$user) return 0;
+
+    // 2. Base score from existing (or default)
+    $score = (int)$user['trust_score'];
+
+    // 3. Success Rate
+    $tx_q = mysqli_query($connection_server, "SELECT 
+        COUNT(*) as total,
+        SUM(CASE WHEN status='success' THEN 1 ELSE 0 END) as success
+        FROM transactions WHERE username='$user_esc'");
+    $stats = mysqli_fetch_assoc($tx_q);
+    
+    if ($stats['total'] > 5) {
+        $rate = ($stats['success'] / $stats['total']) * 100;
+        if ($rate > 90) $score += 10;
+        elseif ($rate < 50) $score -= 20;
+    }
+
+    // 4. Account Age
+    $age_days = (time() - strtotime($user['created_at'])) / 86400;
+    if ($age_days > 365) $score += 15;
+    elseif ($age_days > 90) $score += 5;
+    elseif ($age_days < 7) $score -= 10;
+
+    // 5. Constraints
+    $score = max(0, min(100, $score));
+
+    // 6. Persist
+    mysqli_query($connection_server, "UPDATE sas_users SET trust_score='$score', last_trust_update=NOW() WHERE username='$user_esc'");
+
+    return $score;
+}
+
+/**
+ * Trigger a High-Alert WhatsApp notification for the Super Admin.
+ */
+function bc_trigger_high_alert(string $event, string $detail): void {
+    global $connection_server;
+    
+    // Get admin phone
+    $q = mysqli_query($connection_server, "SELECT option_value FROM sas_super_admin_options WHERE option_name='admin_phone' LIMIT 1");
+    $row = mysqli_fetch_assoc($q);
+    $phone = $row['option_value'] ?? '';
+
+    if (empty($phone)) return;
+
+    $msg = "🚨 *HIGH ALERT: $event*\n\n"
+         . "Detail: $detail\n"
+         . "Time: " . date('H:i:s') . "\n"
+         . "Action: Please review in admin panel.";
+
+    include_once(__DIR__ . "/bc-whatsapp.php");
+    sendWhatsAppAlert($phone, $msg, 'high');
+}
+

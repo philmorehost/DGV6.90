@@ -16,7 +16,7 @@
 if (function_exists('sendWhatsAppAlert')) return; // Guard against double-include
 
 // ─── WhatsApp Gateway Configuration ──────────────────────────
-define('WA_GATEWAY_PORT', 3019);        // Internal port for Baileys bridge
+define('WA_GATEWAY_PORT', 3001);        // Internal port for Baileys bridge (aligned with index.js)
 define('WA_GATEWAY_HOST', '127.0.0.1'); // NEVER change this to a public IP
 define('WA_GATEWAY_SECRET', '');        // Optional shared secret, set in .env
 define('WA_MIN_DELAY_SECONDS', 5);      // Min delay between messages to same number
@@ -172,7 +172,7 @@ function getWhatsAppQRCode(): ?string
     if ($http_code !== 200 || !$response) return null;
 
     $data = json_decode($response, true);
-    return $data['qr'] ?? null; // Returns base64 PNG
+    return $data['qr_base64'] ?? null; // Aligned with index.js response field
 }
 
 // ─── Private Helpers ──────────────────────────────────────────

@@ -97,6 +97,7 @@ if (mysqli_num_rows($select_user_vendor_status_message) == 1) {
 <?php if(basename($_SERVER['PHP_SELF']) == 'Fund.php'): ?>
 <script src="https://merchant.beewave.ng/checkout.min.js" defer></script>
 <?php endif; ?>
+<script src="/web/js/ai-guides.js" defer></script>
 <!-- ======= Header ======= -->
 <header id="header" class="header fixed-top d-flex align-items-center">
 
