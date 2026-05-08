@@ -35,4 +35,10 @@ object Constants {
 
     // Service Control
     const val KEY_ENABLED_SERVICES = "enabled_services"
+
+    // AI Features
+    const val KEY_AI_STATUS = "ai_status"
+    const val KEY_AI_VOICE_STATUS = "ai_voice_status"
+    const val KEY_AI_TOKEN_BALANCE = "ai_token_balance"
+    const val KEY_TRUST_SCORE = "trust_score"
 }

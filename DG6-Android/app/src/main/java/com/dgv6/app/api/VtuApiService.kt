@@ -181,6 +181,13 @@ interface VtuApiService {
 
     @POST("web/api/kyc")
     suspend fun kycUpload(@Body body: okhttp3.MultipartBody): Response<Map<String, Any>>
+
+    // ── AI Suite ──────────────────────────────────────────────────────────
+    @POST("api/app-backend/ai-intent-parser.php")
+    suspend fun parseAiIntent(
+        @Header("Authorization") token: String,
+        @Body body: @JvmSuppressWildcards Map<String, Any>
+    ): Response<Map<String, Any>>
 }
 
 

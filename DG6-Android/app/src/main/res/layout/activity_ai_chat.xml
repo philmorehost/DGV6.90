@@ -33,6 +33,14 @@
         android:padding="8dp"
         android:background="#ffffff"
         android:elevation="8dp">
+        <ImageButton
+            android:id="@+id/btn_mic"
+            android:layout_width="48dp"
+            android:layout_height="48dp"
+            android:src="@android:drawable/ic_btn_speak_now"
+            android:background="?attr/selectableItemBackgroundBorderless"
+            android:padding="8dp"
+            android:layout_gravity="center_vertical" />
         <EditText
             android:id="@+id/et_prompt"
             android:layout_width="0dp"

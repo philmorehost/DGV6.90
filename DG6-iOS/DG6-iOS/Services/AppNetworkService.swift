@@ -13,8 +13,9 @@ class AppNetworkService {
         set { UserDefaults.standard.set(newValue, forKey: "user_api_key") }
     }
 
-    func request<T: Decodable>(_ endpoint: String, params: [String: Any], completion: @escaping (Result<T, Error>) -> Void) {
-        guard let url = URL(string: baseURL + "web/api/" + endpoint) else {
+    func request<T: Decodable>(_ endpoint: String, params: [String: Any], useRawPath: Bool = false, completion: @escaping (Result<T, Error>) -> Void) {
+        let path = useRawPath ? endpoint : "web/api/" + endpoint
+        guard let url = URL(string: baseURL + path) else {
             completion(.failure(NSError(domain: "Invalid URL", code: 0, userInfo: nil)))
             return
         }
@@ -25,16 +26,21 @@ class AppNetworkService {
         var finalParams = params
         if let apiKey = self.apiKey {
             finalParams["api_key"] = apiKey
+            request.setValue("Bearer \(apiKey)", forHTTPHeaderField: "Authorization")
         }
 
-        var components = URLComponents()
-        components.queryItems = finalParams.map { URLQueryItem(name: $0.key, value: "\($0.value)") }
-
-        if let bodyString = components.query {
-            request.httpBody = bodyString.data(using: .utf8)
+        if endpoint.contains("ai-intent-parser") {
+             // AI expects JSON body
+             request.httpBody = try? JSONSerialization.data(withJSONObject: params, options: [])
+             request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        } else {
+            var components = URLComponents()
+            components.queryItems = finalParams.map { URLQueryItem(name: $0.key, value: "\($0.value)") }
+            if let bodyString = components.query {
+                request.httpBody = bodyString.data(using: .utf8)
+            }
+            request.setValue("application/x-www-form-urlencoded", forHTTPHeaderField: "Content-Type")
         }
-
-        request.setValue("application/x-www-form-urlencoded", forHTTPHeaderField: "Content-Type")
 
         URLSession.shared.dataTask(with: request) { data, response, error in
             if let error = error {
@@ -51,7 +57,6 @@ class AppNetworkService {
                 let decoded = try JSONDecoder().decode(T.self, from: data)
                 DispatchQueue.main.async { completion(.success(decoded)) }
             } catch {
-                // If decoding fails, check if it's a string response (common in legacy APIs)
                 if let stringResponse = String(data: data, encoding: .utf8) {
                     print("Raw Response: \(stringResponse)")
                 }
@@ -62,7 +67,12 @@ class AppNetworkService {
 }
 
 struct APIResponse: Codable {
-    let status: String
+    let status: String?
+    let success: Bool?
     let message: String?
     let desc: String?
+    let response: String?
+    let error: String?
+    let needs_confirmation: Bool?
+    let intent: [String: String]? // Simplified for now
 }

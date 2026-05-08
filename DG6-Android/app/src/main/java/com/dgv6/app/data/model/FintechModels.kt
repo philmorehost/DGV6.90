@@ -16,7 +16,11 @@ data class User(
     @SerializedName("level_name") val levelName: String = "",
     @SerializedName("kyc_status") val kycStatus: Int = 0,
     @SerializedName("kyc_verified") val kycVerified: String = "No",
-    @SerializedName("security_pin_set") val securityPinSet: Boolean = false
+    @SerializedName("security_pin_set") val securityPinSet: Boolean = false,
+    @SerializedName("ai_status") val aiStatus: Int = 0,
+    @SerializedName("ai_voice_status") val aiVoiceStatus: Int = 0,
+    @SerializedName("ai_token_balance") val aiTokenBalance: Double = 0.0,
+    @SerializedName("trust_score") val trustScore: Int = 50
 )
 
 // ── Transactions ──────────────────────────────────────────────────────────────

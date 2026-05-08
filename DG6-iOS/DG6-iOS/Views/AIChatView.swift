@@ -6,6 +6,9 @@ struct AIChatView: View {
     @State private var prompt: String = ""
     @State private var chatHistory: [ChatMessage] = []
     @State private var isLoading: Bool = false
+    @State private var showingConfirmation = false
+    @State private var pendingIntent: [String: String]?
+    
     @Environment(\.presentationMode) var presentationMode
     
     // Speech Recognition properties
@@ -52,6 +55,11 @@ struct AIChatView: View {
                     }
                 }
                 
+                if isLoading {
+                    ProgressView("AI is thinking...")
+                        .padding()
+                }
+
                 HStack {
                     TextField(isRecording ? "Listening..." : "Ask me anything...", text: $prompt)
                         .padding(12)
@@ -63,22 +71,17 @@ struct AIChatView: View {
                         Image(systemName: isRecording ? "mic.fill" : "mic")
                             .foregroundColor(.white)
                             .padding(12)
-                            .background(isRecording ? Color.red : Color.gray)
+                            .background(isRecording ? Color.red : Color.blue)
                             .clipShape(Circle())
                     }
                     .disabled(isLoading)
                     
                     Button(action: sendMessage) {
-                        if isLoading {
-                            ProgressView()
-                                .padding()
-                        } else {
-                            Image(systemName: "paperplane.fill")
-                                .foregroundColor(.white)
-                                .padding()
-                                .background(prompt.isEmpty ? Color.gray : Color.blue)
-                                .clipShape(Circle())
-                        }
+                        Image(systemName: "paperplane.fill")
+                            .foregroundColor(.white)
+                            .padding()
+                            .background(prompt.isEmpty ? Color.gray : Color.blue)
+                            .clipShape(Circle())
                     }
                     .disabled(prompt.isEmpty || isLoading)
                 }
@@ -91,95 +94,124 @@ struct AIChatView: View {
                 presentationMode.wrappedValue.dismiss()
             })
             .onAppear {
-                SFSpeechRecognizer.requestAuthorization { authStatus in
-                    // Handle authorization if needed
-                }
+                appendLog(isUser: false, text: "Hello! I am your AI Assistant. You can use your voice or type to perform transactions.")
+                SFSpeechRecognizer.requestAuthorization { _ in }
+            }
+            .alert(isPresented: $showingConfirmation) {
+                Alert(
+                    title: Text("Confirm Transaction"),
+                    message: Text(getTransactionSummary()),
+                    primaryButton: .default(Text("Proceed")) {
+                        if let intent = pendingIntent { executeTransaction(intent) }
+                    },
+                    secondaryButton: .cancel()
+                )
             }
         }
     }
     
+    func appendLog(isUser: Bool, text: String) {
+        chatHistory.append(ChatMessage(isUser: isUser, text: text))
+    }
+
     func sendMessage() {
         if isRecording { stopRecording() }
         let userMsg = prompt.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !userMsg.isEmpty else { return }
         
-        chatHistory.append(ChatMessage(isUser: true, text: userMsg))
+        appendLog(isUser: true, text: userMsg)
         prompt = ""
         isLoading = true
         
-        let params: [String: Any] = ["prompt": userMsg, "page_context": "ios_app"]
+        let params: [String: Any] = ["voice_text": userMsg]
         
-        AppNetworkService.shared.request("app-backend/ai-handler", params: params) { (result: Result<APIResponse, Error>) in
+        AppNetworkService.shared.request("api/app-backend/ai-intent-parser.php", params: params, useRawPath: true) { (result: Result<APIResponse, Error>) in
             DispatchQueue.main.async {
                 self.isLoading = false
                 switch result {
                 case .success(let response):
-                    if response.success == true, let aiResponse = response.response {
-                        self.chatHistory.append(ChatMessage(isUser: false, text: aiResponse))
+                    if response.success == true {
+                        if let intent = response.intent, let service = intent["service"] {
+                            self.pendingIntent = intent
+                            if response.needs_confirmation == false {
+                                self.executeTransaction(intent)
+                            } else {
+                                self.showingConfirmation = true
+                            }
+                        } else if let aiResponse = response.response {
+                            self.appendLog(isUser: false, text: aiResponse)
+                        }
                     } else {
-                        self.chatHistory.append(ChatMessage(isUser: false, text: "Error: \(response.error ?? "Unknown error")"))
+                        self.appendLog(isUser: false, text: "Error: \(response.error ?? "Unknown error")")
                     }
                 case .failure(let error):
-                    self.chatHistory.append(ChatMessage(isUser: false, text: "Network Error: \(error.localizedDescription)"))
+                    self.appendLog(isUser: false, text: "Network Error: \(error.localizedDescription)")
                 }
             }
         }
     }
     
+    func getTransactionSummary() -> String {
+        guard let intent = pendingIntent else { return "" }
+        let service = intent["service"] ?? ""
+        let amount = intent["amount"] ?? "0"
+        let phone = intent["phone"] ?? ""
+        let network = intent["network"] ?? ""
+        return "Purchase \(network) \(service) of ₦\(amount) for \(phone)?"
+    }
+
+    func executeTransaction(_ intent: [String: String]) {
+        self.isLoading = true
+        let service = intent["service"] ?? ""
+        let endpoint = service // In iOS app, endpoints usually match service name
+        
+        AppNetworkService.shared.request(endpoint, params: intent) { (result: Result<APIResponse, Error>) in
+            DispatchQueue.main.async {
+                self.isLoading = false
+                switch result {
+                case .success(let response):
+                    self.appendLog(isUser: false, text: "AI Result: \(response.desc ?? response.message ?? "Processed")")
+                case .failure(let error):
+                    self.appendLog(isUser: false, text: "Execution Error: \(error.localizedDescription)")
+                }
+            }
+        }
+    }
+
+    // Speech logic remains mostly the same but updated for better integration
     func toggleRecording() {
         if isRecording {
             stopRecording()
-            // Auto send after recording stops
-            if !prompt.isEmpty {
-                sendMessage()
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
+                if !prompt.isEmpty { sendMessage() }
             }
         } else {
-            do {
-                try startRecording()
-            } catch {
-                print("Audio engine error: \(error.localizedDescription)")
-            }
+            do { try startRecording() } catch { print(error) }
         }
     }
     
     func startRecording() throws {
         recognitionTask?.cancel()
         self.recognitionTask = nil
-        
         let audioSession = AVAudioSession.sharedInstance()
         try audioSession.setCategory(.record, mode: .measurement, options: .duckOthers)
         try audioSession.setActive(true, options: .notifyOthersOnDeactivation)
-        
         let inputNode = audioEngine.inputNode
         recognitionRequest = SFSpeechAudioBufferRecognitionRequest()
-        
-        guard let recognitionRequest = recognitionRequest else {
-            fatalError("Unable to create an SFSpeechAudioBufferRecognitionRequest object")
-        }
+        guard let recognitionRequest = recognitionRequest else { return }
         recognitionRequest.shouldReportPartialResults = true
-        
-        recognitionTask = speechRecognizer?.recognitionTask(with: recognitionRequest, resultHandler: { (result, error) in
-            var isFinal = false
-            
-            if let result = result {
-                self.prompt = result.bestTranscription.formattedString
-                isFinal = result.isFinal
-            }
-            
-            if error != nil || isFinal {
+        recognitionTask = speechRecognizer?.recognitionTask(with: recognitionRequest) { result, error in
+            if let result = result { self.prompt = result.bestTranscription.formattedString }
+            if error != nil || result?.isFinal == true {
                 self.audioEngine.stop()
                 inputNode.removeTap(onBus: 0)
-                self.recognitionRequest = nil
-                self.recognitionTask = nil
                 self.isRecording = false
             }
-        })
-        
+        }
         let recordingFormat = inputNode.outputFormat(forBus: 0)
-        inputNode.installTap(onBus: 0, bufferSize: 1024, format: recordingFormat) { (buffer, when) in
+        inputNode.installTap(onBus: 0, bufferSize: 1024, format: recordingFormat) { buffer, _ in
             self.recognitionRequest?.append(buffer)
         }
-        
         audioEngine.prepare()
         try audioEngine.start()
         isRecording = true

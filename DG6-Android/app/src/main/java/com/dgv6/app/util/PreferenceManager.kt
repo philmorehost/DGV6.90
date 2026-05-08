@@ -45,5 +45,20 @@ class PreferenceManager(context: Context) {
 
     fun getEnabledServices(): Set<String> =
         prefs.getStringSet(Constants.KEY_ENABLED_SERVICES, emptySet()) ?: emptySet()
+
+    // AI Accessors
+    fun getAiStatus() = prefs.getInt(Constants.KEY_AI_STATUS, 0)
+    fun getAiVoiceStatus() = prefs.getInt(Constants.KEY_AI_VOICE_STATUS, 0)
+    fun getAiTokenBalance() = getDouble(Constants.KEY_AI_TOKEN_BALANCE, 0.0)
+    fun getTrustScore() = prefs.getInt(Constants.KEY_TRUST_SCORE, 50)
+
+    fun saveAiData(status: Int, voiceStatus: Int, tokens: Double, trust: Int) {
+        prefs.edit().apply {
+            putInt(Constants.KEY_AI_STATUS, status)
+            putInt(Constants.KEY_AI_VOICE_STATUS, voiceStatus)
+            putString(Constants.KEY_AI_TOKEN_BALANCE, tokens.toString())
+            putInt(Constants.KEY_TRUST_SCORE, trust)
+        }.apply()
+    }
 }
 
