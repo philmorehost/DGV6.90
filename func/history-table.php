@@ -63,6 +63,9 @@ if (mysqli_num_rows($query_result) >= 1) {
               </td>';
         echo '<td class="text-center px-4">
                 <div class="small ' . $status_class . ' fw-bold">' . strtoupper($status_text) . '</div>
+                ' . ($row['status'] == 3 && function_exists('bc_get_ai_failure_explanation') ? 
+                    '<div class="mt-1"><span class="badge bg-info bg-opacity-10 text-info border-info border" style="font-size:9px; cursor:help;" title="' . htmlspecialchars(bc_get_ai_failure_explanation($row['description'] ?? '')) . '"><i class="bi bi-robot me-1"></i>SMART ASSIST</span></div>' 
+                    : '') . '
               </td>';
         if ($show_actions) {
             echo '<td class="text-center" onclick="event.stopPropagation();">';
