@@ -478,3 +478,32 @@ function bc_trigger_high_alert(string $event, string $detail): void {
     sendWhatsAppAlert($phone, $msg, 'high');
 }
 
+/**
+ * Checks for spending anomalies by comparing current amount to user history.
+ * If anomalous, triggers a High-Alert WhatsApp.
+ * 
+ * @param string $username
+ * @param float  $amount
+ * @return bool True if anomalous (High Risk)
+ */
+function bc_check_spending_anomaly(string $username, float $amount): bool {
+    global $connection_server;
+    if (!$connection_server || $amount <= 0) return false;
+
+    $user_esc = mysqli_real_escape_string($connection_server, $username);
+
+    // Get average spend of last 10 successful transactions
+    $avg_q = mysqli_query($connection_server, "SELECT AVG(discounted_amount) as avg_amt FROM sas_transactions WHERE username='$user_esc' AND status=1 ORDER BY created_at DESC LIMIT 10");
+    $avg_row = mysqli_fetch_assoc($avg_q);
+    $avg_amt = (float)($avg_row['avg_amt'] ?? 0);
+
+    // If this amount is > 10x their average AND > 2,000 Naira
+    if ($avg_amt > 0 && $amount > ($avg_amt * 10) && $amount > 2000) {
+        bc_trigger_high_alert("SPENDING_ANOMALY", "User $username just attempted a transaction of ₦" . number_format($amount, 2) . ". Their average spend is ₦" . number_format($avg_amt, 2) . ".");
+        return true;
+    }
+
+    return false;
+}
+
+

@@ -1,4 +1,16 @@
 <?php
+/**
+ * AI Edition: Smart Re-query Failure Explanation
+ */
+function bc_get_ai_failure_explanation($status_msg) {
+    $msg = strtolower($status_msg);
+    if (strpos($msg, 'insufficient') !== false) return "The provider reports insufficient stock for this plan. Try a different amount or network.";
+    if (strpos($msg, 'invalid') !== false) return "The recipient number might be incorrect or ported. Check the number and try again.";
+    if (strpos($msg, 'timeout') !== false) return "The network is currently congested. This usually resolves in 5-10 minutes.";
+    if (strpos($msg, 'duplicate') !== false) return "This exact transaction was just sent. Please wait 1 minute before trying again.";
+    return "The provider returned an unexpected error. Switching to a backup route might help.";
+}
+
 if (function_exists('resolveVendorID')) return;
 function resolveVendorID($force_recompute = false) {
     global $connection_server;

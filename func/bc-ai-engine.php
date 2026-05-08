@@ -311,13 +311,19 @@ class AIEngine
         $safe_transcript = bc_sanitize(substr($transcript, 0, 300));
 
         $system_prompt = <<<PROMPT
-You are a Nigerian VTU transaction intent parser.
+You are a professional Nigerian VTU transaction intent parser.
+You understand formal English, Nigerian Pidgin, and local transaction shorthand.
+
 Extract the following fields from the user's voice command:
 - service: one of [airtime, data, electricity, cable, betting]
 - amount: numeric value in Naira (just digits, no currency symbol)
 - phone: 11-digit Nigerian phone number starting with 0 (or empty string)
 - network: one of [MTN, Airtel, Glo, 9mobile] (or empty string)
 - confidence: a number 0-100 representing how confident you are
+
+Handle Pidgin examples: 
+- "Abeg load 500 MTN for 080123..." -> service: airtime, amount: 500, network: MTN
+- "I want subscribe for data 1k on 070..." -> service: data, amount: 1000
 
 Output ONLY valid JSON with these exact keys. No explanation. No markdown.
 Example: {"service":"airtime","amount":"500","phone":"08012345678","network":"MTN","confidence":95}

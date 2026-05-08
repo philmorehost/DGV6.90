@@ -143,7 +143,65 @@ $wa_online = isWhatsAppGatewayOnline();
         </div>
     </div>
 </div>
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<div class="row g-4 mb-4">
+    <div class="col-12">
+        <div class="card border-0 rounded-4 shadow-sm overflow-hidden">
+            <div class="card-header bg-white border-0 py-3 d-flex justify-content-between align-items-center">
+                <h5 class="fw-bold mb-0"><i class="bi bi-graph-up me-2 text-primary"></i>AI Revenue vs. Usage (Last 30 Days)</h5>
+            </div>
+            <div class="card-body p-4" style="height: 300px;">
+                <canvas id="aiRevenueChart"></canvas>
+            </div>
+        </div>
+    </div>
+</div>
 
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const ctx = document.getElementById('aiRevenueChart').getContext('2d');
+    new Chart(ctx, {
+        type: 'line',
+        data: {
+            labels: [<?php 
+                for($i=29;$i>=0;$i--) echo '"'.date('M d', strtotime("-$i days")).'",';
+            ?>],
+            datasets: [{
+                label: 'Revenue (₦)',
+                data: [<?php 
+                    for($i=29;$i>=0;$i--){
+                        $d = date('Y-m-d', strtotime("-$i days"));
+                        $rq = mysqli_query($connection_server, "SELECT SUM(cost_naira) as rev FROM sas_ai_transactions WHERE DATE(created_at)='$d' AND status='success'");
+                        $rv = mysqli_fetch_assoc($rq);
+                        echo ($rv['rev'] ?? 0) . ",";
+                    }
+                ?>],
+                borderColor: '#6366f1', backgroundColor: 'rgba(99, 102, 241, 0.1)',
+                fill: true, tension: 0.4
+            }, {
+                label: 'AI Calls',
+                data: [<?php 
+                    for($i=29;$i>=0;$i--){
+                        $d = date('Y-m-d', strtotime("-$i days"));
+                        $cq = mysqli_query($connection_server, "SELECT COUNT(*) as calls FROM sas_ai_transactions WHERE DATE(created_at)='$d'");
+                        $cv = mysqli_fetch_assoc($cq);
+                        echo ($cv['calls'] ?? 0) . ",";
+                    }
+                ?>],
+                borderColor: '#10b981', backgroundColor: 'transparent',
+                borderDash: [5, 5], tension: 0.4, yAxisID: 'y1'
+            }]
+        },
+        options: {
+            responsive: true, maintainAspectRatio: false,
+            scales: {
+                y: { beginAtZero: true },
+                y1: { beginAtZero: true, position: 'right', grid: { display: false } }
+            }
+        }
+    });
+});
+</script>
 <div class="row g-4">
     <!-- System Status -->
     <div class="col-lg-4">

@@ -33,6 +33,25 @@ if (isset($_POST['generate-ad'])) {
         .ai-marketing-header { background: linear-gradient(135deg, #4f46e5, #9333ea); color: white; border-radius: 1rem; padding: 2.5rem; }
         .generated-box { background: #f9fafb; border: 1px dashed #d1d5db; border-radius: 0.75rem; padding: 1.5rem; position: relative; white-space: pre-wrap; }
         .copy-btn { position: absolute; top: 10px; right: 10px; }
+
+        /* Flyer Styles */
+        .flyer-canvas { 
+            width: 320px; height: 568px; /* 9:16 aspect ratio */
+            background: url('https://images.unsplash.com/photo-1614850523296-d8c1af93d400?w=800') center/cover;
+            border-radius: 20px; overflow: hidden; position: relative;
+            padding: 20px; display: flex; align-items: center; justify-content: center;
+        }
+        .flyer-glass {
+            background: rgba(255, 255, 255, 0.15);
+            backdrop-filter: blur(15px);
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            border-radius: 15px; width: 100%; height: 80%;
+            display: flex; flex-direction: column; padding: 20px; color: white;
+            text-shadow: 0 2px 4px rgba(0,0,0,0.3); text-align: center;
+        }
+        .flyer-header { border-bottom: 1px solid rgba(255,255,255,0.2); padding-bottom: 10px; margin-bottom: 20px; }
+        .flyer-content { flex-grow: 1; font-size: 1.1rem; line-height: 1.4; overflow: hidden; display: flex; align-items: center; }
+        .flyer-footer { margin-top: 15px; font-weight: bold; background: white; color: #4f46e5; border-radius: 10px; padding: 5px; text-shadow: none; font-size: 0.8rem; }
     </style>
 </head>
 <body>
@@ -96,6 +115,35 @@ if (isset($_POST['generate-ad'])) {
                         <h5 class="card-title fw-bold">Result</h5>
                         <div class="generated-box" id="copyText"><?php echo $generated_copy; ?><button class="btn btn-light btn-sm copy-btn" onclick="copyToClipboard()"><i class="bi bi-clipboard"></i></button></div>
                         <p class="text-muted small mt-3"><i class="bi bi-info-circle me-1"></i> You can copy and paste this directly to your WhatsApp Status.</p>
+                    </div>
+                </div>
+
+                <!-- Flyer Generator -->
+                <div class="card shadow-sm border-0 rounded-4 mt-4 overflow-hidden">
+                    <div class="card-body p-0">
+                        <div class="p-4 bg-light border-bottom">
+                            <h5 class="fw-bold mb-0"><i class="bi bi-image me-2 text-info"></i>Visual Status Flyer</h5>
+                        </div>
+                        <div class="p-4 d-flex justify-content-center bg-secondary bg-opacity-10">
+                            <!-- Flyer Template (CSS-based) -->
+                            <div id="flyer-preview" class="flyer-canvas shadow-lg">
+                                <div class="flyer-glass">
+                                    <div class="flyer-header">
+                                        <h2 class="mb-0">FAST VTU</h2>
+                                        <small>Reliable & Instant</small>
+                                    </div>
+                                    <div class="flyer-content">
+                                        <p id="flyer-text"><?php echo $generated_copy; ?></p>
+                                    </div>
+                                    <div class="flyer-footer">
+                                        <span>Order Now via our App!</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="p-3 text-center">
+                            <p class="small text-muted mb-0"><i class="bi bi-info-circle me-1"></i> Hint: Screenshot this and crop to use as your WhatsApp Status flyer!</p>
+                        </div>
                     </div>
                 </div>
                 <?php else: ?>
