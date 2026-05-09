@@ -858,11 +858,11 @@
                                 <div class="row g-3">
                                     <div class="col-md-6">
                                         <label class="form-label small fw-bold text-muted">MINIMUM ORDER (₦)</label>
-                                        <input name="min" type="text" value="<?php echo $get_admin_payment_order_details['min_amount']; ?>" class="form-control rounded-3" required />
+                                        <input name="min" type="text" value="<?php echo $get_admin_payment_order_details['min_amount'] ?? '0'; ?>" class="form-control rounded-3" required />
                                     </div>
                                     <div class="col-md-6">
                                         <label class="form-label small fw-bold text-muted">MAXIMUM ORDER (₦)</label>
-                                        <input name="max" type="text" value="<?php echo $get_admin_payment_order_details['max_amount']; ?>" class="form-control rounded-3" required />
+                                        <input name="max" type="text" value="<?php echo $get_admin_payment_order_details['max_amount'] ?? '0'; ?>" class="form-control rounded-3" required />
                                     </div>
                                 </div>
                                 <button name="update-payment-order-details" class="btn btn-primary mt-4 px-5 rounded-pill fw-bold">Update Order Limits</button>
