@@ -446,7 +446,7 @@ PROMPT;
     /**
      * Compatibility alias for 'generate' that returns only the raw string.
      */
-    public function chat(string $prompt, string $model = 'phi4-mini'): string
+    public function chatSimple(string $prompt, string $model = 'phi4-mini'): string
     {
         $res = $this->generate($model, $prompt);
         return $res['response'] ?? '';

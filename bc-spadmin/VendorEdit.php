@@ -223,6 +223,18 @@
         exit();
     }
 
+    if(isset($_POST["update-ai-settings"])){
+        $ai_status = isset($_POST["ai_status"]) ? 1 : 0;
+        $tokens = (int)$_POST["ai_token_balance"];
+        $price_1k = (float)$_POST["ai_price_per_1k"];
+        $model = mysqli_real_escape_string($connection_server, trim(strip_tags($_POST["ai_model"])));
+
+        mysqli_query($connection_server, "UPDATE sas_vendors SET ai_status='$ai_status', ai_token_balance='$tokens', ai_price_per_1k_tokens='$price_1k', ai_model_assigned='$model' WHERE id='$vendor_id_number'");
+        $_SESSION["product_purchase_response"] = "AI settings updated for this vendor";
+        header("Location: ".$_SERVER["REQUEST_URI"]);
+        exit();
+    }
+
     if(isset($_POST["change-password"])){
         $new_pass = mysqli_real_escape_string($connection_server, trim(strip_tags($_POST["new-pass"])));
         $con_new_pass = mysqli_real_escape_string($connection_server, trim(strip_tags($_POST["con-new-pass"])));
@@ -539,6 +551,44 @@
                     </div>
                     <button name="toggle-nin-card" type="submit" class="btn btn-info rounded-pill px-4 fw-bold text-white">
                         <i class="bi bi-save2 me-1"></i> Save
+                    </button>
+                </form>
+            </div>
+        </div>
+        
+        <div class="card shadow-sm border-0 rounded-4 overflow-hidden mb-4">
+            <div class="card-header bg-white py-3 border-0">
+                <h5 class="fw-bold mb-0" style="color:#7c3aed;"><i class="bi bi-cpu-fill me-2"></i>AI Suite Control</h5>
+            </div>
+            <div class="card-body p-4">
+                <form method="post">
+                    <div class="row g-3">
+                        <div class="col-md-4">
+                            <label class="form-label small fw-bold">AI FEATURE STATUS</label>
+                            <div class="form-check form-switch fs-4">
+                                <input class="form-check-input" type="checkbox" role="switch" name="ai_status" value="1" <?php echo ($get_vendor_details['ai_status'] ?? 0) ? 'checked' : ''; ?>>
+                                <label class="form-check-label small" for="ai_status"><?php echo ($get_vendor_details['ai_status'] ?? 0) ? 'Active' : 'Inactive'; ?></label>
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label small fw-bold">TOKEN BALANCE</label>
+                            <input name="ai_token_balance" type="number" value="<?php echo $get_vendor_details['ai_token_balance'] ?? 0; ?>" class="form-control rounded-3" required />
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label small fw-bold">PRICE PER 1K TOKENS (₦)</label>
+                            <input name="ai_price_per_1k" type="number" step="0.01" value="<?php echo $get_vendor_details['ai_price_per_1k_tokens'] ?? 100.00; ?>" class="form-control rounded-3" required />
+                        </div>
+                        <div class="col-md-12">
+                            <label class="form-label small fw-bold">ASSIGNED AI MODEL</label>
+                            <select name="ai_model" class="form-select rounded-3">
+                                <option value="phi4-mini" <?php echo ($get_vendor_details['ai_model_assigned'] ?? '') == 'phi4-mini' ? 'selected' : ''; ?>>Phi-4 Mini (Fastest)</option>
+                                <option value="gemma4:e2b" <?php echo ($get_vendor_details['ai_model_assigned'] ?? '') == 'gemma4:e2b' ? 'selected' : ''; ?>>Gemma-4 E2B (Balanced)</option>
+                                <option value="llama4-scout" <?php echo ($get_vendor_details['ai_model_assigned'] ?? '') == 'llama4-scout' ? 'selected' : ''; ?>>Llama-4 Scout (Intelligent)</option>
+                            </select>
+                        </div>
+                    </div>
+                    <button name="update-ai-settings" type="submit" class="btn mt-4 rounded-pill px-5 fw-bold text-white" style="background:#7c3aed;">
+                        <i class="bi bi-lightning-charge me-1"></i> Update AI Configuration
                     </button>
                 </form>
             </div>
