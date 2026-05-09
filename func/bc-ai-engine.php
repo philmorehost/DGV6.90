@@ -250,7 +250,7 @@ class AIEngine
      * @param string $model     Ollama model name
      * @param array  $messages  Array of ['role' => 'user'|'assistant'|'system', 'content' => string]
      */
-    public function chat(string $model, array $messages, array $options = []): array
+    public function chatOllamaRaw(string $model, array $messages, array $options = []): array
     {
         $model = $this->sanitizeModelName($model);
 
