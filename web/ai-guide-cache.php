@@ -11,7 +11,7 @@ include_once(__DIR__ . "/../func/bc-ai-engine.php");
 header('Content-Type: application/json; charset=UTF-8');
 header('X-Content-Type-Options: nosniff');
 
-if (empty($_SESSION['user_session']) || !$connection_server) {
+if ((empty($_SESSION['user_session']) && empty($_SESSION['admin_session'])) || !$connection_server) {
     echo json_encode(['guide' => null]);
     exit;
 }
@@ -28,10 +28,18 @@ $vendor_id = resolveVendorID();
 $safe_vid  = (int)$vendor_id;
 
 // Check AI status
-$username  = $_SESSION['user_session'];
-$esc_user  = mysqli_real_escape_string($connection_server, $username);
+if (!empty($_SESSION['admin_session']) && empty($_SESSION['user_session'])) {
+    // Admin Path
+    $email = $_SESSION['admin_session'];
+    $esc_email = mysqli_real_escape_string($connection_server, $email);
+    $ai_chk = mysqli_query($connection_server, "SELECT ai_status FROM sas_vendors WHERE id='$safe_vid' AND email='$esc_email' LIMIT 1");
+} else {
+    // User Path
+    $username  = $_SESSION['user_session'];
+    $esc_user  = mysqli_real_escape_string($connection_server, $username);
+    $ai_chk = mysqli_query($connection_server, "SELECT ai_status FROM sas_users WHERE vendor_id='$safe_vid' AND username='$esc_user' LIMIT 1");
+}
 
-$ai_chk = mysqli_query($connection_server, "SELECT ai_status FROM sas_users WHERE vendor_id='$safe_vid' AND username='$esc_user' LIMIT 1");
 $ai_row = $ai_chk ? mysqli_fetch_assoc($ai_chk) : null;
 if (!$ai_row || (int)$ai_row['ai_status'] !== 1) {
     echo json_encode(['guide' => null]);

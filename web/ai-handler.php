@@ -39,13 +39,16 @@ $action_type   = $json_input['action'] ?? $_POST['action'] ?? 'chat';
 $request_model = $json_input['model'] ?? $_POST['model'] ?? '';
 
 // ─── GATE 1: Authentication ──────────────────────────────────
-if (empty($_SESSION['user_session']) || !isset($connection_server)) {
+$user_session  = $_SESSION['user_session'] ?? '';
+$admin_session = $_SESSION['admin_session'] ?? '';
+
+if (empty($user_session) && empty($admin_session) || !isset($connection_server)) {
     http_response_code(401);
     echo json_encode(['status' => 'error', 'code' => 'NOT_LOGGED_IN', 'message' => 'Please log in to use AI features.']);
     exit;
 }
 
-$username  = $_SESSION['user_session'];
+$username  = !empty($user_session) ? $user_session : $admin_session;
 $vendor_id = resolveVendorID();
 
 if ($vendor_id <= 0) {
@@ -54,39 +57,43 @@ if ($vendor_id <= 0) {
     exit;
 }
 
-// ─── GATE 2: Rate limiting (per user, 20 AI requests/minute) ─
-$user_rate_key = "ai_{$vendor_id}_{$username}";
-if (bc_is_rate_limited('ai_request', $user_rate_key, 20, 60)) {
+// ─── GATE 2: Rate limiting (per actor, 20 AI requests/minute) ─
+$is_admin_actor = (!empty($admin_session) && empty($user_session));
+$rate_key = $is_admin_actor ? "ai_admin_{$vendor_id}_{$username}" : "ai_user_{$vendor_id}_{$username}";
+
+if (bc_is_rate_limited('ai_request', $rate_key, 20, 60)) {
     http_response_code(429);
     echo json_encode(['status' => 'error', 'code' => 'RATE_LIMITED', 'message' => 'Too many AI requests. Please wait a moment.']);
     exit;
 }
 
-// ─── Load user and vendor details ────────────────────────────
-$esc_user = mysqli_real_escape_string($connection_server, $username);
+// ─── Load actor and vendor details ────────────────────────────
+$esc_name = mysqli_real_escape_string($connection_server, $username);
 $safe_vid = (int)$vendor_id;
 
-$user_q = mysqli_query($connection_server,
-    "SELECT id, firstname, ai_status, ai_token_balance, ai_requests_used, ai_quota_limit, trust_score
-     FROM sas_users
-     WHERE vendor_id='$safe_vid' AND username='$esc_user' AND status=1
-     LIMIT 1"
-);
-$user = $user_q ? mysqli_fetch_assoc($user_q) : null;
+if ($is_admin_actor) {
+    // Fetch from sas_vendors
+    $q = mysqli_query($connection_server, "SELECT id, firstname, ai_status, ai_token_balance FROM sas_vendors WHERE id='$safe_vid' AND email='$esc_name' LIMIT 1");
+} else {
+    // Fetch from sas_users
+    $q = mysqli_query($connection_server, "SELECT id, firstname, ai_status, ai_token_balance FROM sas_users WHERE vendor_id='$safe_vid' AND username='$esc_name' AND status=1 LIMIT 1");
+}
 
-if (!$user) {
+$actor = $q ? mysqli_fetch_assoc($q) : null;
+
+if (!$actor) {
     http_response_code(403);
-    echo json_encode(['status' => 'error', 'code' => 'USER_NOT_FOUND', 'message' => 'User account not found.']);
+    echo json_encode(['status' => 'error', 'code' => 'USER_NOT_FOUND', 'message' => 'Account not found.']);
     exit;
 }
 
 // ─── GATE 3: AI Status Check ─────────────────────────────────
-if ((int)$user['ai_status'] !== 1) {
+if ((int)$actor['ai_status'] !== 1) {
     http_response_code(403);
     echo json_encode([
         'status'  => 'error',
         'code'    => 'AI_DISABLED',
-        'message' => 'AI features are not enabled on your account. Visit AI Settings to get started.',
+        'message' => 'AI features are not enabled. Visit AI Settings to get started.',
     ]);
     exit;
 }
@@ -103,7 +110,7 @@ $assigned_model  = $vendor_ai['ai_model_assigned'] ?? 'gemini-1.5-flash';
 $model_to_use = $assigned_model;
 
 // ─── GATE 4: Token Balance Check ─────────────────────────────
-$current_tokens = (int)($user['ai_token_balance'] ?? 0);
+$current_tokens = (int)($actor['ai_token_balance'] ?? 0);
 if ($current_tokens < $tokens_per_call) {
     http_response_code(402);
     echo json_encode([
@@ -161,12 +168,13 @@ switch ($action_type) {
 if ($ai_result['status'] === 'success') {
     // Deduct tokens ONLY on success (pay-per-success billing)
     $new_tokens = max(0, $current_tokens - $tokens_per_call);
-    $user_id    = (int)$user['id'];
+    $actor_id   = (int)$actor['id'];
 
-    mysqli_query($connection_server,
-        "UPDATE sas_users SET ai_token_balance='$new_tokens', ai_requests_used=ai_requests_used+1
-         WHERE id='$user_id'"
-    );
+    if ($is_admin_actor) {
+        mysqli_query($connection_server, "UPDATE sas_vendors SET ai_token_balance='$new_tokens' WHERE id='$actor_id'");
+    } else {
+        mysqli_query($connection_server, "UPDATE sas_users SET ai_token_balance='$new_tokens', ai_requests_used=ai_requests_used+1 WHERE id='$actor_id'");
+    }
 
     // Log the AI transaction (store only a hash of the prompt for privacy)
     $prompt_hash = hash('sha256', $prompt_raw);
@@ -178,7 +186,7 @@ if ($ai_result['status'] === 'success') {
     mysqli_query($connection_server,
         "INSERT INTO sas_ai_transactions
          (vendor_id, username, action_type, model_used, tokens_burned, cost_naira, prompt_hash, status)
-         VALUES ('$safe_vid', '$esc_user', '$esc_action', '$esc_model', '$tokens_per_call', '$cost_naira', '$esc_hash', 'success')"
+         VALUES ('$safe_vid', '" . mysqli_real_escape_string($connection_server, $username) . "', '$esc_action', '$esc_model', '$tokens_per_call', '$cost_naira', '$esc_hash', 'success')"
     );
 
     // Return response to frontend
@@ -198,7 +206,7 @@ if ($ai_result['status'] === 'success') {
     @mysqli_query($connection_server,
         "INSERT INTO sas_ai_transactions
          (vendor_id, username, action_type, model_used, tokens_burned, cost_naira, prompt_hash, status)
-         VALUES ('$safe_vid', '$esc_user', 'failed_call', '', 0, 0, '$esc_hash', 'failed')"
+         VALUES ('$safe_vid', '" . mysqli_real_escape_string($connection_server, $username) . "', 'failed_call', '', 0, 0, '$esc_hash', 'failed')"
     );
 
     http_response_code(503);
