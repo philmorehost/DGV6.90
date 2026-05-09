@@ -45,6 +45,26 @@ if (isset($_POST["restart-ollama"])) {
     header("Location: AIManagement.php"); exit();
 }
 
+// ── Handle: Test Connection ───────────────────────────────
+if (isset($_POST["test-connection"])) {
+    $ai = ai_engine();
+    $ch = curl_init(rtrim($ai->base_url, '/') . '/api/tags');
+    curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+    curl_setopt($ch, CURLOPT_TIMEOUT, 5);
+    curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
+    $res = curl_exec($ch);
+    $err = curl_error($ch);
+    $info = curl_getinfo($ch);
+    curl_close($ch);
+
+    if ($res !== false) {
+        $_SESSION["response"] = "✅ Connection Successful! Ollama is reachable.";
+    } else {
+        $_SESSION["response"] = "❌ Connection Failed: $err (HTTP Code: {$info['http_code']}). Check if the host and port are correct.";
+    }
+    header("Location: AIManagement.php"); exit();
+}
+
 // ── Handle: Approve/Reject Vendor Request ─────────────────
 if (isset($_GET['approve'])) {
     $v_id = (int)$_GET['approve'];
@@ -241,6 +261,25 @@ $wa_online = isWhatsAppGatewayOnline();
     </ol></nav>
 </div>
 
+<?php if (isset($_GET['view_startup_log'])): ?>
+<div class="container mt-4">
+    <div class="card border-0 shadow-sm rounded-4">
+        <div class="card-header bg-dark text-white rounded-top-4 py-3">
+            <h6 class="mb-0 fw-bold">Ollama Startup Log (Debug)</h6>
+        </div>
+        <div class="card-body p-0">
+            <pre class="bg-black text-success p-4 mb-0" style="max-height:400px; overflow:auto; font-size:.8rem;"><?php 
+                $log = sys_get_temp_dir() . '/ollama_startup.log';
+                echo file_exists($log) ? htmlspecialchars(file_get_contents($log)) : "No log file found.";
+            ?></pre>
+        </div>
+        <div class="card-footer bg-light text-center py-2">
+            <a href="AIManagement.php" class="btn btn-sm btn-outline-dark rounded-pill">Close Log</a>
+        </div>
+    </div>
+</div>
+<?php endif; ?>
+
 <section class="section">
 <?php if (isset($_SESSION["response"])): ?>
     <div class="alert alert-info alert-dismissible fade show rounded-4">
@@ -408,14 +447,22 @@ document.addEventListener('DOMContentLoaded', function() {
                 <!-- Global Toggle -->
                 <form method="post">
                     <input type="hidden" name="ai_global_enabled" value="<?php echo $ai_global ? 0 : 1; ?>">
-                    <button type="submit" name="toggle-global-ai" class="btn w-100 rounded-pill fw-bold mb-2 <?php echo $ai_global ? 'btn-outline-danger' : 'btn-success'; ?>">
-                        <i class="bi bi-<?php echo $ai_global ? 'pause-fill' : 'play-fill'; ?> me-1"></i>
-                        <?php echo $ai_global ? 'Disable Global AI' : 'Enable Global AI'; ?>
-                    </button>
+                    <div class="d-flex gap-2">
+                        <button type="submit" name="toggle-global-ai" class="btn w-100 rounded-pill fw-bold <?php echo $ai_global ? 'btn-outline-danger' : 'btn-success'; ?>">
+                            <i class="bi bi-<?php echo $ai_global ? 'pause-fill' : 'play-fill'; ?> me-1"></i>
+                            <?php echo $ai_global ? 'Disable Global AI' : 'Enable Global AI'; ?>
+                        </button>
+                        <button type="submit" name="test-connection" class="btn btn-light rounded-pill px-3 shadow-sm" title="Test Connection">
+                            <i class="bi bi-broadcast"></i>
+                        </button>
+                    </div>
                     <?php if ($ai_provider === 'ollama' && !$ai_up): ?>
-                    <button type="submit" name="restart-ollama" class="btn btn-primary w-100 rounded-pill fw-bold">
+                    <button type="submit" name="restart-ollama" class="btn btn-primary w-100 rounded-pill fw-bold mt-2">
                         <i class="bi bi-lightning-charge me-1"></i> Start Ollama Engine
                     </button>
+                    <div class="text-center mt-2">
+                        <a href="?view_startup_log=1" class="small text-muted text-decoration-none">View Startup Log</a>
+                    </div>
                     <?php endif; ?>
                 </form>
 
