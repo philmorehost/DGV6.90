@@ -171,6 +171,10 @@ if (!in_array('sms_bridge_ordered', $vendor_existing) && in_array('app_base_url'
     mysqli_query($connection_server, "ALTER TABLE sas_vendors ADD COLUMN sms_bridge_ordered TINYINT(1) DEFAULT 0 AFTER playstore_ordered");
 }
 
+if (!in_array('ai_marketing_bg', $vendor_existing)) {
+    mysqli_query($connection_server, "ALTER TABLE sas_vendors ADD COLUMN ai_marketing_bg VARCHAR(50) DEFAULT 'midnight'");
+}
+
 //Create Vendor Banks Table
 $create_vendor_banks_table = mysqli_query($connection_server, "CREATE TABLE IF NOT EXISTS sas_vendor_banks (vendor_id INT UNSIGNED NOT NULL, reference VARCHAR(225) NOT NULL, bank_code VARCHAR(225) NOT NULL, bank_name VARCHAR(225) NOT NULL, account_name VARCHAR(225) NOT NULL, account_number VARCHAR(225) NOT NULL)");
 
