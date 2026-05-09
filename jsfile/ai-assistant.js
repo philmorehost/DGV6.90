@@ -185,10 +185,18 @@
         document.getElementById('ai-messages').scrollTop = 99999;
 
         try {
+            const context = window.__ai_context || {};
             const resp = await fetch(HANDLER_URL, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ prompt, action: 'chat' }),
+                body: JSON.stringify({ 
+                    prompt, 
+                    action: 'chat', 
+                    context: {
+                        page: PAGE_SLUG,
+                        ...context
+                    }
+                }),
             });
             const data = await resp.json();
             typing.remove();
@@ -245,6 +253,14 @@
 
         // Load page guide after 1.5s delay (non-blocking)
         setTimeout(loadPageGuide, 1500);
+
+        // Proactive engagement
+        if (window.__ai_auto_open) {
+            setTimeout(() => {
+                openPanel();
+                if (window.__ai_init_msg) appendMsg('bot', window.__ai_init_msg);
+            }, 2000);
+        }
     }
 
     if (document.readyState === 'loading') {

@@ -625,6 +625,7 @@ if (mysqli_num_rows($select_user_vendor_status_message) == 1) {
 $_ai_user_enabled = isset($get_logged_user_details['ai_status']) && (int)$get_logged_user_details['ai_status'] === 1;
 if ($_ai_user_enabled):
     $ai_token_bal = (int)($get_logged_user_details['ai_token_balance'] ?? 0);
+    $ai_user_ctx  = bc_get_ai_user_context($get_logged_user_details);
 ?>
 <script>
   window.__ai_enabled     = true;
@@ -632,6 +633,13 @@ if ($_ai_user_enabled):
   window.__ai_handler_url = '/web/ai-handler.php?context=user';
   window.__ai_guide_url   = '/web/ai-guide-cache.php?context=user';
   window.__ai_tokens      = <?php echo $ai_token_bal; ?>;
+  window.__ai_context     = <?php echo json_encode($ai_user_ctx); ?>;
+  
+  // Proactive Engagement: Open AI Assistant if there's a recent failure
+  <?php if (!empty($ai_user_ctx['session_error'])): ?>
+  window.__ai_auto_open   = true;
+  window.__ai_init_msg    = "I noticed your last transaction had an issue: '<?php echo addslashes($ai_user_ctx['session_error']); ?>'. <?php echo addslashes($ai_user_ctx['smart_explanation']); ?> How can I help you complete your purchase?";
+  <?php endif; ?>
 </script>
 <script src="/jsfile/ai-assistant.js" defer></script>
 <?php endif; ?>

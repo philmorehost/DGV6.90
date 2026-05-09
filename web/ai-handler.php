@@ -145,7 +145,9 @@ if (empty($prompt_raw)) {
     exit;
 }
 
-$safe_prompt = bc_firewall_prompt($prompt_raw);
+$context_data = $json_input['context'] ?? [];
+$safe_prompt = bc_firewall_prompt($prompt_raw, false, $context_data);
+
 if ($safe_prompt === false) {
     http_response_code(400);
     echo json_encode([

@@ -2,13 +2,53 @@
 /**
  * AI Edition: Smart Re-query Failure Explanation
  */
+/**
+ * AI Edition: Smart Re-query Failure Explanation
+ */
 function bc_get_ai_failure_explanation($status_msg) {
     $msg = strtolower($status_msg);
-    if (strpos($msg, 'insufficient') !== false) return "The provider reports insufficient stock for this plan. Try a different amount or network.";
-    if (strpos($msg, 'invalid') !== false) return "The recipient number might be incorrect or ported. Check the number and try again.";
-    if (strpos($msg, 'timeout') !== false) return "The network is currently congested. This usually resolves in 5-10 minutes.";
-    if (strpos($msg, 'duplicate') !== false) return "This exact transaction was just sent. Please wait 1 minute before trying again.";
-    return "The provider returned an unexpected error. Switching to a backup route might help.";
+    if (strpos($msg, 'insufficient') !== false || strpos($msg, 'stock') !== false) 
+        return "The provider is currently out of stock for this specific plan. I recommend trying a different data volume or a different network provider if available.";
+    if (strpos($msg, 'invalid') !== false || strpos($msg, 'number') !== false) 
+        return "The recipient phone number appears to be invalid or incorrectly formatted. Please double-check the number and try again.";
+    if (strpos($msg, 'timeout') !== false || strpos($msg, 'congested') !== false) 
+        return "The network provider's server is currently slow or timed out. This is usually temporary. Please wait 5 minutes and try again.";
+    if (strpos($msg, 'duplicate') !== false) 
+        return "It looks like you just sent this exact same transaction. To prevent double-charging, the system blocked this duplicate. Please check your history first.";
+    if (strpos($msg, 'balance') !== false && strpos($msg, 'wallet') !== false)
+        return "Your wallet balance is too low for this transaction. You can fund your wallet via Bank Transfer or Card in the 'Fund Wallet' section.";
+    return "The provider returned an unexpected error. Switching to a backup route or trying again in a few minutes often solves this.";
+}
+
+/**
+ * Generates a rich business context for the AI to understand the user's current situation.
+ */
+function bc_get_ai_user_context($user_details) {
+    global $connection_server;
+    if (!$user_details || !isset($user_details['username'])) return [];
+
+    $username = mysqli_real_escape_string($connection_server, $user_details['username']);
+    $vendor_id = (int)$user_details['vendor_id'];
+
+    // 1. Get recent failed transactions
+    $failed_q = mysqli_query($connection_server, "SELECT name, status_description, amount, date FROM sas_transactions WHERE vendor_id='$vendor_id' AND username='$username' AND status=0 ORDER BY id DESC LIMIT 1");
+    $last_fail = mysqli_fetch_assoc($failed_q);
+
+    // 2. Identify current wallet state
+    $balance = (float)($user_details['balance'] ?? 0);
+    $status_label = $balance < 100 ? "Low" : "Healthy";
+
+    // 3. Check for immediate session error (most recent attempt)
+    $immediate_error = $_SESSION['product_purchase_response'] ?? '';
+    
+    return [
+        'wallet_balance' => $balance,
+        'wallet_status' => $status_label,
+        'last_fail_reason' => $last_fail ? $last_fail['status_description'] : '',
+        'last_fail_plan' => $last_fail ? $last_fail['name'] : '',
+        'session_error' => $immediate_error,
+        'smart_explanation' => $immediate_error ? bc_get_ai_failure_explanation($immediate_error) : ''
+    ];
 }
 
 if (function_exists('resolveVendorID')) return;

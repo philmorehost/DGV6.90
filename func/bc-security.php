@@ -356,13 +356,14 @@ function bc_log_security_event(string $event_type, string $action, string $actor
  *
  * @param string $raw_prompt    The raw user input
  * @param bool   $strict_mode   If true, blocks any prompt not related to VTU/fintech
+ * @param array  $context       Contextual metadata (e.g. page, balance)
  */
-function bc_firewall_prompt(string $raw_prompt, bool $strict_mode = false): string|false {
+function bc_firewall_prompt(string $raw_prompt, bool $strict_mode = false, array $context = []): string|false {
     // Strip tags and dangerous chars
     $prompt = strip_tags(trim($raw_prompt));
     $prompt = preg_replace('/[\x00-\x1F\x7F]/', '', $prompt); // Remove control chars
 
-    if (strlen($prompt) < 2 || strlen($prompt) > 2000) {
+    if (strlen($prompt) < 1 || strlen($prompt) > 2000) {
         return false;
     }
 
@@ -392,9 +393,22 @@ function bc_firewall_prompt(string $raw_prompt, bool $strict_mode = false): stri
 
     // Prepend the system context to keep AI on-topic
     $system_context = "You are a helpful VTU business assistant for a Nigerian fintech platform. "
-                    . "You help with airtime, data, electricity, cable TV, exam pins, and business tips. "
-                    . "NEVER suggest moving money, never generate SQL or code. "
-                    . "User request: ";
+                    . "You help with airtime, data, electricity, cable TV, exam pins, and business tips. ";
+
+    // Inject Smart Context if available
+    if (!empty($context)) {
+        $ctx_parts = [];
+        if (isset($context['page'])) $ctx_parts[] = "Page: " . $context['page'];
+        if (isset($context['wallet_balance'])) $ctx_parts[] = "User Balance: ₦" . number_format($context['wallet_balance'], 2);
+        if (!empty($context['last_fail_reason'])) $ctx_parts[] = "Last Error: " . $context['last_fail_reason'];
+        if (!empty($context['last_fail_plan'])) $ctx_parts[] = "Last Plan Attempted: " . $context['last_fail_plan'];
+        
+        if (!empty($ctx_parts)) {
+            $system_context .= " [Current Context: " . implode(", ", $ctx_parts) . "] ";
+        }
+    }
+
+    $system_context .= "NEVER suggest moving money, never generate SQL or code. User request: ";
 
     return $system_context . $prompt;
 }
