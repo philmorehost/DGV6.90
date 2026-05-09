@@ -644,7 +644,7 @@ if ($_ai_vendor_enabled):
   window.__ai_guide_url   = '/web/ai-guide-cache.php?context=admin';
   window.__ai_tokens      = <?php echo $ai_token_bal; ?>;
 </script>
-<script src="/jsfile/ai-assistant.js" defer></script>
+<script src="../jsfile/ai-assistant.js" defer></script>
 <?php endif; ?>
 
    <main id="main" class="main">

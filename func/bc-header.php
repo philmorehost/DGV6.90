@@ -641,7 +641,7 @@ if ($_ai_user_enabled):
   window.__ai_init_msg    = "I noticed your last transaction had an issue: '<?php echo addslashes($ai_user_ctx['session_error']); ?>'. <?php echo addslashes($ai_user_ctx['smart_explanation']); ?> How can I help you complete your purchase?";
   <?php endif; ?>
 </script>
-<script src="/jsfile/ai-assistant.js" defer></script>
+<script src="../jsfile/ai-assistant.js" defer></script>
 <?php endif; ?>
 
 <!-- Referral Modal -->
