@@ -73,9 +73,15 @@ $bg_templates = [
     <style>
         :root { --admin-primary: <?php echo $vendor_primary_color ?? '#4f46e5'; ?>; }
         
-        /* Layout Fixes */
-        #main { padding: 20px 30px !important; }
-        @media (max-width: 768px) { #main { padding: 20px 15px !important; } }
+        /* Layout Fixes to close gap between sidebar and card */
+        #main { 
+            margin-left: 290px !important; 
+            padding: 20px 20px !important; 
+            transition: all 0.3s;
+        }
+        @media (max-width: 1199px) { 
+            #main { margin-left: 0 !important; padding: 20px 15px !important; } 
+        }
 
         .ai-marketing-header { 
             background: linear-gradient(135deg, var(--admin-primary), #000); 
