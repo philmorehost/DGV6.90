@@ -27,7 +27,8 @@ if (isset($_POST["test-connection"])) {
     $url = $ai->getBaseUrl();
     
     if ($provider === 'gemini') {
-        $url .= "/models/gemini-1.5-flash?key=" . $ai->getApiKey();
+        // Use the list models endpoint to check connectivity & key validity
+        $url = "https://generativelanguage.googleapis.com/v1beta/models?key=" . $ai->getApiKey();
     } else {
         $url = rtrim($url, '/') . '/models';
     }

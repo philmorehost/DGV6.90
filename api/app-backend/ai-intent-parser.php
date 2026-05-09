@@ -70,7 +70,7 @@ if ($intent['confidence'] < 0.70) {
         . "\"smartcard\": \"null or string\", \"meter_number\": \"null or string\", "
         . "\"betting_id\": \"null or string\", \"confidence\": 0.95}";
 
-    $engine  = BcAiEngine::getInstance();
+    $engine  = ai_engine();
     $model   = getSuperAdminOption('ai_default_model', 'gemini-1.5-flash');
     $result  = $engine->chat($model, $cloud_prompt, ['temperature' => 0.1]);
     $ai_raw  = $result['response'] ?? '';

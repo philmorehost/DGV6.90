@@ -16,7 +16,7 @@ if (isset($_POST['generate-ad'])) {
                Include emojis and a clear Call to Action (CTA). Keep it concise.";
     
     $ai = ai_engine();
-    $result = $ai->generate('phi4-mini', $prompt);
+    $result = $ai->chat('gemini-1.5-flash', $prompt);
     $generated_copy = $result['status'] === 'success' ? $result['response'] : '❌ AI Error: ' . ($result['message'] ?? 'Unknown');
 }
 

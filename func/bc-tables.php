@@ -1776,3 +1776,11 @@ mysqli_query($connection_server, "CREATE TABLE IF NOT EXISTS sas_ai_audit_log (
     ip_address VARCHAR(45),
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 )");
+
+// ─── CLOUD AI MIGRATION: Force transition from Ollama ────────
+if ($check_options_table && mysqli_num_rows($check_options_table) > 0) {
+    mysqli_query($connection_server, "UPDATE sas_super_admin_options SET option_value='gemini' WHERE option_name='ai_provider' AND (option_value='ollama' OR option_value='' OR option_value IS NULL)");
+    mysqli_query($connection_server, "UPDATE sas_super_admin_options SET option_value='gemini-1.5-flash' WHERE option_name='ai_default_model' AND option_value IN ('phi4-mini', 'gemma:2b', 'llama3')");
+}
+mysqli_query($connection_server, "UPDATE sas_vendors SET ai_model_assigned='gemini-1.5-flash' WHERE ai_model_assigned IN ('phi4-mini', 'gemma:2b', 'llama3', 'llama4-scout', 'gemma4:e2b') OR ai_model_assigned IS NULL OR ai_model_assigned=''");
+mysqli_query($connection_server, "UPDATE sas_users SET ai_model_assigned='gemini-1.5-flash' WHERE ai_model_assigned IN ('phi4-mini', 'gemma:2b', 'llama3')");

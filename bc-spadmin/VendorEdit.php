@@ -582,9 +582,10 @@
                         <div class="col-md-6">
                             <label class="form-label small fw-bold">ASSIGNED AI MODEL</label>
                             <select name="ai_model" class="form-select rounded-3">
-                                <option value="phi4-mini" <?php echo ($get_vendor_details['ai_model_assigned'] ?? '') == 'phi4-mini' ? 'selected' : ''; ?>>Phi-4 Mini (Fastest)</option>
-                                <option value="gemma4:e2b" <?php echo ($get_vendor_details['ai_model_assigned'] ?? '') == 'gemma4:e2b' ? 'selected' : ''; ?>>Gemma-4 E2B (Balanced)</option>
-                                <option value="llama4-scout" <?php echo ($get_vendor_details['ai_model_assigned'] ?? '') == 'llama4-scout' ? 'selected' : ''; ?>>Llama-4 Scout (Intelligent)</option>
+                                <option value="gemini-1.5-flash" <?php echo ($get_vendor_details['ai_model_assigned'] ?? '') == 'gemini-1.5-flash' ? 'selected' : ''; ?>>Gemini 1.5 Flash (Default)</option>
+                                <option value="gemini-1.5-pro" <?php echo ($get_vendor_details['ai_model_assigned'] ?? '') == 'gemini-1.5-pro' ? 'selected' : ''; ?>>Gemini 1.5 Pro (Intelligent)</option>
+                                <option value="deepseek-chat" <?php echo ($get_vendor_details['ai_model_assigned'] ?? '') == 'deepseek-chat' ? 'selected' : ''; ?>>DeepSeek Chat (Balanced)</option>
+                                <option value="llama3-70b-8192" <?php echo ($get_vendor_details['ai_model_assigned'] ?? '') == 'llama3-70b-8192' ? 'selected' : ''; ?>>Llama 3 70B (Powerful)</option>
                             </select>
                         </div>
                         <div class="col-md-6">
