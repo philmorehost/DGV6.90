@@ -39,28 +39,32 @@ $action_type   = $json_input['action'] ?? $_POST['action'] ?? 'chat';
 $request_model = $json_input['model'] ?? $_POST['model'] ?? '';
 
 // ─── GATE 1: Authentication ──────────────────────────────────
-$user_session  = $_SESSION['user_session'] ?? '';
-$admin_session = $_SESSION['admin_session'] ?? '';
+$user_session   = $_SESSION['user_session'] ?? '';
+$admin_session  = $_SESSION['admin_session'] ?? '';
+$spadmin_session = $_SESSION['spadmin_session'] ?? '';
 
-if (empty($user_session) && empty($admin_session) || !isset($connection_server)) {
+if (empty($user_session) && empty($admin_session) && empty($spadmin_session) || !isset($connection_server)) {
     http_response_code(401);
     echo json_encode(['status' => 'error', 'code' => 'NOT_LOGGED_IN', 'message' => 'Please log in to use AI features.']);
     exit;
 }
 
-$username  = !empty($user_session) ? $user_session : $admin_session;
+$context = $_GET['context'] ?? 'user';
+$username = $user_session;
+if ($context === 'admin') $username = $admin_session;
+if ($context === 'spadmin') $username = $spadmin_session;
+
 $vendor_id = resolveVendorID();
 
-if ($vendor_id <= 0) {
+if ($vendor_id <= 0 && $context !== 'spadmin') {
     http_response_code(403);
     echo json_encode(['status' => 'error', 'code' => 'VENDOR_ERROR', 'message' => 'Vendor not found.']);
     exit;
 }
 
 // ─── GATE 2: Rate limiting (per actor, 20 AI requests/minute) ─
-$context = $_GET['context'] ?? 'user';
-$is_admin_actor = ($context === 'admin' && !empty($admin_session));
-$rate_key = $is_admin_actor ? "ai_admin_{$vendor_id}_{$username}" : "ai_user_{$vendor_id}_{$username}";
+$is_admin_actor = (($context === 'admin' || $context === 'spadmin') && (!empty($admin_session) || !empty($spadmin_session)));
+$rate_key = $is_admin_actor ? "ai_adm_{$vendor_id}_{$username}" : "ai_usr_{$vendor_id}_{$username}";
 
 // DEBUG
 // file_put_contents('ai_debug.log', "VID: $vendor_id | Admin: $admin_session | User: $user_session | IsAdminActor: ".($is_admin_actor?'Y':'N')." | Username: $username\n", FILE_APPEND);
@@ -76,8 +80,13 @@ $esc_name = mysqli_real_escape_string($connection_server, $username);
 $safe_vid = (int)$vendor_id;
 
 if ($is_admin_actor) {
-    // Fetch from sas_vendors
-    $q = mysqli_query($connection_server, "SELECT id, firstname, ai_status, ai_token_balance FROM sas_vendors WHERE id='$safe_vid' AND email='$esc_name' LIMIT 1");
+    if ($context === 'spadmin') {
+        // Super Admin uses system settings (vendor 0 or similar, but we check if they are authorized)
+        $q = mysqli_query($connection_server, "SELECT 1 as id, 'Super' as firstname, 1 as ai_status, 999999 as ai_token_balance");
+    } else {
+        // Fetch from sas_vendors
+        $q = mysqli_query($connection_server, "SELECT id, firstname, ai_status, ai_token_balance FROM sas_vendors WHERE id='$safe_vid' AND email='$esc_name' LIMIT 1");
+    }
 } else {
     // Fetch from sas_users
     $q = mysqli_query($connection_server, "SELECT id, firstname, ai_status, ai_token_balance FROM sas_users WHERE vendor_id='$safe_vid' AND username='$esc_name' AND status=1 LIMIT 1");
@@ -174,7 +183,9 @@ if ($ai_result['status'] === 'success') {
     $new_tokens = max(0, $current_tokens - $tokens_per_call);
     $actor_id   = (int)$actor['id'];
 
-    if ($is_admin_actor) {
+    if ($context === 'spadmin') {
+        // Super admin doesn't get debited
+    } elseif ($context === 'admin') {
         mysqli_query($connection_server, "UPDATE sas_vendors SET ai_token_balance='$new_tokens' WHERE id='$actor_id'");
     } else {
         mysqli_query($connection_server, "UPDATE sas_users SET ai_token_balance='$new_tokens', ai_requests_used=ai_requests_used+1 WHERE id='$actor_id'");

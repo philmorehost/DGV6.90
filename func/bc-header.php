@@ -620,6 +620,21 @@ if (mysqli_num_rows($select_user_vendor_status_message) == 1) {
 </aside><!-- End Sidebar-->
 
 <main id="main" class="main">
+<?php
+// DGV6.90 AI Edition: Inject AI assistant widget (deferred)
+$_ai_user_enabled = isset($get_logged_user_details['ai_status']) && (int)$get_logged_user_details['ai_status'] === 1;
+if ($_ai_user_enabled):
+    $ai_token_bal = (int)($get_logged_user_details['ai_token_balance'] ?? 0);
+?>
+<script>
+  window.__ai_enabled     = true;
+  window.__ai_page_slug   = '<?php echo preg_replace("/[^a-z0-9_]/", "_", strtolower(basename($_SERVER["PHP_SELF"], ".php"))); ?>';
+  window.__ai_handler_url = '/web/ai-handler.php?context=user';
+  window.__ai_guide_url   = '/web/ai-guide-cache.php?context=user';
+  window.__ai_tokens      = <?php echo $ai_token_bal; ?>;
+</script>
+<script src="/jsfile/ai-assistant.js" defer></script>
+<?php endif; ?>
 
 <!-- Referral Modal -->
 <div class="modal fade" id="referralModal" tabindex="-1" aria-labelledby="referralModalLabel" aria-hidden="true">
