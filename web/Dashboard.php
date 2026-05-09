@@ -448,8 +448,8 @@ $is_kyc_compliant = ($get_logged_user_details['kyc_status'] == 2);
                 $v_ai = mysqli_fetch_assoc($v_ai_q);
                 
                 if (($v_ai['ai_status'] ?? 0) == 1):
-                    $tx_count_q = mysqli_query($connection_server, "SELECT COUNT(id) as c FROM sas_transactions WHERE username='".$get_logged_user_details["username"]."' AND status=1");
-                    $tx_count = ($tx_count_q && $row_c = mysqli_fetch_assoc($tx_count_q)) ? $row_c['c'] : 0;
+                    $tx_count_q = mysqli_query($connection_server, "SELECT COUNT(*) as c FROM sas_transactions WHERE username='".$get_logged_user_details["username"]."' AND status=1");
+                    $tx_count = ($tx_count_q && $row_c = mysqli_fetch_assoc($tx_count_q)) ? (int)$row_c['c'] : 0;
                     $threshold = (int)($v_ai['ai_voice_min_tx'] ?? 50);
                     $v_status = (int)$get_logged_user_details['ai_voice_status'];
 
@@ -458,11 +458,27 @@ $is_kyc_compliant = ($get_logged_user_details['kyc_status'] == 2);
                             <h6 class="fw-bold mb-2"><i class="bi bi-cpu-fill me-2"></i>AI Review Pending</h6>
                             <p class="x-small opacity-75 mb-0">Your Zero-Click Voice access is being reviewed by the admin.</p>
                         </div>
-                    <?php elseif ($v_status == 0 && $tx_count >= $threshold): ?>
-                        <div class="card p-4 mb-4 border-0 shadow-sm" style="background: linear-gradient(135deg, #000, #4338ca); color: white;">
-                            <h6 class="fw-bold mb-2"><i class="bi bi-stars me-2"></i>AI Reward Unlocked!</h6>
-                            <p class="x-small opacity-75 mb-3">You've completed <?php echo $tx_count; ?> transactions! Apply now for "Zero-Click" Voice commands.</p>
-                            <a href="AccountSettings.php" class="btn btn-light btn-sm w-100 rounded-pill fw-bold text-primary">APPLY FOR AI ACCESS</a>
+                    <?php elseif ($v_status == 0): ?>
+                        <div class="card p-4 mb-4 border-0 shadow-sm" style="background: <?php echo ($tx_count >= $threshold) ? 'linear-gradient(135deg, #000, #4338ca)' : '#fff'; ?>; color: <?php echo ($tx_count >= $threshold) ? 'white' : '#64748b'; ?>;">
+                            <h6 class="fw-bold mb-2 <?php echo ($tx_count >= $threshold) ? 'text-white' : 'text-dark'; ?>">
+                                <i class="bi <?php echo ($tx_count >= $threshold) ? 'bi-stars' : 'bi-lock-fill'; ?> me-2"></i>
+                                <?php echo ($tx_count >= $threshold) ? 'AI Reward Unlocked!' : 'Autonomous AI'; ?>
+                            </h6>
+                            <p class="x-small opacity-75 mb-3">
+                                <?php if ($tx_count >= $threshold): ?>
+                                    You've completed <?php echo $tx_count; ?> transactions! Apply now for "Zero-Click" Voice commands.
+                                <?php else: ?>
+                                    Complete <?php echo $threshold; ?> successful transactions to unlock Voice AI. 
+                                    <strong>(<?php echo $tx_count; ?>/<?php echo $threshold; ?> done)</strong>
+                                <?php endif; ?>
+                            </p>
+                            <?php if ($tx_count >= $threshold): ?>
+                                <a href="AccountSettings.php" class="btn btn-light btn-sm w-100 rounded-pill fw-bold text-primary shadow-sm">APPLY FOR AI ACCESS</a>
+                            <?php else: ?>
+                                <div class="progress rounded-pill" style="height: 6px; background: #e2e8f0;">
+                                    <div class="progress-bar bg-primary" style="width: <?php echo min(100, ($tx_count/$threshold)*100); ?>%"></div>
+                                </div>
+                            <?php endif; ?>
                         </div>
                     <?php endif; ?>
                 <?php endif; ?>

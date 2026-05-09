@@ -207,8 +207,8 @@ if (isset($_POST["update-user-security"])) {
 if (isset($_POST["apply-ai-voice"])) {
     $uid = $get_logged_user_details['id'];
     // Re-verify the count
-    $tx_count_q = mysqli_query($connection_server, "SELECT COUNT(id) as c FROM sas_transactions WHERE username='".$get_logged_user_details["username"]."' AND status=1");
-    $tx_count = ($tx_count_q && $row_c = mysqli_fetch_assoc($tx_count_q)) ? $row_c['c'] : 0;
+    $tx_count_q = mysqli_query($connection_server, "SELECT COUNT(*) as c FROM sas_transactions WHERE username='".$get_logged_user_details["username"]."' AND status=1");
+    $tx_count = ($tx_count_q && $row_c = mysqli_fetch_assoc($tx_count_q)) ? (int)$row_c['c'] : 0;
     
     // Get vendor limit
     $v_limit_q = mysqli_query($connection_server, "SELECT ai_voice_min_tx FROM sas_vendors WHERE id='".$get_logged_user_details["vendor_id"]."'");
@@ -246,7 +246,7 @@ if (isset($_POST["buy-user-ai-tokens"])) {
         
         $upd = mysqli_query($connection_server, "UPDATE sas_users SET balance='$new_bal', ai_token_balance='$new_token_bal' WHERE id='$uid'");
         if ($upd) {
-            mysqli_query($connection_server, "INSERT INTO sas_transactions (vendor_id, username, type, amount, old_balance, new_balance, ref, description, status, date) VALUES ('$vid', '".$get_logged_user_details['username']."', 'debit', '$cost', '".$get_logged_user_details['balance']."', '$new_bal', '$ref', '$desc', 1, NOW())");
+        mysqli_query($connection_server, "INSERT INTO sas_transactions (vendor_id, product_unique_id, type_alternative, reference, username, amount, discounted_amount, balance_before, balance_after, description, mode, api_website, status, date) VALUES ('$vid', 'AI_TOKEN', 'AI Token Purchase', '$ref', '".$get_logged_user_details['username']."', '$token_amount', '$cost', '".$get_logged_user_details['balance']."', '$new_bal', '$desc', 'web', '".$_SERVER['HTTP_HOST']."', 1, NOW())");
             $_SESSION["product_purchase_response"] = "✅ $token_amount AI Tokens purchased successfully!";
         }
     } else {
@@ -272,8 +272,8 @@ if (isset($_POST["buy-user-ai-tokens"])) {
       
         <!-- Google Fonts -->
 <?php
-    $tx_count_q = mysqli_query($connection_server, "SELECT COUNT(id) as c FROM sas_transactions WHERE username='".$get_logged_user_details["username"]."' AND status=1");
-    $tx_count = ($tx_count_q && $row_c = mysqli_fetch_assoc($tx_count_q)) ? $row_c['c'] : 0;
+    $tx_count_q = mysqli_query($connection_server, "SELECT COUNT(*) as c FROM sas_transactions WHERE username='".$get_logged_user_details["username"]."' AND status=1");
+    $tx_count = ($tx_count_q && $row_c = mysqli_fetch_assoc($tx_count_q)) ? (int)$row_c['c'] : 0;
     
     $v_q = mysqli_query($connection_server, "SELECT ai_voice_min_tx, ai_user_token_price, ai_status FROM sas_vendors WHERE id='".$get_logged_user_details["vendor_id"]."'");
     $v_data = mysqli_fetch_assoc($v_q);
