@@ -31,8 +31,21 @@
                 box-shadow:0 4px 20px rgba(124,58,237,0.5);
                 transition:transform .2s, box-shadow .2s;
                 display:flex; align-items:center; justify-content:center;
+                animation: ai-pulse 2s infinite;
             }
-            #ai-fab:hover { transform:scale(1.1); box-shadow:0 6px 28px rgba(124,58,237,0.7); }
+            #ai-fab:hover { transform:scale(1.1); box-shadow:0 6px 28px rgba(124,58,237,0.7); animation: none; }
+            @keyframes ai-pulse {
+                0% { box-shadow: 0 0 0 0 rgba(124,58,237, 0.7); }
+                70% { box-shadow: 0 0 0 15px rgba(124,58,237, 0); }
+                100% { box-shadow: 0 0 0 0 rgba(124,58,237, 0); }
+            }
+            #ai-tooltip {
+                position: absolute; right: 70px; top: 50%; transform: translateY(-50%);
+                background: #1e293b; color: #fff; padding: 6px 12px; border-radius: 8px;
+                font-size: 11px; white-space: nowrap; pointer-events: none;
+                opacity: 0; transition: opacity .3s;
+            }
+            #ai-bubble:hover #ai-tooltip { opacity: 1; }
             #ai-panel {
                 display:none; position:fixed; bottom:92px; right:24px; width:340px;
                 max-height:520px; background:#fff; border-radius:1.25rem;
@@ -88,6 +101,7 @@
 
         const html = `
             <div id="ai-bubble">
+                <div id="ai-tooltip">How can I help?</div>
                 <div id="ai-panel" role="dialog" aria-label="AI Assistant">
                     <div id="ai-header">
                         <div>
@@ -109,6 +123,13 @@
         const container = document.createElement('div');
         container.innerHTML = html;
         document.body.appendChild(container);
+
+        // Expose global helpers
+        window.__ai_open = openPanel;
+        window.__ai_close = () => {
+            const panel = document.getElementById('ai-panel');
+            if (panel) panel.classList.remove('open');
+        };
     }
 
     // ─── 2. Smart Assist Modal (NEW) ──────────────────────────

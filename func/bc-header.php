@@ -564,6 +564,13 @@ if (mysqli_num_rows($select_user_vendor_status_message) == 1) {
 
 
       <li class="nav-item">
+        <a class="nav-link <?php echo ($current_page == 'AISuite.php') ? 'active_item' : 'collapsed'; ?>" href="<?php echo $web_http_host; ?>/web/AISuite.php">
+          <i class="bi bi-cpu"></i>
+          <span>AI Suite</span>
+        </a>
+      </li>
+
+      <li class="nav-item">
         <a class="nav-link <?php echo ($current_page == 'AccountSettings.php') ? 'active_item' : 'collapsed'; ?>" href="<?php echo $web_http_host; ?>/web/AccountSettings.php">
           <i class="bi bi-gear"></i>
           <span>Account Settings</span>
