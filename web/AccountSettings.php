@@ -110,7 +110,7 @@
                 $md5_con_new_pass = md5($con_new_pass);
                 
                 if($md5_old_pass == $get_logged_user_details["password"]){
-                    if($md5_new_pass !== $get_logged_admin_details["password"]){
+                    if($md5_new_pass !== $get_logged_user_details["password"]){
                         if($md5_new_pass == $md5_con_new_pass){
                             mysqli_query($connection_server, "UPDATE sas_users SET password='$md5_new_pass' WHERE vendor_id='".$get_logged_user_details["vendor_id"]."' && username='".$get_logged_user_details["username"]."'");
                             // Email Beginning
@@ -207,7 +207,7 @@ if (isset($_POST["update-user-security"])) {
 if (isset($_POST["apply-ai-voice"])) {
     $uid = $get_logged_user_details['id'];
     // Re-verify the count
-    $tx_count_q = mysqli_query($connection_server, "SELECT COUNT(id) as c FROM transactions WHERE username='".$get_logged_user_details["username"]."' AND status='success'");
+    $tx_count_q = mysqli_query($connection_server, "SELECT COUNT(id) as c FROM sas_transactions WHERE username='".$get_logged_user_details["username"]."' AND status='success'");
     $tx_count = mysqli_fetch_assoc($tx_count_q)['c'];
     
     // Get vendor limit
@@ -240,10 +240,11 @@ if (isset($_POST["apply-ai-voice"])) {
       
         <!-- Google Fonts -->
 <?php
-    $tx_count_q = mysqli_query($connection_server, "SELECT COUNT(id) as c FROM transactions WHERE username='".$get_logged_user_details["username"]."' AND status='success'");
+    $tx_count_q = mysqli_query($connection_server, "SELECT COUNT(id) as c FROM sas_transactions WHERE username='".$get_logged_user_details["username"]."' AND status='success'");
     $tx_count = mysqli_fetch_assoc($tx_count_q)['c'];
     $v_limit_q = mysqli_query($connection_server, "SELECT ai_voice_min_tx FROM sas_vendors WHERE id='".$get_logged_user_details["vendor_id"]."'");
     $v_limit = mysqli_fetch_assoc($v_limit_q)['ai_voice_min_tx'] ?? 50;
+    $v_limit = max(1, (int)$v_limit); // Prevent division by zero
     $ai_voice_status = (int)$get_logged_user_details['ai_voice_status'];
     $progress = min(100, ($tx_count / $v_limit) * 100);
 ?>
