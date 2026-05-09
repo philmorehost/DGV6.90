@@ -827,23 +827,23 @@
                                 <div class="row g-3">
                                     <div class="col-md-6">
                                         <label class="form-label small fw-bold text-muted">ACCOUNT NAME</label>
-                                        <input name="name" type="text" value="<?php echo $get_admin_payment_details['account_name']; ?>" class="form-control rounded-3" required />
+                                        <input name="name" type="text" value="<?php echo $get_admin_payment_details['account_name'] ?? ''; ?>" class="form-control rounded-3" required />
                                     </div>
                                     <div class="col-md-6">
                                         <label class="form-label small fw-bold text-muted">BANK NAME</label>
-                                        <input name="bank" type="text" value="<?php echo $get_admin_payment_details['bank_name']; ?>" class="form-control rounded-3" required />
+                                        <input name="bank" type="text" value="<?php echo $get_admin_payment_details['bank_name'] ?? ''; ?>" class="form-control rounded-3" required />
                                     </div>
                                     <div class="col-md-6">
                                         <label class="form-label small fw-bold text-muted">ACCOUNT NUMBER</label>
-                                        <input name="number" type="text" value="<?php echo $get_admin_payment_details['account_number']; ?>" class="form-control rounded-3" required />
+                                        <input name="number" type="text" value="<?php echo $get_admin_payment_details['account_number'] ?? ''; ?>" class="form-control rounded-3" required />
                                     </div>
                                     <div class="col-md-6">
                                         <label class="form-label small fw-bold text-muted">SUPPORT PHONE</label>
-                                        <input name="phone" type="text" value="<?php echo $get_admin_payment_details['phone_number']; ?>" class="form-control rounded-3" required />
+                                        <input name="phone" type="text" value="<?php echo $get_admin_payment_details['phone_number'] ?? ''; ?>" class="form-control rounded-3" required />
                                     </div>
                                     <div class="col-md-12">
                                         <label class="form-label small fw-bold text-muted">MANUAL FUNDING CHARGES (₦)</label>
-                                        <input name="charges" type="text" value="<?php echo $get_admin_payment_details['amount_charged']; ?>" class="form-control rounded-3" required />
+                                        <input name="charges" type="text" value="<?php echo $get_admin_payment_details['amount_charged'] ?? '0'; ?>" class="form-control rounded-3" required />
                                     </div>
                                 </div>
                                 <button name="update-bank-details" class="btn btn-primary mt-4 px-5 rounded-pill fw-bold">Save Bank Info</button>
@@ -956,11 +956,11 @@
                             <form method="post">
                                 <div class="mb-3">
                                     <label class="form-label small fw-bold text-muted text-uppercase">Site Title</label>
-                                    <input name="site-title" type="text" value="<?php echo $get_site_details['site_title']; ?>" class="form-control rounded-3" required />
+                                    <input name="site-title" type="text" value="<?php echo $get_site_details['site_title'] ?? ''; ?>" class="form-control rounded-3" required />
                                 </div>
                                 <div class="mb-4">
                                     <label class="form-label small fw-bold text-muted text-uppercase">Site Meta Description</label>
-                                    <textarea name="site-desc" class="form-control rounded-3" rows="4" required><?php echo $get_site_details['site_desc']; ?></textarea>
+                                    <textarea name="site-desc" class="form-control rounded-3" rows="4" required><?php echo $get_site_details['site_desc'] ?? ''; ?></textarea>
                                 </div>
                                 <button name="update-site-details" class="btn btn-primary px-5 rounded-pill fw-bold">Save Site Details</button>
                             </form>
