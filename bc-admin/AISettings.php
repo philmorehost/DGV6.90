@@ -234,7 +234,6 @@ $v_blocked_count = ($blocked_q && $row_b = mysqli_fetch_assoc($blocked_q)) ? $ro
 <body>
 <?php include("../func/bc-admin-header.php"); ?>
 
-<main id="main" class="main">
     <div class="pagetitle mb-4">
         <h1 class="fw-900">Intelligence Command Center</h1>
         <nav><ol class="breadcrumb"><li class="breadcrumb-item"><a href="Dashboard.php">Home</a></li><li class="breadcrumb-item active">AI Control</li></ol></nav>
@@ -553,7 +552,6 @@ $v_blocked_count = ($blocked_q && $row_b = mysqli_fetch_assoc($blocked_q)) ? $ro
             </div>
         </div>
     </section>
-</main>
 
 <script src="../assets-2/vendor/bootstrap/js/bootstrap.bundle.min.js"></script>
 <script>
