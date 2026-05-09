@@ -190,6 +190,16 @@ $usage = $usage_q ? mysqli_fetch_assoc($usage_q) : ['used' => 0, 'calls' => 0];
 // Voice Settings
 $voice_min_tx = (int)($get_logged_admin_details["ai_voice_min_tx"] ?? 50);
 $voice_apps_q = mysqli_query($connection_server, "SELECT id, username, email, phone_number, ai_voice_status FROM sas_users WHERE vendor_id='$esc_vid' AND ai_voice_status IN (1,2) ORDER BY ai_voice_status ASC, id DESC LIMIT 20");
+
+// Real-Time Intelligence Hub Data (Vendor Context)
+$top_consumers_q = mysqli_query($connection_server, 
+    "SELECT username, SUM(tokens_burned) as total FROM sas_ai_transactions 
+     WHERE vendor_id='$esc_vid' AND MONTH(created_at)=MONTH(NOW()) AND status='success' 
+     GROUP BY username ORDER BY total DESC LIMIT 5"
+);
+$recent_intelligence_q = mysqli_query($connection_server, 
+    "SELECT * FROM sas_ai_transactions WHERE vendor_id='$esc_vid' ORDER BY id DESC LIMIT 5"
+);
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -454,6 +464,51 @@ if ($ai_status == 0 && ($req_status === NULL || $req_status === 'rejected')):
                     <div class="col-4"><input type="date" name="expiry" class="form-control form-control-sm rounded-3"></div>
                     <div class="col-3"><button type="submit" name="add-whitelist" class="btn btn-sm btn-primary w-100 rounded-3">Add VIP</button></div>
                 </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- REAL-TIME INTELLIGENCE HUB (NEW) -->
+    <div class="col-lg-12">
+        <div class="card ai-card shadow-sm">
+            <div class="card-header bg-white py-3 border-0 d-flex justify-content-between align-items-center">
+                <h5 class="fw-bold mb-0"><i class="bi bi-cpu-fill me-2 text-primary"></i>Real-Time Intelligence Hub</h5>
+                <span class="badge bg-primary-subtle text-primary rounded-pill small">LIVE AUDIT</span>
+            </div>
+            <div class="card-body p-4">
+                <div class="row g-4">
+                    <div class="col-md-5">
+                        <h6 class="small fw-bold text-muted text-uppercase mb-3">Top AI Consumers (Month)</h6>
+                        <?php if ($top_consumers_q && mysqli_num_rows($top_consumers_q) > 0): while($tc = mysqli_fetch_assoc($top_consumers_q)): ?>
+                        <div class="d-flex justify-content-between align-items-center mb-2 p-2 bg-light rounded-3">
+                            <span class="small fw-bold"><i class="bi bi-person-circle me-2 opacity-50"></i><?php echo htmlspecialchars($tc['username']); ?></span>
+                            <span class="badge bg-dark rounded-pill"><?php echo number_format($tc['total']); ?> tokens</span>
+                        </div>
+                        <?php endwhile; else: ?>
+                        <div class="text-center py-3 text-muted small italic">No consumer data yet.</div>
+                        <?php endif; ?>
+                    </div>
+                    <div class="col-md-7">
+                        <h6 class="small fw-bold text-muted text-uppercase mb-3">Recent Intelligence Logs</h6>
+                        <div class="border rounded-4 overflow-hidden">
+                            <?php if ($recent_intelligence_q && mysqli_num_rows($recent_intelligence_q) > 0): while($log = mysqli_fetch_assoc($recent_intelligence_q)): ?>
+                            <div class="p-2 border-bottom d-flex justify-content-between align-items-center" style="font-size:0.75rem;">
+                                <span>
+                                    <i class="bi bi-lightning-fill text-warning me-1"></i>
+                                    <strong><?php echo htmlspecialchars($log['username']); ?></strong>: 
+                                    <span class="text-muted"><?php echo ucfirst($log['action_type']); ?></span>
+                                </span>
+                                <span class="text-muted"><?php echo date('H:i', strtotime($log['created_at'])); ?></span>
+                            </div>
+                            <?php endwhile; else: ?>
+                            <div class="p-4 text-center text-muted small">Awaiting activity...</div>
+                            <?php endif; ?>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
                 <?php if ($wl_q && mysqli_num_rows($wl_q) > 0): ?>
                 <div class="table-responsive" style="max-height:150px;">
                     <table class="table table-sm mb-0">
