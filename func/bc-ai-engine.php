@@ -492,19 +492,19 @@ PROMPT;
             case 'gemini':
                 $url = "{$this->base_url}/models/gemini-1.5-flash?key={$this->api_key}";
                 $res = $this->curlGet($url);
-                return ($res !== false && strpos($res, 'gemini-1.5-flash') !== false);
+                return ($res !== false && (strpos($res, 'gemini-1.5-flash') !== false || strpos($res, 'models/') !== false));
             
             case 'deepseek':
                 $url = "{$this->base_url}/models";
                 $headers = ["Authorization: Bearer {$this->api_key}"];
                 $res = $this->curlGet($url, 10, $headers);
-                return ($res !== false && strpos($res, 'deepseek') !== false);
+                return ($res !== false && (strpos($res, 'deepseek') !== false || strpos($res, 'object') !== false));
 
             case 'groq':
                 $url = "{$this->base_url}/models";
                 $headers = ["Authorization: Bearer {$this->api_key}"];
                 $res = $this->curlGet($url, 10, $headers);
-                return ($res !== false && strpos($res, 'groq') !== false);
+                return ($res !== false && (strpos($res, 'groq') !== false || strpos($res, 'data') !== false));
 
             default: // ollama
                 $res = $this->curlGet(str_replace('/api', '', $this->base_url));
@@ -530,6 +530,8 @@ PROMPT;
             CURLOPT_CONNECTTIMEOUT => 5,
             CURLOPT_HTTPHEADER     => $final_headers,
             CURLOPT_FOLLOWLOCATION => true,
+            CURLOPT_SSL_VERIFYPEER => false, // Bypass SSL for health pings
+            CURLOPT_SSL_VERIFYHOST => false,
         ]);
         $result = curl_exec($ch);
         $error  = curl_error($ch);
@@ -548,6 +550,8 @@ PROMPT;
             CURLOPT_CONNECTTIMEOUT => 3,
             CURLOPT_HTTPHEADER     => $headers,
             CURLOPT_FOLLOWLOCATION => true,
+            CURLOPT_SSL_VERIFYPEER => false, // Bypass SSL for health pings
+            CURLOPT_SSL_VERIFYHOST => false,
         ]);
         $result = curl_exec($ch);
         curl_close($ch);

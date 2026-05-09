@@ -99,9 +99,24 @@ if (isset($_POST["update-ai-connection"])) {
     header("Location: AIManagement.php"); exit();
 }
 
+// ── Handle: Set Active Model ──────────────────────────────
+if (isset($_POST["set-active-model"])) {
+    $model = bc_sanitize($_POST["active_model_name"] ?? '');
+    if (!empty($model)) {
+        mysqli_query($connection_server,
+            "INSERT INTO sas_super_admin_options (option_name, option_value) VALUES ('ai_default_model', '$model')
+             ON DUPLICATE KEY UPDATE option_value='$model'"
+        );
+        $_SESSION["response"] = "✅ Active AI Model set to '$model'.";
+        unset($_SESSION['super_admin_options_cache']);
+    }
+    header("Location: AIManagement.php"); exit();
+}
+
 // ── Load current data ──────────────────────────────────────
 $ai_global  = getSuperAdminOption('ai_global_enabled', '0');
 $ai_provider= getSuperAdminOption('ai_provider', 'ollama');
+$active_model= getSuperAdminOption('ai_default_model', 'phi4-mini');
 $ai_host    = getSuperAdminOption('ai_ollama_host', 'http://127.0.0.1:11434');
 $ai_key     = getSuperAdminOption('ai_api_key', '');
 
@@ -489,28 +504,44 @@ document.addEventListener('DOMContentLoaded', function() {
                 <div class="row g-3">
                 <?php foreach ($model_catalog as $mc):
                     $is_installed = in_array($mc['name'], $models) || in_array($mc['name'].':latest', $models);
-                    $tier_color = ($mc['tier'] === 'Premium' ? 'warning' : ($mc['tier'] === 'Standard' ? 'primary' : 'secondary'));
+                    $is_active    = ($mc['name'] === $active_model);
+                    $tier_color   = ($mc['tier'] === 'Premium' ? 'warning' : ($mc['tier'] === 'Standard' ? 'primary' : 'secondary'));
                 ?>
                 <div class="col-md-4 col-lg-3">
-                    <div class="model-card <?php echo $is_installed ? 'installed' : ''; ?>">
+                    <div class="model-card <?php echo $is_active ? 'border-primary bg-primary bg-opacity-10' : ($is_installed ? 'installed' : ''); ?>">
                         <div class="d-flex justify-content-between mb-2">
                             <code class="fw-bold small"><?php echo htmlspecialchars($mc['name']); ?></code>
+                            <?php if ($is_active): ?>
+                            <span class="badge bg-primary rounded-pill small" style="font-size:.6rem">ACTIVE</span>
+                            <?php else: ?>
                             <span class="tier-badge bg-<?php echo $tier_color; ?> bg-opacity-10 text-<?php echo $tier_color; ?>"><?php echo $mc['tier']; ?></span>
+                            <?php endif; ?>
                         </div>
                         <p class="text-muted small mb-2"><?php echo htmlspecialchars($mc['desc']); ?></p>
                         <div class="d-flex justify-content-between align-items-center">
                             <span class="small text-muted"><i class="bi bi-hdd me-1"></i><?php echo $mc['size']; ?></span>
-                            <?php if ($is_installed || $ai_provider !== 'ollama'): ?>
-                            <span class="badge bg-success rounded-pill"><i class="bi bi-check-circle me-1"></i>Available</span>
-                            <?php elseif ($ai_up): ?>
-                            <form method="post">
-                                <input type="hidden" name="model_name" value="<?php echo htmlspecialchars($mc['name']); ?>">
-                                <button type="submit" name="install-model" class="btn btn-primary btn-sm rounded-pill px-3">
-                                    <i class="bi bi-cloud-download me-1"></i>Install
-                                </button>
-                            </form>
+                            
+                            <?php if ($is_active): ?>
+                                <span class="badge bg-primary rounded-pill"><i class="bi bi-check-all me-1"></i>Live</span>
+                            <?php elseif ($ai_provider !== 'ollama' && $ai_up): ?>
+                                <form method="post">
+                                    <input type="hidden" name="active_model_name" value="<?php echo htmlspecialchars($mc['name']); ?>">
+                                    <button type="submit" name="set-active-model" class="btn btn-outline-primary btn-sm rounded-pill px-3">Activate</button>
+                                </form>
+                            <?php elseif ($is_installed): ?>
+                                <form method="post">
+                                    <input type="hidden" name="active_model_name" value="<?php echo htmlspecialchars($mc['name']); ?>">
+                                    <button type="submit" name="set-active-model" class="btn btn-outline-success btn-sm rounded-pill px-3">Activate</button>
+                                </form>
+                            <?php elseif ($ai_provider === 'ollama' && $ai_up): ?>
+                                <form method="post">
+                                    <input type="hidden" name="model_name" value="<?php echo htmlspecialchars($mc['name']); ?>">
+                                    <button type="submit" name="install-model" class="btn btn-primary btn-sm rounded-pill px-3">
+                                        <i class="bi bi-cloud-download me-1"></i>Install
+                                    </button>
+                                </form>
                             <?php else: ?>
-                            <span class="badge bg-secondary rounded-pill">Unavailable</span>
+                                <span class="badge bg-secondary rounded-pill">Unavailable</span>
                             <?php endif; ?>
                         </div>
                     </div>
