@@ -199,8 +199,50 @@
                 </div>
             </div>
 
-            <!-- Sidebar: How to Use -->
+            <!-- Sidebar: How to Use & Commands -->
             <div class="col-lg-4">
+                <div class="card ai-card shadow-sm border-0 mb-4 overflow-hidden">
+                    <div class="card-header bg-ai text-white p-3 border-0">
+                        <h6 class="fw-bold mb-0"><i class="bi bi-terminal-fill me-2"></i>AI Command Center</h6>
+                    </div>
+                    <div class="card-body p-3">
+                        <p class="x-small text-muted mb-3">Copy and paste these commands into the AI Chat or say them aloud.</p>
+                        
+                        <div class="command-group mb-3">
+                            <label class="x-small fw-bold text-uppercase text-muted mb-1">Airtime</label>
+                            <div class="input-group input-group-sm mb-2">
+                                <input type="text" class="form-control bg-light border-0 x-small" value="Buy MTN 100 airtime for 08012345678" readonly id="cmd-airtime">
+                                <button class="btn btn-outline-primary" type="button" onclick="copyCmd('cmd-airtime')"><i class="bi bi-clipboard"></i></button>
+                            </div>
+                        </div>
+
+                        <div class="command-group mb-3">
+                            <label class="x-small fw-bold text-uppercase text-muted mb-1">Data Bundle</label>
+                            <div class="input-group input-group-sm mb-2">
+                                <input type="text" class="form-control bg-light border-0 x-small" value="Buy Airtel 2GB data for 08123456789" readonly id="cmd-data">
+                                <button class="btn btn-outline-primary" type="button" onclick="copyCmd('cmd-data')"><i class="bi bi-clipboard"></i></button>
+                            </div>
+                        </div>
+
+                        <div class="command-group mb-3">
+                            <label class="x-small fw-bold text-uppercase text-muted mb-1">Electricity</label>
+                            <div class="input-group input-group-sm mb-2">
+                                <input type="text" class="form-control bg-light border-0 x-small" value="Pay 2000 for IKEDC 010123456789" readonly id="cmd-power">
+                                <button class="btn btn-outline-primary" type="button" onclick="copyCmd('cmd-power')"><i class="bi bi-clipboard"></i></button>
+                            </div>
+                        </div>
+
+                        <div class="command-group mb-0">
+                            <label class="x-small fw-bold text-uppercase text-muted mb-1">Cable TV</label>
+                            <div class="input-group input-group-sm">
+                                <input type="text" class="form-control bg-light border-0 x-small" value="Renew DSTV Compact for 123456789" readonly id="cmd-cable">
+                                <button class="btn btn-outline-primary" type="button" onclick="copyCmd('cmd-cable')"><i class="bi bi-clipboard"></i></button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="card ai-card shadow-sm border-0 bg-dark text-white mb-4">
                 <div class="card ai-card shadow-sm border-0 bg-dark text-white mb-4">
                     <div class="card-body p-4">
                         <h6 class="fw-bold mb-3"><i class="bi bi-lightbulb me-2 text-warning"></i>Quick Start Guide</h6>
@@ -246,6 +288,23 @@
             const pricePer1k = <?php echo $user_token_price; ?>;
             const cost = (amount / 1000) * pricePer1k;
             document.getElementById('token-cost').innerText = '₦' + cost.toLocaleString(undefined, {minimumFractionDigits: 2});
+        }
+
+        function copyCmd(id) {
+            const input = document.getElementById(id);
+            input.select();
+            input.setSelectionRange(0, 99999);
+            navigator.clipboard.writeText(input.value);
+            
+            // Visual feedback
+            const btn = input.nextElementSibling;
+            const icon = btn.querySelector('i');
+            icon.className = 'bi bi-check2';
+            btn.className = 'btn btn-success';
+            setTimeout(() => {
+                icon.className = 'bi bi-clipboard';
+                btn.className = 'btn btn-outline-primary';
+            }, 2000);
         }
     </script>
 </body>

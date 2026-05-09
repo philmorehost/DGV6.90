@@ -229,8 +229,14 @@ if (!$ai->isModelCompatible($model_to_use)) {
 // Action routing
 switch ($action_type) {
     case 'voice_vtu':
-        // 1. Parse Voice Intent
-        $intent = $ai->parseVtuIntent($prompt_raw, $model_to_use);
+    case 'execute_vtu':
+        // 1. Get Intent (either parsed now or passed from client)
+        if ($action_type === 'execute_vtu') {
+            $intent = $json_input['intent'] ?? $_POST['intent'] ?? null;
+        } else {
+            $intent = $ai->parseVtuIntent($prompt_raw, $model_to_use);
+        }
+
         if (!$intent || $intent['confidence'] < 60) {
              echo json_encode(['status' => 'error', 'code' => 'LOW_CONFIDENCE', 'message' => 'I could not understand that command clearly. Please speak slowly and mention the network, amount, and number.']);
              exit;
@@ -243,16 +249,14 @@ switch ($action_type) {
         }
 
         // 3. Prepare for Transaction Execution
-        // We simulate the environment for the existing service handlers
         $purchase_method = "API"; 
         $get_api_post_info = [
             'network'      => $intent['network'],
             'phone_number' => $intent['phone'],
             'amount'       => $intent['amount'],
-            'id'           => $intent['id'] ?? '' // for data/cable
+            'id'           => $intent['id'] ?? '' 
         ];
 
-        // Map service name to file
         $service_map = [
             'airtime'     => 'func/airtime.php',
             'data'        => 'func/data.php',
@@ -262,32 +266,30 @@ switch ($action_type) {
         ];
 
         $handler_file = $service_map[strtolower($intent['service'])] ?? '';
-        if (empty($handler_file) || !file_exists(__DIR__ . "/" . $handler_file)) {
+        // FIX: Path must be relative to web/
+        if (empty($handler_file) || !file_exists(__DIR__ . "/../" . $handler_file)) {
              echo json_encode(['status' => 'error', 'message' => 'That service is not yet supported for voice commands.']);
              exit;
         }
 
         // Execute Transaction
-        include_once(__DIR__ . "/" . $handler_file);
+        include_once(__DIR__ . "/../" . $handler_file);
         
-        // The handlers set $json_response_encode
         $res = json_decode($json_response_encode ?? '{}', true);
         
         if (($res['status'] ?? '') === 'success') {
             $ai_result = [
                 'status'   => 'success',
-                'response' => "✅ Autonomous Order Placed Successfully!\nType: " . ucwords($intent['service']) . "\nDest: " . $intent['phone'] . "\nAmt: ₦" . number_format($intent['amount']) . "\nRef: " . ($res['ref'] ?? 'N/A'),
+                'response' => "✅ Order Placed Successfully!\nType: " . ucwords($intent['service']) . "\nDest: " . $intent['phone'] . "\nAmt: ₦" . number_format($intent['amount']) . "\nRef: " . ($res['ref'] ?? 'N/A'),
                 'model'    => $model_to_use,
-                'duration_ms' => 0 // will be calculated
+                'duration_ms' => 0 
             ];
-            // Override standard token fee with the autonomous fee
             $tokens_per_call = (int)($vendor_ai['ai_voice_fee_tokens'] ?? 100);
         } else {
-            // Transaction failed - don't charge AI tokens (Refund policy)
             echo json_encode([
                 'status'  => 'error',
                 'code'    => 'TRANSACTION_FAILED',
-                'message' => "❌ Voice Transaction Failed: " . ($res['desc'] ?? 'Unknown Error') . ". No AI tokens were charged.",
+                'message' => "❌ Transaction Failed: " . ($res['desc'] ?? 'Unknown Error') . ". No AI tokens were charged.",
                 'intent'  => $intent
             ]);
             exit;
@@ -301,6 +303,13 @@ switch ($action_type) {
         break;
     default:
         $ai_result = $ai->chat($model_to_use, $safe_prompt);
+        // Proactive Intent Detection for Confirmation Flow
+        if (preg_match('/buy|recharge|send|topup|data|airtime|pay/i', $prompt_raw)) {
+            $intent = $ai->parseVtuIntent($prompt_raw, $model_to_use);
+            if ($intent && $intent['confidence'] > 70) {
+                $ai_result['pending_vtu'] = $intent;
+            }
+        }
         break;
 }
 $ai_duration = $ai_result['duration_ms'] ?? 0;
@@ -340,6 +349,7 @@ if ($ai_result['status'] === 'success') {
         'duration_ms'      => $ai_result['duration_ms'],
         'tokens_used'      => $tokens_per_call,
         'tokens_remaining' => $new_tokens,
+        'pending_vtu'      => $ai_result['pending_vtu'] ?? null,
     ]);
 
 } else {
