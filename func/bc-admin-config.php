@@ -21,6 +21,7 @@ if (!$connection_server) {
 include_once(__DIR__ . "/bc-tables.php");
 include_once(__DIR__ . "/bc-email-templates.php");
 include_once(__DIR__ . "/email-design.php");
+include_once(__DIR__ . "/bc-security.php"); // DGV6.90 AI Edition — Security utilities
 
 if ($connection_server) {
     // Branch DG6.7 Optimization: Only run migrations if not already done in current session
