@@ -33,6 +33,18 @@ if (isset($_POST["toggle-global-ai"])) {
     header("Location: AIManagement.php"); exit();
 }
 
+// ── Handle: Restart Ollama ────────────────────────────────
+if (isset($_POST["restart-ollama"])) {
+    $log = sys_get_temp_dir() . '/ollama_startup.log';
+    if (PHP_OS_FAMILY === 'Windows') {
+        pclose(popen("start /B ollama serve > " . escapeshellarg($log) . " 2>&1", "r"));
+    } else {
+        shell_exec("nohup ollama serve > " . escapeshellarg($log) . " 2>&1 &");
+    }
+    $_SESSION["response"] = "⚡ Attempting to restart Ollama service. Please wait 10-20 seconds and refresh.";
+    header("Location: AIManagement.php"); exit();
+}
+
 // ── Handle: Approve/Reject Vendor Request ─────────────────
 if (isset($_GET['approve'])) {
     $v_id = (int)$_GET['approve'];
@@ -110,16 +122,14 @@ if (isset($_POST["update-ai-connection"])) {
     }
     $opts['ai_api_key'] = $key; // Global fallback
     
+    // Cleanup any duplicates before updating to ensure REPLACE INTO works on a clean slate
+    mysqli_query($connection_server, "DELETE FROM sas_super_admin_options WHERE option_name='ai_provider' AND id NOT IN (SELECT id FROM (SELECT MAX(id) as id FROM sas_super_admin_options WHERE option_name='ai_provider') x)");
+
     foreach ($opts as $k => $v) {
         $esc_k = mysqli_real_escape_string($connection_server, $k);
         $esc_v = mysqli_real_escape_string($connection_server, $v);
-        // Check if exists
-        $check = mysqli_query($connection_server, "SELECT id FROM sas_super_admin_options WHERE option_name='$esc_k' LIMIT 1");
-        if ($check && mysqli_num_rows($check) > 0) {
-            mysqli_query($connection_server, "UPDATE sas_super_admin_options SET option_value='$esc_v' WHERE option_name='$esc_k'");
-        } else {
-            mysqli_query($connection_server, "INSERT INTO sas_super_admin_options (option_name, option_value) VALUES ('$esc_k', '$esc_v')");
-        }
+        // Use REPLACE INTO to ensure only ONE row exists per option_name
+        mysqli_query($connection_server, "REPLACE INTO sas_super_admin_options (option_name, option_value) VALUES ('$esc_k', '$esc_v')");
     }
     $_SESSION["response"] = "✅ AI connection settings updated to " . ucfirst($provider) . ".";
     unset($_SESSION['super_admin_options_cache']); // Clear platform cache again after save
@@ -398,10 +408,15 @@ document.addEventListener('DOMContentLoaded', function() {
                 <!-- Global Toggle -->
                 <form method="post">
                     <input type="hidden" name="ai_global_enabled" value="<?php echo $ai_global ? 0 : 1; ?>">
-                    <button type="submit" name="toggle-global-ai" class="btn w-100 rounded-pill fw-bold <?php echo $ai_global ? 'btn-outline-danger' : 'btn-success'; ?>">
+                    <button type="submit" name="toggle-global-ai" class="btn w-100 rounded-pill fw-bold mb-2 <?php echo $ai_global ? 'btn-outline-danger' : 'btn-success'; ?>">
                         <i class="bi bi-<?php echo $ai_global ? 'pause-fill' : 'play-fill'; ?> me-1"></i>
                         <?php echo $ai_global ? 'Disable Global AI' : 'Enable Global AI'; ?>
                     </button>
+                    <?php if ($ai_provider === 'ollama' && !$ai_up): ?>
+                    <button type="submit" name="restart-ollama" class="btn btn-primary w-100 rounded-pill fw-bold">
+                        <i class="bi bi-lightning-charge me-1"></i> Start Ollama Engine
+                    </button>
+                    <?php endif; ?>
                 </form>
 
                 <hr class="my-4">
@@ -486,8 +501,11 @@ document.addEventListener('DOMContentLoaded', function() {
     <!-- Install Queue -->
     <div class="col-lg-4">
         <div class="card border-0 rounded-4 shadow-sm h-100">
-            <div class="card-header bg-white border-0 py-3"><h5 class="fw-bold mb-0"><i class="bi bi-cloud-download me-2 text-info"></i>Install Queue</h5></div>
-            <div class="card-body p-4">
+            <div class="card-header bg-white border-0 py-3 d-flex justify-content-between align-items-center">
+                <h5 class="fw-bold mb-0"><i class="bi bi-cloud-download me-2 text-info"></i>Install Queue</h5>
+                <button type="button" onclick="refreshQueue()" class="btn btn-light btn-sm rounded-pill"><i class="bi bi-arrow-clockwise"></i></button>
+            </div>
+            <div class="card-body p-4" id="queue_container">
                 <?php if ($queue_q && mysqli_num_rows($queue_q) > 0):
                     while ($qrow = mysqli_fetch_assoc($queue_q)):
                         $badge = 'secondary';
@@ -497,12 +515,20 @@ document.addEventListener('DOMContentLoaded', function() {
                             case 'failed':      $badge = 'danger'; break;
                         }
                 ?>
-                <div class="d-flex justify-content-between align-items-center py-2 border-bottom">
-                    <div>
-                        <div class="fw-bold small"><?php echo htmlspecialchars($qrow['model_name']); ?></div>
-                        <div class="text-muted" style="font-size:.7rem;"><?php echo date('M j H:i', strtotime($qrow['started_at'])); ?></div>
+                <div class="py-2 border-bottom queue-item" data-model="<?php echo htmlspecialchars($qrow['model_name']); ?>" data-status="<?php echo $qrow['status']; ?>">
+                    <div class="d-flex justify-content-between align-items-center mb-1">
+                        <div>
+                            <div class="fw-bold small"><?php echo htmlspecialchars($qrow['model_name']); ?></div>
+                            <div class="text-muted" style="font-size:.7rem;"><?php echo date('M j H:i', strtotime($qrow['started_at'])); ?></div>
+                        </div>
+                        <span class="badge bg-<?php echo $badge; ?> rounded-pill status-badge"><?php echo ucfirst($qrow['status']); ?></span>
                     </div>
-                    <span class="badge bg-<?php echo $badge; ?> rounded-pill"><?php echo ucfirst($qrow['status']); ?></span>
+                    <?php if ($qrow['status'] === 'downloading'): ?>
+                    <div class="progress" style="height: 4px;">
+                        <div class="progress-bar progress-bar-striped progress-bar-animated" role="progressbar" style="width: 0%" id="pg-<?php echo md5($qrow['model_name']); ?>"></div>
+                    </div>
+                    <div class="small text-muted mt-1 log-line" style="font-size:.6rem;">Waiting for log...</div>
+                    <?php endif; ?>
                 </div>
                 <?php endwhile; else: ?>
                 <div class="text-muted small text-center py-4"><i class="bi bi-inbox me-2"></i>No models in queue.</div>
@@ -619,5 +645,59 @@ document.addEventListener('DOMContentLoaded', function() {
 </div>
 </section>
 <?php include("../func/bc-spadmin-footer.php"); ?>
+<script>
+function refreshQueue() {
+    const items = document.querySelectorAll('.queue-item[data-status="downloading"]');
+    items.forEach(item => {
+        const model = item.getAttribute('data-model');
+        const bar = item.querySelector('.progress-bar');
+        const badge = item.querySelector('.status-badge');
+        const log = item.querySelector('.log-line');
+
+        fetch(`ajax-ai-control.php?action=queue-progress&model=${encodeURIComponent(model)}`)
+            .then(res => res.json())
+            .then(data => {
+                if (data.progress) {
+                    bar.style.width = data.progress + '%';
+                    log.innerText = data.last_log || 'Downloading...';
+                }
+                if (data.status === 'ready') {
+                    badge.className = 'badge bg-success rounded-pill status-badge';
+                    badge.innerText = 'Ready';
+                    bar.parentElement.style.display = 'none';
+                    item.setAttribute('data-status', 'ready');
+                    // Reload after a delay to update installed list
+                    setTimeout(() => location.reload(), 2000);
+                }
+            });
+    });
+}
+
+// Auto-refresh queue every 5 seconds if downloading
+if (document.querySelector('.queue-item[data-status="downloading"]')) {
+    setInterval(refreshQueue, 5000);
+    refreshQueue();
+}
+
+// Global Status Polling
+function pollStatus() {
+    fetch('ajax-ai-control.php?action=status')
+        .then(res => res.json())
+        .then(data => {
+            const dot = document.querySelector('.status-dot');
+            const txt = dot.nextElementSibling;
+            if (data.ai_up) {
+                dot.className = 'status-dot dot-green me-2';
+                txt.className = 'small text-success';
+                txt.innerText = 'Online';
+            } else {
+                dot.className = 'status-dot dot-red me-2';
+                txt.className = 'small text-danger';
+                txt.innerText = 'Offline';
+            }
+        });
+}
+setInterval(pollStatus, 30000); // Every 30s
+</script>
 </body>
 </html>
