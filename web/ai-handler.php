@@ -139,6 +139,11 @@ if ($safe_prompt === false) {
 // ─── CALL CLOUD AI ──────────────────────────────────────────
 $ai = ai_engine();
 
+// Ensure the model is compatible with the active provider
+if (!$ai->isModelCompatible($model_to_use)) {
+    $model_to_use = $ai->getDefaultModel();
+}
+
 // Action routing
 switch ($action_type) {
     case 'marketing':

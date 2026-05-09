@@ -139,7 +139,13 @@ if (!$vendor_ai_check || mysqli_num_rows($vendor_ai_check) == 0) {
 
 $token_bal  = (int)($get_logged_admin_details["ai_token_balance"] ?? 0);
 $price_1k   = (float)($get_logged_admin_details["ai_price_per_1k_tokens"] ?? 100.00);
-$model      = $get_logged_admin_details["ai_model_assigned"] ?? "gemini-1.5-flash";
+$model_raw  = $get_logged_admin_details["ai_model_assigned"] ?? "";
+$ai_engine  = ai_engine();
+if (empty($model_raw) || !$ai_engine->isModelCompatible($model_raw)) {
+    $model = $ai_engine->getDefaultModel();
+} else {
+    $model = $model_raw;
+}
 
 // AI usage history (last 20)
 $tx_q = mysqli_query($connection_server,

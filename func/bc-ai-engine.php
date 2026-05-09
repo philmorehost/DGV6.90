@@ -56,6 +56,27 @@ class AIEngine
     public function getProvider(): string { return $this->provider; }
 
     /**
+     * Get the recommended default model for the current provider
+     */
+    public function getDefaultModel(): string {
+        switch ($this->provider) {
+            case 'deepseek': return 'deepseek-chat';
+            case 'groq':     return 'llama3-70b-8192';
+            default:         return 'gemini-1.5-flash';
+        }
+    }
+
+    /**
+     * Check if a model name is compatible with the current provider
+     */
+    public function isModelCompatible(string $model): bool {
+        if ($this->provider === 'gemini') return stripos($model, 'gemini') !== false;
+        if ($this->provider === 'deepseek') return stripos($model, 'deepseek') !== false;
+        if ($this->provider === 'groq') return (stripos($model, 'llama') !== false || stripos($model, 'mixtral') !== false);
+        return false;
+    }
+
+    /**
      * Unified Chat/Generation Entry Point
      */
     public function chat(string $model, string $prompt, array $options = []): array

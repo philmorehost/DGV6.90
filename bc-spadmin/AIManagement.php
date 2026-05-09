@@ -139,7 +139,13 @@ if (isset($_POST["set-active-model"])) {
 // ── Load current data ──────────────────────────────────────
 $ai_global  = getSuperAdminOption('ai_global_enabled', '0');
 $ai_provider= getSuperAdminOption('ai_provider', 'gemini');
-$active_model= getSuperAdminOption('ai_default_model', 'gemini-1.5-flash');
+$ai         = ai_engine();
+$model_raw  = getSuperAdminOption('ai_default_model', '');
+if (empty($model_raw) || !$ai->isModelCompatible($model_raw)) {
+    $active_model = $ai->getDefaultModel();
+} else {
+    $active_model = $model_raw;
+}
 $ai_key     = getSuperAdminOption('ai_api_key', '');
 
 $gemini_key   = getSuperAdminOption('ai_gemini_api_key', '');
