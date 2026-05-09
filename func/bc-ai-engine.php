@@ -29,8 +29,13 @@ class AIEngine
 
         // Load Global Configuration
         $this->provider = getSuperAdminOption('ai_provider', 'ollama');
-        $this->api_key  = getSuperAdminOption('ai_api_key', '');
-        $host           = getSuperAdminOption('ai_ollama_host', 'http://127.0.0.1:11434');
+        
+        // Load provider-specific key with fallback to global
+        $key_name = "ai_{$this->provider}_api_key";
+        $this->api_key = getSuperAdminOption($key_name, '');
+        if (empty($this->api_key)) $this->api_key = getSuperAdminOption('ai_api_key', '');
+
+        $host = getSuperAdminOption('ai_ollama_host', 'http://127.0.0.1:11434');
 
         if (!empty($override_host)) $host = $override_host;
 

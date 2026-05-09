@@ -76,8 +76,13 @@ if (isset($_POST["update-ai-connection"])) {
     $opts = [
         'ai_provider'    => $provider,
         'ai_ollama_host' => $host,
-        'ai_api_key'     => $key,
     ];
+    // Save provider-specific key
+    if ($provider !== 'ollama') {
+        $opts["ai_{$provider}_api_key"] = $key;
+    }
+    $opts['ai_api_key'] = $key; // Global fallback
+    
     foreach ($opts as $k => $v) {
         $esc_k = mysqli_real_escape_string($connection_server, $k);
         $esc_v = mysqli_real_escape_string($connection_server, $v);
@@ -99,6 +104,12 @@ $ai_global  = getSuperAdminOption('ai_global_enabled', '0');
 $ai_provider= getSuperAdminOption('ai_provider', 'ollama');
 $ai_host    = getSuperAdminOption('ai_ollama_host', 'http://127.0.0.1:11434');
 $ai_key     = getSuperAdminOption('ai_api_key', '');
+
+// Provider Specific Keys
+$gemini_key   = getSuperAdminOption('ai_gemini_api_key', '');
+$deepseek_key = getSuperAdminOption('ai_deepseek_api_key', '');
+$groq_key     = getSuperAdminOption('ai_groq_api_key', '');
+
 $price_1k   = (float)getSuperAdminOption('ai_price_per_request', '5'); // token cost
 $ai         = ai_engine();
 $ai_up      = $ai->isAiOnline();
@@ -365,7 +376,7 @@ document.addEventListener('DOMContentLoaded', function() {
                     </div>
                     <div class="mb-3">
                         <label class="form-label small fw-bold">API Key</label>
-                        <input type="password" name="ai_api_key" class="form-control rounded-3 small" value="<?php echo htmlspecialchars($ai_key); ?>" placeholder="Leave blank for local Ollama">
+                        <input type="password" name="ai_api_key" id="ai_api_key_field" class="form-control rounded-3 small" value="<?php echo htmlspecialchars($ai_key); ?>" placeholder="Leave blank for local Ollama">
                     </div>
                     <button type="submit" name="update-ai-connection" class="btn btn-dark btn-sm w-100 rounded-pill">Update Connection</button>
                 </form>
@@ -374,8 +385,21 @@ document.addEventListener('DOMContentLoaded', function() {
     </div>
     
     <script>
+    const ai_keys = {
+        'ollama': '',
+        'gemini': '<?php echo $gemini_key; ?>',
+        'deepseek': '<?php echo $deepseek_key; ?>',
+        'groq': '<?php echo $groq_key; ?>'
+    };
+
     document.querySelector('select[name="ai_provider"]').addEventListener('change', function(){
-        document.getElementById('host_group').style.display = (this.value === 'ollama') ? 'block' : 'none';
+        const prov = this.value;
+        document.getElementById('host_group').style.display = (prov === 'ollama') ? 'block' : 'none';
+        
+        // Auto-fill existing key if available
+        if (ai_keys[prov] !== undefined) {
+            document.getElementById('ai_api_key_field').value = ai_keys[prov];
+        }
     });
     </script>
 
