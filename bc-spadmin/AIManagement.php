@@ -94,7 +94,13 @@ if (isset($_POST["update-ai-pricing"])) {
     $price_1k  = bc_sanitize_number($_POST["price_per_1k"] ?? 100);
     $per_tx    = (int)($_POST["per_tx_cost"] ?? 5);
     $voice_thr = (int)($_POST["voice_threshold"] ?? 100);
-    $opts = ['ai_price_per_request' => $per_tx, 'ai_voice_unlock_threshold' => $voice_thr];
+    $token_bonus = (int)($_POST["token_bonus"] ?? 1000);
+    
+    $opts = [
+        'ai_price_per_request' => $per_tx, 
+        'ai_voice_unlock_threshold' => $voice_thr,
+        'ai_default_token_bonus' => $token_bonus
+    ];
     foreach ($opts as $k => $v) {
         $esc_k = mysqli_real_escape_string($connection_server, $k);
         $esc_v = mysqli_real_escape_string($connection_server, $v);
@@ -283,7 +289,12 @@ $recent_logs_q = mysqli_query($connection_server, "SELECT t.*, v.company_name FR
                 <form method="post">
                     <div class="mb-3"><label class="form-label small fw-bold text-muted">Price per 1k Tokens (₦)</label><input type="number" name="price_per_1k" class="form-control rounded-3" value="<?php echo getSuperAdminOption('ai_price_per_1k_tokens', '100'); ?>" step="0.01"></div>
                     <div class="mb-3"><label class="form-label small fw-bold text-muted">Tokens per AI Call</label><input type="number" name="per_tx_cost" class="form-control rounded-3" value="<?php echo getSuperAdminOption('ai_price_per_request', '5'); ?>"></div>
-                    <button type="submit" name="update-ai-pricing" class="btn btn-primary w-100 rounded-pill fw-bold">Save Pricing</button>
+                    <div class="mb-3">
+                        <label class="form-label small fw-bold text-muted">Approval Bonus Tokens</label>
+                        <input type="number" name="token_bonus" class="form-control rounded-3" value="<?php echo getSuperAdminOption('ai_default_token_bonus', '1000'); ?>">
+                        <div class="form-text x-small">Bonus tokens granted when a vendor AI request is approved.</div>
+                    </div>
+                    <button type="submit" name="update-ai-pricing" class="btn btn-primary w-100 rounded-pill fw-bold">Save Economics</button>
                 </form>
             </div>
         </div>
