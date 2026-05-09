@@ -91,23 +91,24 @@
 
                         <div id="vendorSelection" class="<?php echo (isset($_GET['target']) && $_GET['target'] == 'user') ? '' : 'd-none'; ?> mb-4">
                             <label class="form-label small fw-bold text-muted text-uppercase">Select Vendor</label>
-                            <select name="vid" id="vid-select" class="form-select form-select-lg rounded-3" onchange="updateIdentifierLabel()">
+                            <select name="vid" id="vid-select" class="form-select form-select-lg rounded-3" onchange="fetchSuggestions()">
                                 <option value="0">Choose Vendor...</option>
                                 <?php
-                                    $vs = mysqli_query($connection_server, "SELECT id, site_url FROM sas_vendors WHERE status=1 ORDER BY site_url ASC");
+                                    $vs = mysqli_query($connection_server, "SELECT id, website_url FROM sas_vendors WHERE status=1 ORDER BY website_url ASC");
                                     while($vrow = mysqli_fetch_assoc($vs)){
                                         $selected = (isset($_GET["vid"]) && $_GET["vid"] == $vrow['id']) ? 'selected' : '';
-                                        echo '<option value="'.$vrow['id'].'" '.$selected.'>'.$vrow['site_url'].'</option>';
+                                        echo '<option value="'.$vrow['id'].'" '.$selected.'>'.$vrow['website_url'].'</option>';
                                     }
                                 ?>
                             </select>
                         </div>
 
-                        <div class="mb-4">
+                        <div class="mb-4 position-relative">
                             <label id="identifierLabel" class="form-label small fw-bold text-muted text-uppercase">
                                 <?php echo (isset($_GET['target']) && $_GET['target'] == 'user') ? 'Recipient Username' : 'Vendor Email Address'; ?>
                             </label>
-                            <input name="identifier" type="text" class="form-control form-control-lg rounded-3" value="<?php echo $_GET['username'] ?? $_GET['searchq'] ?? ''; ?>" placeholder="..." required />
+                            <input name="identifier" id="identifierInput" type="text" class="form-control form-control-lg rounded-3" value="<?php echo htmlspecialchars($_GET['username'] ?? $_GET['searchq'] ?? ''); ?>" placeholder="..." required autocomplete="off" oninput="fetchSuggestions()" />
+                            <div id="suggestionList" class="list-group position-absolute w-100 shadow-sm z-3 d-none" style="top: 100%;"></div>
                         </div>
 
                         <div class="row g-3 mb-4">
@@ -136,17 +137,59 @@
     </section>
 
     <script>
+    let suggestionTimeout = null;
+
     function toggleTarget() {
         const isUser = document.getElementById('targetUser').checked;
         document.getElementById('vendorSelection').classList.toggle('d-none', !isUser);
         document.getElementById('identifierLabel').textContent = isUser ? 'Recipient Username' : 'Vendor Email Address';
+        document.getElementById('suggestionList').classList.add('d-none');
     }
     
-    function updateIdentifierLabel() {
-        // Just for visual polish
+    function fetchSuggestions() {
+        const query = document.getElementById('identifierInput').value;
+        const target = document.querySelector('input[name="target"]:checked').value;
+        const vid = document.getElementById('vid-select').value;
+        const list = document.getElementById('suggestionList');
+
+        if (query.length < 2) {
+            list.classList.add('d-none');
+            return;
+        }
+
+        clearTimeout(suggestionTimeout);
+        suggestionTimeout = setTimeout(() => {
+            fetch(`ajax-suggestions.php?q=${encodeURIComponent(query)}&target=${target}&vid=${vid}`)
+                .then(res => res.json())
+                .then(data => {
+                    if (data.length > 0) {
+                        list.innerHTML = data.map(s => `
+                            <button type="button" class="list-group-item list-group-item-action py-2" onclick="selectSuggestion('${s.value}')">
+                                ${s.label}
+                            </button>
+                        `).join('');
+                        list.classList.remove('d-none');
+                    } else {
+                        list.classList.add('d-none');
+                    }
+                });
+        }, 300);
     }
+
+    function selectSuggestion(val) {
+        document.getElementById('identifierInput').value = val;
+        document.getElementById('suggestionList').classList.add('d-none');
+    }
+
+    // Close suggestions on click outside
+    document.addEventListener('click', function(e) {
+        if (!document.getElementById('identifierInput').contains(e.target)) {
+            document.getElementById('suggestionList').classList.add('d-none');
+        }
+    });
     </script>
 
     <?php include("../func/bc-spadmin-footer.php"); ?>
 </body>
 </html>
+l>
