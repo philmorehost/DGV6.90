@@ -13,14 +13,14 @@
  * - Falls back silently if gateway is offline (no exceptions thrown)
  */
 
-if (function_exists('sendWhatsAppAlert')) return; // Guard against double-include
-
 // ─── WhatsApp Gateway Configuration ──────────────────────────
-define('WA_GATEWAY_PORT', 3001);        // Internal port for Baileys bridge (aligned with index.js)
-define('WA_GATEWAY_HOST', '127.0.0.1'); // NEVER change this to a public IP
-define('WA_GATEWAY_SECRET', '');        // Optional shared secret, set in .env
-define('WA_MIN_DELAY_SECONDS', 5);      // Min delay between messages to same number
-define('WA_MAX_MSG_LENGTH', 1500);      // Max characters per message
+if (!defined('WA_GATEWAY_PORT')) define('WA_GATEWAY_PORT', 3001);        // Internal port for Baileys bridge
+if (!defined('WA_GATEWAY_HOST')) define('WA_GATEWAY_HOST', '127.0.0.1'); // NEVER change this to a public IP
+if (!defined('WA_GATEWAY_SECRET')) define('WA_GATEWAY_SECRET', '');
+if (!defined('WA_MIN_DELAY_SECONDS')) define('WA_MIN_DELAY_SECONDS', 5);
+if (!defined('WA_MAX_MSG_LENGTH')) define('WA_MAX_MSG_LENGTH', 1500);
+
+if (function_exists('sendWhatsAppAlert')) return; // Guard against double-include
 
 /**
  * Send a WhatsApp message via the Baileys gateway.
