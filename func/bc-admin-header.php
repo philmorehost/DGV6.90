@@ -640,8 +640,8 @@ if ($_ai_vendor_enabled):
 <script>
   window.__ai_enabled     = true;
   window.__ai_page_slug   = '<?php echo preg_replace("/[^a-z0-9_]/", "_", strtolower(basename($_SERVER["PHP_SELF"], ".php"))); ?>';
-  window.__ai_handler_url = '/web/ai-handler.php';
-  window.__ai_guide_url   = '/web/ai-guide-cache.php';
+  window.__ai_handler_url = '/web/ai-handler.php?context=admin';
+  window.__ai_guide_url   = '/web/ai-guide-cache.php?context=admin';
   window.__ai_tokens      = <?php echo $ai_token_bal; ?>;
 </script>
 <script src="/jsfile/ai-assistant.js" defer></script>

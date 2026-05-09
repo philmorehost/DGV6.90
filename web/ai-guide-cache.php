@@ -28,7 +28,8 @@ $vendor_id = resolveVendorID();
 $safe_vid  = (int)$vendor_id;
 
 // Check AI status
-if (!empty($_SESSION['admin_session']) && empty($_SESSION['user_session'])) {
+$context = $_GET['context'] ?? 'user';
+if ($context === 'admin' && !empty($_SESSION['admin_session'])) {
     // Admin Path
     $email = $_SESSION['admin_session'];
     $esc_email = mysqli_real_escape_string($connection_server, $email);

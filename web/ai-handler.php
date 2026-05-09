@@ -58,8 +58,12 @@ if ($vendor_id <= 0) {
 }
 
 // ─── GATE 2: Rate limiting (per actor, 20 AI requests/minute) ─
-$is_admin_actor = (!empty($admin_session) && empty($user_session));
+$context = $_GET['context'] ?? 'user';
+$is_admin_actor = ($context === 'admin' && !empty($admin_session));
 $rate_key = $is_admin_actor ? "ai_admin_{$vendor_id}_{$username}" : "ai_user_{$vendor_id}_{$username}";
+
+// DEBUG
+// file_put_contents('ai_debug.log', "VID: $vendor_id | Admin: $admin_session | User: $user_session | IsAdminActor: ".($is_admin_actor?'Y':'N')." | Username: $username\n", FILE_APPEND);
 
 if (bc_is_rate_limited('ai_request', $rate_key, 20, 60)) {
     http_response_code(429);
