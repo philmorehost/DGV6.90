@@ -207,12 +207,13 @@ if (isset($_POST["update-user-security"])) {
 if (isset($_POST["apply-ai-voice"])) {
     $uid = $get_logged_user_details['id'];
     // Re-verify the count
-    $tx_count_q = mysqli_query($connection_server, "SELECT COUNT(id) as c FROM sas_transactions WHERE username='".$get_logged_user_details["username"]."' AND status='success'");
-    $tx_count = mysqli_fetch_assoc($tx_count_q)['c'];
+    $tx_count_q = mysqli_query($connection_server, "SELECT COUNT(id) as c FROM sas_transactions WHERE username='".$get_logged_user_details["username"]."' AND status=1");
+    $tx_count = ($tx_count_q && $row_c = mysqli_fetch_assoc($tx_count_q)) ? $row_c['c'] : 0;
     
     // Get vendor limit
     $v_limit_q = mysqli_query($connection_server, "SELECT ai_voice_min_tx FROM sas_vendors WHERE id='".$get_logged_user_details["vendor_id"]."'");
-    $v_limit = mysqli_fetch_assoc($v_limit_q)['ai_voice_min_tx'] ?? 50;
+    $v_limit_row = ($v_limit_q) ? mysqli_fetch_assoc($v_limit_q) : null;
+    $v_limit = $v_limit_row['ai_voice_min_tx'] ?? 50;
 
     if ($tx_count >= $v_limit) {
         mysqli_query($connection_server, "UPDATE sas_users SET ai_voice_status=1 WHERE id='$uid'");
@@ -240,10 +241,11 @@ if (isset($_POST["apply-ai-voice"])) {
       
         <!-- Google Fonts -->
 <?php
-    $tx_count_q = mysqli_query($connection_server, "SELECT COUNT(id) as c FROM sas_transactions WHERE username='".$get_logged_user_details["username"]."' AND status='success'");
-    $tx_count = mysqli_fetch_assoc($tx_count_q)['c'];
+    $tx_count_q = mysqli_query($connection_server, "SELECT COUNT(id) as c FROM sas_transactions WHERE username='".$get_logged_user_details["username"]."' AND status=1");
+    $tx_count = ($tx_count_q && $row_c = mysqli_fetch_assoc($tx_count_q)) ? $row_c['c'] : 0;
     $v_limit_q = mysqli_query($connection_server, "SELECT ai_voice_min_tx FROM sas_vendors WHERE id='".$get_logged_user_details["vendor_id"]."'");
-    $v_limit = mysqli_fetch_assoc($v_limit_q)['ai_voice_min_tx'] ?? 50;
+    $v_limit_row = ($v_limit_q) ? mysqli_fetch_assoc($v_limit_q) : null;
+    $v_limit = $v_limit_row['ai_voice_min_tx'] ?? 50;
     $v_limit = max(1, (int)$v_limit); // Prevent division by zero
     $ai_voice_status = (int)$get_logged_user_details['ai_voice_status'];
     $progress = min(100, ($tx_count / $v_limit) * 100);

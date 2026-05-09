@@ -203,11 +203,11 @@ $recent_intelligence_q = mysqli_query($connection_server,
 
 // Live Health Metrics (Vendor Context)
 $health_q = mysqli_query($connection_server, "SELECT AVG(duration_ms) as avg_lat FROM sas_ai_transactions WHERE vendor_id='$esc_vid' AND status='success' AND created_at >= DATE_SUB(NOW(), INTERVAL 24 HOUR)");
-$health = mysqli_fetch_assoc($health_q);
-$v_avg_latency = $health['avg_lat'] > 0 ? round($health['avg_lat']) : 450;
+$health = ($health_q) ? mysqli_fetch_assoc($health_q) : ['avg_lat' => 0];
+$v_avg_latency = ($health && $health['avg_lat'] > 0) ? round($health['avg_lat']) : 450;
 
 $blocked_q = mysqli_query($connection_server, "SELECT COUNT(*) as blocked FROM sas_ai_transactions WHERE vendor_id='$esc_vid' AND status='blocked' AND created_at >= DATE_SUB(NOW(), INTERVAL 24 HOUR)");
-$v_blocked_count = mysqli_fetch_assoc($blocked_q)['blocked'];
+$v_blocked_count = ($blocked_q && $row_b = mysqli_fetch_assoc($blocked_q)) ? $row_b['blocked'] : 0;
 ?>
 <!DOCTYPE html>
 <html lang="en">

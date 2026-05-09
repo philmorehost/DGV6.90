@@ -190,11 +190,11 @@ $recent_logs_q = mysqli_query($connection_server, "SELECT t.*, v.company_name, v
 
 // Live Health Metrics
 $health_q = mysqli_query($connection_server, "SELECT AVG(duration_ms) as avg_lat, COUNT(*) as total_calls FROM sas_ai_transactions WHERE status='success' AND created_at >= DATE_SUB(NOW(), INTERVAL 24 HOUR)");
-$health = mysqli_fetch_assoc($health_q);
-$avg_latency = $health['avg_lat'] > 0 ? round($health['avg_lat']) : 450;
+$health = ($health_q) ? mysqli_fetch_assoc($health_q) : ['avg_lat' => 0, 'total_calls' => 0];
+$avg_latency = ($health && $health['avg_lat'] > 0) ? round($health['avg_lat']) : 450;
 
 $blocked_q = mysqli_query($connection_server, "SELECT COUNT(*) as blocked FROM sas_ai_transactions WHERE status='blocked' AND created_at >= DATE_SUB(NOW(), INTERVAL 24 HOUR)");
-$blocked_count = mysqli_fetch_assoc($blocked_q)['blocked'];
+$blocked_count = ($blocked_q && $row_b = mysqli_fetch_assoc($blocked_q)) ? $row_b['blocked'] : 0;
 ?>
 <!DOCTYPE html>
 <html lang="en">
