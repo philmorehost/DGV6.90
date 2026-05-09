@@ -145,12 +145,28 @@ if ($action_type === 'apply' && !$is_admin_actor) {
 }
 
 // ─── GATE 3: AI Status Check ─────────────────────────────────
-if ((int)$actor['ai_status'] !== 1) {
+// Fetch Vendor Global AI Status
+$v_status_q = mysqli_query($connection_server, "SELECT ai_status FROM sas_vendors WHERE id='$safe_vid' LIMIT 1");
+$v_status = ($v_status_q) ? mysqli_fetch_assoc($v_status_q) : null;
+
+if (($v_status['ai_status'] ?? 0) != 1 && $context !== 'spadmin') {
+    http_response_code(403);
+    echo json_encode([
+        'status'  => 'error',
+        'code'    => 'PLATFORM_DISABLED',
+        'message' => 'AI features are currently disabled by the platform admin.',
+    ]);
+    exit;
+}
+
+// User Activation Check
+$user_ai_status = (int)($actor['ai_status'] ?? 0);
+if ($user_ai_status < 1 && $action_type !== 'chat') {
     http_response_code(403);
     echo json_encode([
         'status'  => 'error',
         'code'    => 'AI_DISABLED',
-        'message' => 'AI features are not enabled. Visit Account Settings to get started.',
+        'message' => 'AI features are not enabled. Visit AI Settings to get started.',
     ]);
     exit;
 }
