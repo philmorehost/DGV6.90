@@ -112,6 +112,7 @@ if ($connection_server) {
         // Migration: AI Commercialization & Token Economy
         $ai_vendor_cols = [
             'ai_user_token_price' => "DECIMAL(10,2) DEFAULT 150.00 AFTER ai_price_per_1k_tokens",
+            'ai_voice_fee_tokens' => "INT DEFAULT 0 AFTER voice_tx_threshold",
             'ai_paid_usage'       => "TINYINT DEFAULT 1 AFTER ai_status"
         ];
         foreach ($ai_vendor_cols as $col => $def) {

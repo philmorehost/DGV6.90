@@ -1713,6 +1713,7 @@ $ai_vendor_new_cols = [
     'ai_request_status'       => "VARCHAR(20) DEFAULT NULL COMMENT 'NULL=none, pending=requested, approved=active, rejected=denied'",
     'ai_status'               => "TINYINT(1) DEFAULT 0",
     'ai_token_balance'        => "INT DEFAULT 0",
+    'ai_voice_fee_tokens'     => "INT DEFAULT 0",
     'ai_pending_cost'         => "DECIMAL(20,2) DEFAULT 0.00",
     'ai_pending_tokens'       => "INT DEFAULT 0",
 ];

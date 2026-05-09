@@ -211,16 +211,21 @@ if (isset($_POST["apply-ai-voice"])) {
     $tx_count = ($tx_count_q && $row_c = mysqli_fetch_assoc($tx_count_q)) ? (int)$row_c['c'] : 0;
     
     // Get vendor limit
-    $v_limit_q = mysqli_query($connection_server, "SELECT voice_tx_threshold FROM sas_vendors WHERE id='".$get_logged_user_details["vendor_id"]."'");
+    $v_limit_q = mysqli_query($connection_server, "SELECT voice_tx_threshold, ai_voice_fee_tokens FROM sas_vendors WHERE id='".$get_logged_user_details["vendor_id"]."'");
     $v_limit_row = ($v_limit_q) ? mysqli_fetch_assoc($v_limit_q) : null;
     $v_limit = $v_limit_row['voice_tx_threshold'] ?? 50;
+    $v_fee = $v_limit_row['ai_voice_fee_tokens'] ?? 0;
 
     if ($tx_count >= $v_limit) {
-        // Activate AI Assistant immediately, set Voice to Pending (1)
-        mysqli_query($connection_server, "UPDATE sas_users SET ai_status=1, ai_voice_status=1 WHERE id='$uid'");
-        $_SESSION["product_purchase_response"] = "✅ AI Assistant enabled! Your Zero-Click Voice access is now pending admin review.";
+        if ((int)$get_logged_user_details['ai_token_balance'] >= $v_fee) {
+            $new_token_bal = (int)$get_logged_user_details['ai_token_balance'] - $v_fee;
+            mysqli_query($connection_server, "UPDATE sas_users SET ai_status=1, ai_voice_status=1, ai_token_balance='$new_token_bal' WHERE id='$uid'");
+            $_SESSION["product_purchase_response"] = "✅ AI Assistant enabled! " . ($v_fee > 0 ? "$v_fee tokens deducted. " : "") . "Your Zero-Click Voice access is now pending admin review.";
+        } else {
+            $_SESSION["product_purchase_response"] = "❌ You need at least $v_fee AI tokens to activate this feature.";
+        }
     } else {
-        $_SESSION["product_purchase_response"] = "You have not met the transaction requirement to apply.";
+        $_SESSION["product_purchase_response"] = "You have not met the transaction requirement ($v_limit) to apply.";
     }
     header("Location: " . $_SERVER["REQUEST_URI"]);
     exit();

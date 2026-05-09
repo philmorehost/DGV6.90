@@ -132,9 +132,9 @@ if (isset($_GET["remove-whitelist"])) {
 // Handle Voice Settings Update
 if (isset($_POST['set-voice-limit'])) {
     bc_validate_csrf();
-    $new_min = (int)$_POST['ai_voice_min_tx'];
+    $new_min = (int)$_POST['voice_tx_threshold'];
     $new_fee = (int)$_POST['ai_voice_fee_tokens'];
-    mysqli_query($connection_server, "UPDATE sas_vendors SET ai_voice_min_tx='$new_min', ai_voice_fee_tokens='$new_fee' WHERE id='$esc_vid'");
+    mysqli_query($connection_server, "UPDATE sas_vendors SET voice_tx_threshold='$new_min', ai_voice_fee_tokens='$new_fee' WHERE id='$esc_vid'");
     $_SESSION['product_purchase_response'] = "✅ Voice settings updated.";
     header("Location: AISettings.php");
     exit();
@@ -166,7 +166,7 @@ $flags_q = mysqli_query($connection_server, "SELECT * FROM sas_ai_audit_log WHER
 $usage_q = mysqli_query($connection_server, "SELECT SUM(tokens_burned) as used, COUNT(*) as calls FROM sas_ai_transactions WHERE vendor_id='$esc_vid' AND MONTH(created_at)=MONTH(NOW()) AND status='success'");
 $usage = $usage_q ? mysqli_fetch_assoc($usage_q) : ['used' => 0, 'calls' => 0];
 
-$voice_min_tx = (int)($get_logged_admin_details["ai_voice_min_tx"] ?? 50);
+$voice_min_tx = (int)($get_logged_admin_details["voice_tx_threshold"] ?? 50);
 $voice_fee_tokens = (int)($get_logged_admin_details['ai_voice_fee_tokens'] ?? 50);
 $voice_apps_q = mysqli_query($connection_server, "SELECT id, username, email, phone_number, ai_voice_status FROM sas_users WHERE vendor_id='$esc_vid' AND ai_voice_status IN (1,2) ORDER BY ai_voice_status ASC, id DESC LIMIT 20");
 
@@ -475,7 +475,7 @@ $v_blocked_count = ($blocked_q && $row_b = mysqli_fetch_assoc($blocked_q)) ? $ro
                             <?php echo bc_csrf_field(); ?>
                             <div class="mb-3">
                                 <label class="small fw-bold">Min Success Tx Required</label>
-                                <input type="number" name="ai_voice_min_tx" class="form-control rounded-4" value="<?php echo $voice_min_tx; ?>">
+                                <input type="number" name="voice_tx_threshold" class="form-control rounded-4" value="<?php echo $voice_min_tx; ?>">
                             </div>
                             <div class="mb-4">
                                 <label class="small fw-bold">Activation Fee (Tokens)</label>
