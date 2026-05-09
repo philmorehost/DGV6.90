@@ -47,12 +47,36 @@ if (!$ai_row || (int)$ai_row['ai_status'] !== 1) {
     exit;
 }
 
-// Check DB cache (valid for 24 hours)
+// ─── SMART ASSIST: Proactive Failure Detection ────────────────
+// If there's an immediate failure context, use it as priority over page guides
+$user_data = ['username' => $_SESSION['user_session'] ?? ''];
+$ai_context = bc_get_ai_user_context($user_data);
+
+if (!empty($ai_context['smart_explanation'])) {
+    $explanation = $ai_context['smart_explanation'];
+    
+    // Log this intelligence for the Blueprint
+    bc_log_ai_intelligence($safe_vid, 'smart_assist_intervention', $explanation, [
+        'page' => $page_slug,
+        'reason' => $ai_context['last_fail_reason'],
+        'product' => $ai_context['last_fail_plan']
+    ]);
+
+    echo json_encode([
+        'status' => 'success',
+        'guide' => $explanation,
+        'is_intervention' => true,
+        'type' => 'failure_recovery'
+    ]);
+    exit;
+}
+
+// Check DB cache (valid for 24 hours) for normal page guides
 $esc_slug = mysqli_real_escape_string($connection_server, $page_slug);
 $cache_q  = mysqli_query($connection_server, "SELECT guide_text FROM sas_ai_page_guides WHERE page_slug='$esc_slug' AND vendor_id='$safe_vid' AND last_updated >= DATE_SUB(NOW(), INTERVAL 24 HOUR) LIMIT 1");
 if ($cache_q && mysqli_num_rows($cache_q) > 0) {
     $cached = mysqli_fetch_assoc($cache_q);
-    echo json_encode(['guide' => $cached['guide_text'], 'from_cache' => true]);
+    echo json_encode(['status' => 'success', 'guide' => $cached['guide_text'], 'is_intervention' => false, 'from_cache' => true]);
     exit;
 }
 
@@ -70,7 +94,7 @@ if ($result['status'] === 'success') {
     $guide_text = $result['response'];
     $esc_guide  = mysqli_real_escape_string($connection_server, $guide_text);
     mysqli_query($connection_server, "INSERT INTO sas_ai_page_guides (page_slug, vendor_id, guide_text) VALUES ('$esc_slug', '$safe_vid', '$esc_guide') ON DUPLICATE KEY UPDATE guide_text='$esc_guide', last_updated=NOW()");
-    echo json_encode(['guide' => $guide_text, 'from_cache' => false]);
+    echo json_encode(['status' => 'success', 'guide' => $guide_text, 'is_intervention' => false, 'from_cache' => false]);
 } else {
-    echo json_encode(['guide' => null]);
+    echo json_encode(['status' => 'error', 'guide' => null]);
 }

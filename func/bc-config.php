@@ -99,6 +99,16 @@ if ($connection_server) {
             INDEX (vendor_id)
         )");
         
+        // Migration: AI Intelligence Memory
+        mysqli_query($connection_server, "CREATE TABLE IF NOT EXISTS sas_ai_intelligence (
+            id INT AUTO_INCREMENT PRIMARY KEY,
+            vendor_id INT,
+            intel_type VARCHAR(50),
+            content TEXT,
+            metadata TEXT,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        )");
+        
         // Migration: AI Transaction Logs Performance Column
         $check_ai_perf = mysqli_query($connection_server, "SHOW COLUMNS FROM `sas_ai_transactions` LIKE 'duration_ms'");
         if (mysqli_num_rows($check_ai_perf) == 0) {

@@ -111,26 +111,47 @@
         document.body.appendChild(container);
     }
 
-    // ─── 2. Page Guide Toast ──────────────────────────────────
-    function showPageGuide(text) {
-        if (localStorage.getItem(CACHE_KEY)) return; // Already shown today
-
-        const toast = document.createElement('div');
-        toast.id = 'ai-guide-toast';
-        toast.innerHTML = `<span class="toast-close" id="ai-toast-close">✕</span>💡 <strong>Quick Tip:</strong><br>${text.slice(0, 180)}...`;
-        document.body.appendChild(toast);
-
-        document.getElementById('ai-toast-close').onclick = (e) => {
-            e.stopPropagation();
-            toast.remove();
-        };
-        toast.onclick = () => {
-            toast.remove();
-            openPanel(text);
-        };
-
-        localStorage.setItem(CACHE_KEY, '1');
-        setTimeout(() => { if (toast.parentNode) toast.remove(); }, 10000);
+    // ─── 2. Smart Assist Modal (NEW) ──────────────────────────
+    function showSmartAssistModal(text) {
+        let modal = document.getElementById('ai-modal');
+        if (!modal) {
+            modal = document.createElement('div');
+            modal.id = 'ai-modal';
+            modal.innerHTML = `
+                <div id="ai-modal-content">
+                    <div id="ai-modal-header">
+                        <span>🤖 Smart Assist</span>
+                        <button id="ai-modal-close">&times;</button>
+                    </div>
+                    <div id="ai-modal-body">
+                        <div style="font-weight:700;margin-bottom:10px;color:#1e293b;">I noticed an issue with your request:</div>
+                        <p id="ai-modal-text"></p>
+                    </div>
+                    <div id="ai-modal-footer">
+                        <button id="ai-modal-chat-btn">Ask AI for more help</button>
+                    </div>
+                </div>
+                <style>
+                    #ai-modal { position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.6); z-index:10000; display:flex; align-items:center; justify-content:center; backdrop-filter:blur(5px); }
+                    #ai-modal-content { background:#fff; width:90%; max-width:400px; border-radius:1.5rem; overflow:hidden; box-shadow:0 25px 50px -12px rgba(0,0,0,0.5); animation:ai-pop .3s cubic-bezier(0.34, 1.56, 0.64, 1); }
+                    @keyframes ai-pop { from{transform:scale(0.8);opacity:0} to{transform:scale(1);opacity:1} }
+                    #ai-modal-header { background:linear-gradient(135deg,#7c3aed,#2563eb); color:#fff; padding:1.25rem; display:flex; justify-content:space-between; align-items:center; font-weight:700; }
+                    #ai-modal-body { padding:1.5rem; color:#475569; line-height:1.6; }
+                    #ai-modal-footer { padding:1.25rem; border-top:1px solid #f1f5f9; }
+                    #ai-modal-chat-btn { background:#7c3aed; color:#fff; border:none; padding:0.85rem; border-radius:2rem; font-weight:700; cursor:pointer; width:100%; transition:transform 0.2s; }
+                    #ai-modal-chat-btn:hover { transform:translateY(-2px); }
+                    #ai-modal-close { background:none; border:none; color:#fff; font-size:1.5rem; cursor:pointer; }
+                </style>
+            `;
+            document.body.appendChild(modal);
+            document.getElementById('ai-modal-close').onclick = () => modal.style.display = 'none';
+            document.getElementById('ai-modal-chat-btn').onclick = () => {
+                modal.style.display = 'none';
+                openPanel(text);
+            };
+        }
+        document.getElementById('ai-modal-text').textContent = text;
+        modal.style.display = 'flex';
     }
 
     // ─── 3. Load Page Guide (cached) ─────────────────────────
@@ -139,7 +160,13 @@
             const resp = await fetch(`${GUIDE_URL}?page=${encodeURIComponent(PAGE_SLUG)}`, { cache: 'no-cache' });
             if (!resp.ok) return;
             const data = await resp.json();
-            if (data.guide) showPageGuide(data.guide);
+            if (data.status === 'success' && data.guide) {
+                if (data.is_intervention) {
+                    showSmartAssistModal(data.guide);
+                } else {
+                    showPageGuide(data.guide);
+                }
+            }
         } catch (_) {}
     }
 

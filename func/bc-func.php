@@ -5,18 +5,39 @@
 /**
  * AI Edition: Smart Re-query Failure Explanation
  */
-function bc_get_ai_failure_explanation($status_msg) {
+function bc_get_ai_failure_explanation($status_msg, $tx_name = '') {
     $msg = strtolower($status_msg);
-    if (strpos($msg, 'insufficient') !== false || strpos($msg, 'stock') !== false) 
-        return "The provider is currently out of stock for this specific plan. I recommend trying a different data volume or a different network provider if available.";
-    if (strpos($msg, 'invalid') !== false || strpos($msg, 'number') !== false) 
+    $tx = strtolower($tx_name);
+    
+    // Context Detection
+    $is_data = (strpos($tx, 'data') !== false || strpos($tx, 'bundle') !== false);
+    $is_bank = (strpos($tx, 'bank') !== false || strpos($tx, 'transfer') !== false || strpos($tx, 'withdraw') !== false);
+    $is_airtime = (strpos($tx, 'airtime') !== false || strpos($tx, 'recharge') !== false);
+
+    if (strpos($msg, 'insufficient') !== false || strpos($msg, 'stock') !== false) {
+        if ($is_data) return "The provider is currently out of stock for this specific data plan. I recommend trying a different data volume or a different network provider if available.";
+        if ($is_bank) return "The bank's settlement account is currently low on liquidity. This is common during peak hours. Please try again in 30 minutes.";
+        return "The provider is temporarily out of stock for this service. Please try a different amount or provider.";
+    }
+
+    if (strpos($msg, 'invalid') !== false || strpos($msg, 'number') !== false || strpos($msg, 'account') !== false) {
+        if ($is_bank) return "The recipient bank account number or bank selection appears incorrect. Please double-check the account details and try again.";
         return "The recipient phone number appears to be invalid or incorrectly formatted. Please double-check the number and try again.";
-    if (strpos($msg, 'timeout') !== false || strpos($msg, 'congested') !== false) 
-        return "The network provider's server is currently slow or timed out. This is usually temporary. Please wait 5 minutes and try again.";
-    if (strpos($msg, 'duplicate') !== false) 
-        return "It looks like you just sent this exact same transaction. To prevent double-charging, the system blocked this duplicate. Please check your history first.";
-    if (strpos($msg, 'balance') !== false && strpos($msg, 'wallet') !== false)
-        return "Your wallet balance is too low for this transaction. You can fund your wallet via Bank Transfer or Card in the 'Fund Wallet' section.";
+    }
+
+    if (strpos($msg, 'timeout') !== false || strpos($msg, 'congested') !== false || strpos($msg, 'delayed') !== false) {
+        return "The service provider's gateway is currently slow or congested. This is a network-wide issue. Please wait 5-10 minutes before retrying to avoid double-charging.";
+    }
+
+    if (strpos($msg, 'duplicate') !== false) {
+        return "It looks like you just sent this exact same request. To protect your wallet from double-charging, the system blocked this duplicate. Please check your transaction history.";
+    }
+
+    if (strpos($msg, 'balance') !== false && strpos($msg, 'wallet') !== false) {
+        return "Your wallet balance is too low for this " . ($is_bank ? "withdrawal" : ($is_data ? "data purchase" : "transaction")) . ". You can fund your wallet via Bank Transfer or Card in the 'Fund Wallet' section.";
+    }
+
+    // Default fallback
     return "The provider returned an unexpected error. Switching to a backup route or trying again in a few minutes often solves this.";
 }
 
@@ -47,7 +68,7 @@ function bc_get_ai_user_context($user_details) {
         'last_fail_reason' => $last_fail ? $last_fail['status_description'] : '',
         'last_fail_plan' => $last_fail ? $last_fail['name'] : '',
         'session_error' => $immediate_error,
-        'smart_explanation' => $immediate_error ? bc_get_ai_failure_explanation($immediate_error) : ''
+        'smart_explanation' => $immediate_error ? bc_get_ai_failure_explanation($immediate_error, $last_fail ? $last_fail['name'] : '') : ''
     ];
 }
 
@@ -104,6 +125,19 @@ function resolveVendorID($force_recompute = false) {
     }
 
     return 0;
+}
+
+/**
+ * AI Intelligence Memory: Stores platform-specific knowledge for reports and blueprints.
+ */
+function bc_log_ai_intelligence($vendor_id, $type, $content, $metadata = []) {
+    global $connection_server;
+    $v_id = (int)$vendor_id;
+    $esc_type = mysqli_real_escape_string($connection_server, $type);
+    $esc_content = mysqli_real_escape_string($connection_server, $content);
+    $esc_meta = mysqli_real_escape_string($connection_server, json_encode($metadata));
+    
+    mysqli_query($connection_server, "INSERT INTO sas_ai_intelligence (vendor_id, intel_type, content, metadata) VALUES ('$v_id', '$esc_type', '$esc_content', '$esc_meta')");
 }
 
 function isServiceEnabled($name, $vid = null) {
