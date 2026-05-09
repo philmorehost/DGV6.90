@@ -360,7 +360,7 @@
                     <img src="<?php echo $web_http_host; ?>/asset/user-icon.png" class="img-fluid rounded-circle bg-light p-3" style="width: 100px; height: 100px; object-fit: contain; filter: grayscale(1); opacity: 0.5;"/>
                 </div>
                 <h6 class="fw-bold"><?php echo $get_user_details['firstname'] . ' ' . $get_user_details['lastname']; ?></h6>
-                <div class="badge bg-light text-dark border rounded-pill px-3 mb-3"><?php echo strtoupper($get_user_details['account_type'] == 1 ? 'Smart User' : ($get_user_details['account_type'] == 2 ? 'Reseller' : 'API User')); ?></div>
+                <div class="badge bg-light text-dark border rounded-pill px-3 mb-3"><?php echo strtoupper(accountLevel($get_user_details['account_level'])); ?></div>
                 <div class="text-muted small mb-1"><i class="bi bi-clock me-1"></i> Joined: <?php echo date('M d, Y', strtotime($get_user_details['reg_date'])); ?></div>
                 <div class="text-muted small"><i class="bi bi-wallet2 me-1"></i> Balance: <b>₦<?php echo number_format($get_user_details['balance'], 2); ?></b></div>
             </div>
