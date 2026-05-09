@@ -1,5 +1,5 @@
 # DGV6.90 — /web/.htaccess
-# Simplified for cPanel Compatibility
+# Emergency Fallback — Safe Mode
 
 Options -Indexes
 
@@ -7,14 +7,10 @@ Options -Indexes
     RewriteEngine On
     RewriteBase /web/
 
-    # 1. Hide .php extension (Transparently serve /web/login as Login.php)
+    # 1. Simple Extension Hiding
+    # Transparently serves Login.php when user visits /web/Login
     RewriteCond %{REQUEST_FILENAME} !-f
     RewriteCond %{REQUEST_FILENAME} !-d
     RewriteCond %{REQUEST_FILENAME}.php -f
     RewriteRule ^([^/]+)$ $1.php [L,QSA]
-
-    # 2. Redirect actual .php requests to clean URLs (Optional, but good for SEO)
-    # If a user types /web/Login.php, redirect to /web/Login
-    RewriteCond %{THE_REQUEST} ^[A-Z]{3,9}\ /web/([^/.]+)\.php\ [NC]
-    RewriteRule ^([^/.]+)\.php$ %1 [R=301,L]
 </IfModule>

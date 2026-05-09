@@ -23,13 +23,16 @@ function bc_url(string $path, array $params = []): string {
     // Split off any query string / fragment
     $fragment = '';
     if (str_contains($path, '#')) {
-        [$path, $fragment] = explode('#', $path, 2);
-        $fragment = '#' . $fragment;
+        $parts = explode('#', $path, 2);
+        $path = $parts[0];
+        $fragment = '#' . ($parts[1] ?? '');
     }
 
     $qs = '';
     if (str_contains($path, '?')) {
-        [$path, $qs] = explode('?', $path, 2);
+        $parts = explode('?', $path, 2);
+        $path = $parts[0];
+        $qs = $parts[1] ?? '';
     }
 
     // Strip .php extension
@@ -42,9 +45,12 @@ function bc_url(string $path, array $params = []): string {
 
     // Append any extra params
     if (!empty($params)) {
-        $qs_parts = $qs ? parse_str($qs, $existing) && $existing : [];
-        $merged   = array_merge($qs_parts ?? [], $params);
-        $qs       = http_build_query($merged);
+        $qs_parts = [];
+        if ($qs) {
+            parse_str($qs, $qs_parts);
+        }
+        $merged = array_merge($qs_parts, $params);
+        $qs     = http_build_query($merged);
     }
 
     return $clean . ($qs ? '?' . $qs : '') . $fragment;
