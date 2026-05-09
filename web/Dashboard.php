@@ -442,6 +442,31 @@ $is_kyc_compliant = ($get_logged_user_details['kyc_status'] == 2);
 
             <!-- Side Cards -->
             <div class="col-lg-4">
+                <!-- AI ELIGIBILITY CARD (NEW) -->
+                <?php
+                $v_ai_q = mysqli_query($connection_server, "SELECT ai_status, ai_voice_min_tx FROM sas_vendors WHERE id='".$get_logged_user_details["vendor_id"]."'");
+                $v_ai = mysqli_fetch_assoc($v_ai_q);
+                
+                if (($v_ai['ai_status'] ?? 0) == 1):
+                    $tx_count_q = mysqli_query($connection_server, "SELECT COUNT(id) as c FROM sas_transactions WHERE username='".$get_logged_user_details["username"]."' AND status=1");
+                    $tx_count = ($tx_count_q && $row_c = mysqli_fetch_assoc($tx_count_q)) ? $row_c['c'] : 0;
+                    $threshold = (int)($v_ai['ai_voice_min_tx'] ?? 50);
+                    $v_status = (int)$get_logged_user_details['ai_voice_status'];
+
+                    if ($v_status == 1): ?>
+                        <div class="card p-4 mb-4 border-0 shadow-sm animate__animated animate__pulse animate__infinite" style="background: linear-gradient(135deg, #4f46e5, #7c3aed); color: white;">
+                            <h6 class="fw-bold mb-2"><i class="bi bi-cpu-fill me-2"></i>AI Review Pending</h6>
+                            <p class="x-small opacity-75 mb-0">Your Zero-Click Voice access is being reviewed by the admin.</p>
+                        </div>
+                    <?php elseif ($v_status == 0 && $tx_count >= $threshold): ?>
+                        <div class="card p-4 mb-4 border-0 shadow-sm" style="background: linear-gradient(135deg, #000, #4338ca); color: white;">
+                            <h6 class="fw-bold mb-2"><i class="bi bi-stars me-2"></i>AI Reward Unlocked!</h6>
+                            <p class="x-small opacity-75 mb-3">You've completed <?php echo $tx_count; ?> transactions! Apply now for "Zero-Click" Voice commands.</p>
+                            <a href="AccountSettings.php" class="btn btn-light btn-sm w-100 rounded-pill fw-bold text-primary">APPLY FOR AI ACCESS</a>
+                        </div>
+                    <?php endif; ?>
+                <?php endif; ?>
+
                 <!-- VTU Coins Card -->
                 <a href="PointsHistory.php" class="text-decoration-none">
                     <div class="card p-4 mb-4 shadow-sm border-0 transition-hover" style="background: #fffbeb;">

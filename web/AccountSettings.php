@@ -221,6 +221,10 @@ if (isset($_POST["apply-ai-voice"])) {
     } else {
         $_SESSION["product_purchase_response"] = "You have not met the transaction requirement to apply.";
     }
+    header("Location: " . $_SERVER["REQUEST_URI"]);
+    exit();
+}
+
 if (isset($_POST["buy-user-ai-tokens"])) {
     $uid = $get_logged_user_details['id'];
     $vid = $get_logged_user_details['vendor_id'];
