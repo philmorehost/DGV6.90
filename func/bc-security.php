@@ -392,23 +392,29 @@ function bc_firewall_prompt(string $raw_prompt, bool $strict_mode = false, array
     }
 
     // Prepend the system context to keep AI on-topic
-    $system_context = "You are a helpful VTU business assistant for a Nigerian fintech platform. "
-                    . "You help with airtime, data, electricity, cable TV, exam pins, and business tips. ";
+    $system_context = "You are a professional Nigerian VTU assistant. Help with airtime, data, electricity, cable TV, etc. "
+                    . "IMPORTANT: You CANNOT execute transactions yourself. If the user wants to buy something, summarize their request and ask 'Shall I go ahead and process this for you?'. "
+                    . "NEVER claim that a transaction is complete or that you have sent money. ";
 
     // Inject Smart Context if available
     if (!empty($context)) {
         $ctx_parts = [];
-        if (isset($context['page'])) $ctx_parts[] = "Page: " . $context['page'];
-        if (isset($context['wallet_balance'])) $ctx_parts[] = "User Balance: ₦" . number_format($context['wallet_balance'], 2);
+        if (isset($context['page'])) $ctx_parts[] = "Current Page: " . $context['page'];
+        if (isset($context['wallet_balance'])) $ctx_parts[] = "Balance: ₦" . number_format($context['wallet_balance'], 2);
+        
+        // Include Successful History for "Faster Processing"
+        if (!empty($context['recent_history']) && is_array($context['recent_history'])) {
+            $ctx_parts[] = "Frequent/Recent Purchases: " . implode(" | ", $context['recent_history']);
+        }
+        
         if (!empty($context['last_fail_reason'])) $ctx_parts[] = "Last Error: " . $context['last_fail_reason'];
-        if (!empty($context['last_fail_plan'])) $ctx_parts[] = "Last Plan Attempted: " . $context['last_fail_plan'];
         
         if (!empty($ctx_parts)) {
-            $system_context .= " [Current Context: " . implode(", ", $ctx_parts) . "] ";
+            $system_context .= " [Context: " . implode(", ", $ctx_parts) . "] ";
         }
     }
 
-    $system_context .= "NEVER suggest moving money, never generate SQL or code. User request: ";
+    $system_context .= "\nUser request: ";
 
     return $system_context . $prompt;
 }

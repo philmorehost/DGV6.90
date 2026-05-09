@@ -192,9 +192,14 @@ class AIEngine
     /**
      * Parse a voice transcript into a structured VTU transaction intent.
      */
-    public function parseVtuIntent(string $transcript, string $model = 'gemini-1.5-flash'): ?array
+    public function parseVtuIntent(string $transcript, string $model = 'gemini-1.5-flash', array $context = []): ?array
     {
         $safe_transcript = bc_sanitize(substr($transcript, 0, 300));
+        
+        $history_str = "No recent history.";
+        if (!empty($context['recent_history']) && is_array($context['recent_history'])) {
+            $history_str = implode("\n", $context['recent_history']);
+        }
 
         $system_prompt = <<<PROMPT
 You are a professional Nigerian VTU transaction intent parser.
@@ -204,6 +209,9 @@ Extract the following fields from the user's voice command:
 - phone: 11-digit Nigerian phone number starting with 0
 - network: one of [MTN, Airtel, Glo, 9mobile]
 - confidence: a number 0-100
+
+CONTEXTUAL HELP (Use this history to infer missing details if the user is vague):
+$history_str
 
 Output ONLY valid JSON.
 Voice command: $safe_transcript

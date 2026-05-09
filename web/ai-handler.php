@@ -234,7 +234,7 @@ switch ($action_type) {
         if ($action_type === 'execute_vtu') {
             $intent = $json_input['intent'] ?? $_POST['intent'] ?? null;
         } else {
-            $intent = $ai->parseVtuIntent($prompt_raw, $model_to_use);
+            $intent = $ai->parseVtuIntent($prompt_raw, $model_to_use, $context_data);
         }
 
         if (!$intent || $intent['confidence'] < 50) {
@@ -243,8 +243,14 @@ switch ($action_type) {
         }
 
         // 2. Check Authorization for Autonomous Action
-        if (($actor['ai_voice_status'] ?? 0) != 2) {
-             echo json_encode(['status' => 'error', 'code' => 'NOT_APPROVED', 'message' => 'Your account is not approved for Zero-Click Autonomous Voice transactions. Please apply in Account Settings.']);
+        if (($actor['ai_voice_status'] ?? 0) != 2 && $action_type === 'voice_vtu') {
+             // Fallback: If not approved for zero-click, treat as a chat request but keep the intent
+             $ai_result = $ai->chat($model_to_use, $safe_prompt);
+             $ai_result['pending_vtu'] = $intent;
+             break; // Skip the direct execution below
+        } elseif (($actor['ai_voice_status'] ?? 0) != 2 && $action_type === 'execute_vtu') {
+             // If they are trying to CONFIRM but still not approved (shouldn't happen with UI logic but for safety)
+             echo json_encode(['status' => 'error', 'code' => 'NOT_APPROVED', 'message' => 'Autonomous transactions require activation. Please apply in AI Settings.']);
              exit;
         }
 
@@ -305,7 +311,7 @@ switch ($action_type) {
         $ai_result = $ai->chat($model_to_use, $safe_prompt);
         // Proactive Intent Detection for Confirmation Flow
         if (preg_match('/buy|recharge|send|topup|data|airtime|pay/i', $prompt_raw)) {
-            $intent = $ai->parseVtuIntent($prompt_raw, $model_to_use);
+            $intent = $ai->parseVtuIntent($prompt_raw, $model_to_use, $context_data);
             if ($intent && $intent['confidence'] >= 50) {
                 $ai_result['pending_vtu'] = $intent;
             }

@@ -183,7 +183,9 @@
         const prompt = input.value.trim();
         if (!prompt) return;
 
-        let action = forceAction || 'chat';
+        // Detect if this is a transaction command (Typed or Voice)
+        const isTx = /send|buy|recharge|topup|data|airtime|pay/i.test(prompt);
+        let action = forceAction || (isTx ? 'voice_vtu' : 'chat');
         let payloadExtra = {};
 
         const isConfirmation = /^(yes|confirm|proceed|go ahead|yep|sure|ok|do it|okay)$/i.test(prompt);
