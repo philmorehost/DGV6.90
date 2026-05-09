@@ -1701,4 +1701,3 @@ if ($check_options_table && mysqli_num_rows($check_options_table) > 0) {
     }
 }
 
-} // end if ($connection_server)
