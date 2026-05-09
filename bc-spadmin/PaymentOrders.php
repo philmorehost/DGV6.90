@@ -124,25 +124,24 @@
       <div class="col-12">
 
         <?php
+            $page_num = (isset($_GET["page"]) && is_numeric($_GET["page"]) && $_GET["page"] >= 1) ? (int)$_GET["page"] : 1;
+            $limit = 10;
+            $offset = ($page_num - 1) * $limit;
+            $offset_statement = " OFFSET $offset";
             
-            if(!isset($_GET["searchq"]) && isset($_GET["page"]) && !empty(trim(strip_tags($_GET["page"]))) && is_numeric(trim(strip_tags($_GET["page"]))) && (trim(strip_tags($_GET["page"])) >= 1)){
-            	$page_num = mysqli_real_escape_string($connection_server, trim(strip_tags($_GET["page"])));
-            	$offset_statement = " OFFSET ".((10 * $page_num) - 10);
-            }else{
-            	$offset_statement = "";
+            $searchq = isset($_GET["searchq"]) ? trim(strip_tags($_GET["searchq"])) : "";
+            $search_statement = "";
+            $search_parameter = "";
+
+            if(!empty($searchq)){
+                $search_esc = mysqli_real_escape_string($connection_server, $searchq);
+                $search_statement = " AND (reference LIKE '%$search_esc%' OR description LIKE '%$search_esc%' OR amount LIKE '%$search_esc%')";
+                $search_parameter = "searchq=".urlencode($searchq)."&";
             }
             
-            if(isset($_GET["searchq"]) && !empty(trim(strip_tags($_GET["searchq"])))){
-                $search_statement = " && (reference LIKE '%".trim(strip_tags($_GET["searchq"]))."%' OR description LIKE '%".trim(strip_tags($_GET["searchq"]))."%' OR amount LIKE '%".trim(strip_tags($_GET["searchq"]))."%')";
-                $search_parameter = "searchq=".trim(strip_tags($_GET["searchq"]))."&&";
-            }else{
-                $search_statement = "";
-                $search_parameter = "";
-            }
-            $get_user_pending_transaction_details = mysqli_query($connection_server, "SELECT * FROM sas_super_admin_submitted_payments WHERE status='2' $search_statement ORDER BY date DESC LIMIT 10 $offset_statement");
-            $get_user_successful_transaction_details = mysqli_query($connection_server, "SELECT * FROM sas_super_admin_submitted_payments WHERE status='1' $search_statement ORDER BY date DESC LIMIT 10 $offset_statement");
-            $get_user_failed_transaction_details = mysqli_query($connection_server, "SELECT * FROM sas_super_admin_submitted_payments WHERE status='3' $search_statement ORDER BY date DESC LIMIT 10 $offset_statement");
-            
+            $get_user_pending_transaction_details = mysqli_query($connection_server, "SELECT * FROM sas_super_admin_submitted_payments WHERE status='2' $search_statement ORDER BY date DESC LIMIT $limit $offset_statement");
+            $get_user_successful_transaction_details = mysqli_query($connection_server, "SELECT * FROM sas_super_admin_submitted_payments WHERE status='1' $search_statement ORDER BY date DESC LIMIT $limit $offset_statement");
+            $get_user_failed_transaction_details = mysqli_query($connection_server, "SELECT * FROM sas_super_admin_submitted_payments WHERE status='3' $search_statement ORDER BY date DESC LIMIT $limit $offset_statement");
         ?>
         <div class="card shadow-sm border-0 rounded-4 overflow-hidden mb-4">
             <div class="card-header bg-white py-4 border-0">
@@ -153,7 +152,7 @@
                     </div>
                     <div class="col-md-6">
                         <form method="get" action="PaymentOrders.php" class="d-flex gap-2 justify-content-md-end">
-                            <input name="searchq" type="text" value="<?php echo trim(strip_tags($_GET["searchq"])); ?>" placeholder="Ref, Email, Amount..." class="form-control rounded-pill px-3" style="max-width: 250px;" />
+                            <input name="searchq" type="text" value="<?php echo htmlspecialchars($searchq); ?>" placeholder="Ref, Email, Amount..." class="form-control rounded-pill px-3" style="max-width: 250px;" />
                             <button type="submit" class="btn btn-primary rounded-pill px-4 fw-bold shadow-sm">Filter</button>
                         </form>
                     </div>
@@ -174,7 +173,7 @@
                             <table class="table table-hover align-middle mb-0">
                                 <thead class="bg-light"><tr class="small text-uppercase text-muted"><th class="ps-4">Ref / Vendor</th><th>Details</th><th>Amount</th><th>Status</th><th class="text-end pe-4">Actions</th></tr></thead>
                                 <tbody>
-                                    <?php if(mysqli_num_rows($get_user_pending_transaction_details) > 0):
+                                    <?php if($get_user_pending_transaction_details && mysqli_num_rows($get_user_pending_transaction_details) > 0):
                                         while($row = mysqli_fetch_assoc($get_user_pending_transaction_details)):
                                             $v_q = mysqli_query($connection_server, "SELECT email FROM sas_vendors WHERE id='".$row["vendor_id"]."' LIMIT 1");
                                             $v_email = ($v_row = mysqli_fetch_assoc($v_q)) ? $v_row['email'] : "Unknown Vendor";
@@ -211,7 +210,7 @@
                             <table class="table table-hover align-middle mb-0">
                                 <thead class="bg-light"><tr class="small text-uppercase text-muted"><th class="ps-4">Ref / Vendor</th><th>Details</th><th>Amount</th><th>Status</th></tr></thead>
                                 <tbody>
-                                    <?php if(mysqli_num_rows($get_user_successful_transaction_details) > 0):
+                                    <?php if($get_user_successful_transaction_details && mysqli_num_rows($get_user_successful_transaction_details) > 0):
                                         while($row = mysqli_fetch_assoc($get_user_successful_transaction_details)):
                                             $v_q = mysqli_query($connection_server, "SELECT email FROM sas_vendors WHERE id='".$row["vendor_id"]."' LIMIT 1");
                                             $v_email = ($v_row = mysqli_fetch_assoc($v_q)) ? $v_row['email'] : "Unknown Vendor";
@@ -239,7 +238,7 @@
                             <table class="table table-hover align-middle mb-0">
                                 <thead class="bg-light"><tr class="small text-uppercase text-muted"><th class="ps-4">Ref / Vendor</th><th>Details</th><th>Amount</th><th>Status</th><th class="text-end pe-4">Action</th></tr></thead>
                                 <tbody>
-                                    <?php if(mysqli_num_rows($get_user_failed_transaction_details) > 0):
+                                    <?php if($get_user_failed_transaction_details && mysqli_num_rows($get_user_failed_transaction_details) > 0):
                                         while($row = mysqli_fetch_assoc($get_user_failed_transaction_details)):
                                             $v_q = mysqli_query($connection_server, "SELECT email FROM sas_vendors WHERE id='".$row["vendor_id"]."' LIMIT 1");
                                             $v_email = ($v_row = mysqli_fetch_assoc($v_q)) ? $v_row['email'] : "Unknown Vendor";
@@ -266,10 +265,10 @@
 
             <div class="card-footer bg-white py-4 border-0">
                 <div class="d-flex justify-content-center gap-2">
-                    <?php if(isset($_GET["page"]) && is_numeric(trim(strip_tags($_GET["page"]))) && (trim(strip_tags($_GET["page"])) > 1)): ?>
-                    <a href="PaymentOrders.php?<?php echo $search_parameter; ?>page=<?php echo (trim(strip_tags($_GET["page"])) - 1); ?>" class="btn btn-outline-primary btn-sm px-4 rounded-pill">Prev</a>
+                    <?php if($page_num > 1): ?>
+                    <a href="PaymentOrders.php?<?php echo $search_parameter; ?>page=<?php echo ($page_num - 1); ?>" class="btn btn-outline-primary btn-sm px-4 rounded-pill">Prev</a>
                     <?php endif; ?>
-                    <a href="PaymentOrders.php?<?php echo $search_parameter; ?>page=<?php echo ((isset($_GET['page']) ? (int)$_GET['page'] : 1) + 1); ?>" class="btn btn-primary btn-sm px-4 rounded-pill shadow-sm">Next</a>
+                    <a href="PaymentOrders.php?<?php echo $search_parameter; ?>page=<?php echo ($page_num + 1); ?>" class="btn btn-primary btn-sm px-4 rounded-pill shadow-sm">Next</a>
                 </div>
             </div>
         </div>
