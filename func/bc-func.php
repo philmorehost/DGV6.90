@@ -60,11 +60,16 @@ function bc_get_ai_user_context($user_details) {
     $balance = (float)($user_details['balance'] ?? 0);
     $status_label = $balance < 100 ? "Low" : "Healthy";
 
+    // 3. Check for immediate session error (most recent attempt)
+    $immediate_error = $_SESSION['product_purchase_response'] ?? '';
+
     // 4. Get recent successful transactions for "Faster Processing" context
-    $history_q = mysqli_query($connection_server, "SELECT type_alternative as name, description as target, amount FROM sas_transactions WHERE vendor_id='$vendor_id' AND username='$username' AND status=1 ORDER BY id DESC LIMIT 5");
     $recent_history = [];
-    while($h = mysqli_fetch_assoc($history_q)) {
-        $recent_history[] = $h['name'] . " to " . $h['target'] . " (₦" . $h['amount'] . ")";
+    $history_q = mysqli_query($connection_server, "SELECT type_alternative as name, description as target, amount FROM sas_transactions WHERE vendor_id='$vendor_id' AND username='$username' AND status=1 ORDER BY id DESC LIMIT 5");
+    if ($history_q) {
+        while($h = mysqli_fetch_assoc($history_q)) {
+            $recent_history[] = $h['name'] . " to " . $h['target'] . " (₦" . $h['amount'] . ")";
+        }
     }
 
     return [
