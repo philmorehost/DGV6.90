@@ -48,7 +48,6 @@
         productHttp.send();
 	}
 </script> -->
-<?php } ?>
 
 <div class="w-100 mh-25 mt-3 d-block d-xl-none d-md-none d-lg-none" style="height: 80px;"></div>
 </main>
