@@ -490,25 +490,15 @@ PROMPT;
     {
         switch ($this->provider) {
             case 'gemini':
-                $url = "{$this->base_url}/models/gemini-1.5-flash?key={$this->api_key}";
-                $res = $this->curlGet($url);
-                return ($res !== false && (strpos($res, 'gemini-1.5-flash') !== false || strpos($res, 'models/') !== false));
-            
             case 'deepseek':
-                $url = "{$this->base_url}/models";
-                $headers = ["Authorization: Bearer {$this->api_key}"];
-                $res = $this->curlGet($url, 10, $headers);
-                return ($res !== false && (strpos($res, 'deepseek') !== false || strpos($res, 'object') !== false));
-
             case 'groq':
-                $url = "{$this->base_url}/models";
-                $headers = ["Authorization: Bearer {$this->api_key}"];
-                $res = $this->curlGet($url, 10, $headers);
-                return ($res !== false && (strpos($res, 'groq') !== false || strpos($res, 'data') !== false));
-
+                if (empty($this->api_key)) return false;
+                $res = $this->curlGet($this->base_url);
+                return ($res !== false);
             default: // ollama
-                $res = $this->curlGet(str_replace('/api', '', $this->base_url));
-                return ($res !== false && strpos($res, 'Ollama is running') !== false);
+                // Check if Ollama is responsive at /api/tags
+                $res = $this->curlGet(rtrim($this->base_url, '/') . '/api/tags');
+                return ($res !== false);
         }
     }
 

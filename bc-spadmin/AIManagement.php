@@ -3,6 +3,11 @@ include("../func/bc-spadmin-config.php");
 include_once("../func/bc-ai-engine.php");
 include_once("../func/bc-whatsapp.php");
 
+// Force clear cache on load to ensure we see latest settings
+if (isset($_SESSION)) {
+    unset($_SESSION['super_admin_options_cache']);
+}
+
 // ── Handle: Install Model ──────────────────────────────────
 if (isset($_POST["install-model"])) {
     $model = bc_sanitize($_POST["model_name"] ?? '');
@@ -116,8 +121,8 @@ if (isset($_POST["update-ai-connection"])) {
             mysqli_query($connection_server, "INSERT INTO sas_super_admin_options (option_name, option_value) VALUES ('$esc_k', '$esc_v')");
         }
     }
-    $_SESSION["response"] = "✅ AI connection settings updated.";
-    unset($_SESSION['super_admin_options_cache']); // Clear platform cache
+    $_SESSION["response"] = "✅ AI connection settings updated to " . ucfirst($provider) . ".";
+    unset($_SESSION['super_admin_options_cache']); // Clear platform cache again after save
     header("Location: AIManagement.php"); exit();
 }
 
