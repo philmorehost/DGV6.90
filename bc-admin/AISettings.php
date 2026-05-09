@@ -36,7 +36,7 @@ if (isset($_POST['request-ai-activation'])) {
         $charge = chargeVendor("debit", "ai_activation", "AI Suite", $ref, $cost, $cost, $desc, $_SERVER["HTTP_HOST"], 1);
         
         if ($charge === 'success') {
-            mysqli_query($connection_server, "UPDATE sas_vendors SET ai_request_status='pending', ai_token_balance = ai_token_balance + $tokens WHERE id='$esc_vid'");
+            mysqli_query($connection_server, "UPDATE sas_vendors SET ai_request_status='pending', ai_pending_cost='$cost', ai_pending_tokens='$tokens' WHERE id='$esc_vid'");
             
             // Notify Super Admin
             $sa_email = "admin@" . explode(':', $_SERVER['HTTP_HOST'])[0]; // Fallback

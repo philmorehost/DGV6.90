@@ -29,17 +29,39 @@ if (isset($_POST["toggle-global-ai"])) {
 }
 
 // ── Handle: Approve/Reject Vendor Request ─────────────────
-if (isset($_GET['approve-vendor'])) {
-    $v_id = (int)$_GET['approve-vendor'];
+if (isset($_GET['approve'])) {
+    $v_id = (int)$_GET['approve'];
     $bonus = (int)getSuperAdminOption('ai_default_token_bonus', 1000);
-    mysqli_query($connection_server, "UPDATE sas_vendors SET ai_status=1, ai_request_status='approved', ai_token_balance = ai_token_balance + $bonus WHERE id='$v_id'");
-    $_SESSION["response"] = "✅ Vendor AI activation approved. $bonus bonus tokens granted.";
+    
+    // Get pending tokens
+    $v_q = mysqli_query($connection_server, "SELECT ai_pending_tokens FROM sas_vendors WHERE id='$v_id'");
+    $v_data = mysqli_fetch_assoc($v_q);
+    $requested_tokens = (int)($v_data['ai_pending_tokens'] ?? 0);
+    $total_grant = $requested_tokens + $bonus;
+
+    mysqli_query($connection_server, "UPDATE sas_vendors SET ai_status=1, ai_request_status='approved', ai_token_balance = ai_token_balance + $total_grant, ai_pending_tokens=0, ai_pending_cost=0 WHERE id='$v_id'");
+    $_SESSION["response"] = "✅ Vendor AI activation approved. $total_grant tokens granted (Requested: $requested_tokens + Bonus: $bonus).";
     header("Location: AIManagement.php"); exit();
 }
-if (isset($_GET['reject-vendor'])) {
-    $v_id = (int)$_GET['reject-vendor'];
-    mysqli_query($connection_server, "UPDATE sas_vendors SET ai_request_status='rejected' WHERE id='$v_id'");
-    $_SESSION["response"] = "❌ Vendor AI request rejected.";
+if (isset($_GET['reject'])) {
+    $v_id = (int)$_GET['reject'];
+    $v_q = mysqli_query($connection_server, "SELECT ai_pending_cost, email FROM sas_vendors WHERE id='$v_id'");
+    $v_data = mysqli_fetch_assoc($v_q);
+    $refund_amount = (float)($v_data['ai_pending_cost'] ?? 0);
+    $v_email = $v_data['email'] ?? '';
+
+    if ($refund_amount > 0) {
+        $ref = "RFND_AI_" . time();
+        chargeVendor("credit", "ai_refund", "AI Refund", $ref, $refund_amount, $refund_amount, "Refund for rejected AI activation request", $_SERVER["HTTP_HOST"], 1);
+    }
+
+    mysqli_query($connection_server, "UPDATE sas_vendors SET ai_request_status='rejected', ai_pending_cost=0, ai_pending_tokens=0 WHERE id='$v_id'");
+    
+    if (!empty($v_email)) {
+        sendVendorEmail($v_email, "AI Request Update", "Your AI activation request has been reviewed and rejected. Any payments made have been refunded to your wallet.");
+    }
+
+    $_SESSION["response"] = "❌ Vendor AI request rejected. Refund of ₦" . number_format($refund_amount, 2) . " processed.";
     header("Location: AIManagement.php"); exit();
 }
 
@@ -152,13 +174,14 @@ if ($ai_provider === 'gemini') {
     ];
 } else {
     $model_catalog = [
-        ['name' => 'phi4-mini',         'size' => '~2.5GB', 'desc' => 'Ultra-fast, ideal for page guides & quick answers. Recommended for all vendors.', 'tier' => 'Free'],
-        ['name' => 'gemma4:e2b',        'size' => '~5GB',   'desc' => 'Google\'s efficient 2B model. Good for marketing copy.', 'tier' => 'Standard'],
-        ['name' => 'gemma4:12b',        'size' => '~8GB',   'desc' => 'High quality responses for premium AI features.',        'tier' => 'Premium'],
-        ['name' => 'llama4-scout',      'size' => '~6GB',   'desc' => 'Meta\'s Llama 4 Scout — fast & capable.',               'tier' => 'Standard'],
-        ['name' => 'qwen3:4b',          'size' => '~3GB',   'desc' => 'Alibaba\'s Qwen 3 4B — excellent for structured tasks.', 'tier' => 'Standard'],
-        ['name' => 'deepseek-r1:1.5b',  'size' => '~1.5GB', 'desc' => 'Tiny reasoning model — great for intent parsing.',       'tier' => 'Free'],
-        ['name' => 'llava',             'size' => '~4.5GB', 'desc' => 'Multimodal Vision Model — Required for Image-to-VTU.',  'tier' => 'Titanium'],
+        ['name' => 'phi4:14b-q4_K_M',   'size' => '~9GB',   'desc' => 'Microsoft Phi-4 — extremely high intelligence for complex reasoning.', 'tier' => 'Premium'],
+        ['name' => 'phi4-mini',         'size' => '~2.5GB', 'desc' => 'Ultra-fast, ideal for page guides & quick answers. Recommended for all.', 'tier' => 'Free'],
+        ['name' => 'gemma2:2b',         'size' => '~1.6GB', 'desc' => 'Google Gemma 2 2B — efficient & smart for marketing copy.', 'tier' => 'Standard'],
+        ['name' => 'gemma2:9b',         'size' => '~5.5GB', 'desc' => 'Google Gemma 2 9B — high-fidelity responses for premium features.', 'tier' => 'Premium'],
+        ['name' => 'llama3.1:8b',       'size' => '~4.7GB', 'desc' => 'Meta Llama 3.1 8B — industry standard for general tasks.', 'tier' => 'Standard'],
+        ['name' => 'qwen2.5:3b',        'size' => '~1.9GB', 'desc' => 'Alibaba Qwen 2.5 — excellent for code and structured logic.', 'tier' => 'Standard'],
+        ['name' => 'deepseek-r1:1.5b',  'size' => '~1.1GB', 'desc' => 'DeepSeek R1 — tiny reasoning model, great for fast intent parsing.', 'tier' => 'Free'],
+        ['name' => 'llava:7b',          'size' => '~4.5GB', 'desc' => 'Multimodal Vision Model — Required for Image-to-VTU analysis.', 'tier' => 'Titanium'],
     ];
 }
 
@@ -535,15 +558,13 @@ document.addEventListener('DOMContentLoaded', function() {
                                     <input type="hidden" name="active_model_name" value="<?php echo htmlspecialchars($mc['name']); ?>">
                                     <button type="submit" name="set-active-model" class="btn btn-outline-success btn-sm rounded-pill px-3">Activate</button>
                                 </form>
-                            <?php elseif ($ai_provider === 'ollama' && $ai_up): ?>
+                            <?php else: ?>
                                 <form method="post">
                                     <input type="hidden" name="model_name" value="<?php echo htmlspecialchars($mc['name']); ?>">
                                     <button type="submit" name="install-model" class="btn btn-primary btn-sm rounded-pill px-3">
                                         <i class="bi bi-cloud-download me-1"></i>Install
                                     </button>
                                 </form>
-                            <?php else: ?>
-                                <span class="badge bg-secondary rounded-pill">Unavailable</span>
                             <?php endif; ?>
                         </div>
                     </div>
