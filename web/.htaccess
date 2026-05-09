@@ -1,38 +1,20 @@
 # DGV6.90 — /web/.htaccess
-# Clean URLs for user-facing pages
-# All .php extensions hidden; deeplinks and query strings fully preserved.
+# Simplified for cPanel Compatibility
 
 Options -Indexes
+
 <IfModule mod_rewrite.c>
     RewriteEngine On
     RewriteBase /web/
 
-    # ── RULE 1: Redirect *.php → clean URL (301 permanent, SEO-safe) ──────────
-    # This catches old/bookmarked .php URLs (including mobile app deeplinks)
-    # and redirects them to the clean version, preserving ALL query strings.
-    # e.g. /web/Register.php?referral=john → /web/register?referral=john
-    # Exceptions: skip ajax handlers, callback handlers, and API files
-    RewriteCond %{REQUEST_FILENAME} -f
-    RewriteCond %{THE_REQUEST} /web/([^?#]+)\.php([?#\s]) [NC]
-    RewriteCond %{REQUEST_URI} !^/web/(ajax-|biometric-ajax|finance-ajax|virtual-card-ajax|p2p-chat-ajax|export-transactions|check_indexes|paystack_callback|payhub-success|manual_payment|handle_upgrade|test_email) [NC]
-    RewriteRule ^(.+)\.php$ /web/$1 [L,R=301,QSA,NC]
-
-    # ── RULE 2: Internally serve clean URL → actual .php file ─────────────────
-    # Transparent to the user — they see /web/login, PHP runs Login.php
-    # Query strings (?referral=X, ?token=X etc.) are preserved by QSA flag.
+    # 1. Hide .php extension (Transparently serve /web/login as Login.php)
     RewriteCond %{REQUEST_FILENAME} !-f
     RewriteCond %{REQUEST_FILENAME} !-d
     RewriteCond %{REQUEST_FILENAME}.php -f
-    RewriteRule ^([^.]+)$ $1.php [L,QSA,NC]
+    RewriteRule ^([^/]+)$ $1.php [L,QSA]
 
-    # ── RULE 3: Case-insensitive page resolution ───────────────────────────────
-    # Allows /web/dashboard to serve Dashboard.php
-    # (Already handled by Rule 2 on case-insensitive filesystems)
-
+    # 2. Redirect actual .php requests to clean URLs (Optional, but good for SEO)
+    # If a user types /web/Login.php, redirect to /web/Login
+    RewriteCond %{THE_REQUEST} ^[A-Z]{3,9}\ /web/([^/.]+)\.php\ [NC]
+    RewriteRule ^([^/.]+)\.php$ %1 [R=301,L]
 </IfModule>
-
-# ─── Protect internal PHP includes from direct access ────────────────────────
-<FilesMatch "^(ajax-|biometric|finance-ajax|p2p-chat|virtual-card-ajax)">
-    # These stay as .php — they return JSON and are called by JavaScript
-    # No redirect needed, they won't be typed into a browser address bar
-</FilesMatch>
