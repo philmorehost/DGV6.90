@@ -14,6 +14,10 @@ $check_col2 = mysqli_query($connection_server, "SHOW COLUMNS FROM sas_users LIKE
 if (mysqli_num_rows($check_col2) == 0) {
     mysqli_query($connection_server, "ALTER TABLE sas_users ADD COLUMN ai_voice_status TINYINT DEFAULT 0");
 }
+$check_col3 = mysqli_query($connection_server, "SHOW COLUMNS FROM sas_vendors LIKE 'ai_voice_fee_tokens'");
+if (mysqli_num_rows($check_col3) == 0) {
+    mysqli_query($connection_server, "ALTER TABLE sas_vendors ADD COLUMN ai_voice_fee_tokens INT DEFAULT 50");
+}
 
 
 // Handle AI Activation Request
@@ -124,6 +128,20 @@ if (isset($_GET["remove-whitelist"])) {
     $esc_pid = mysqli_real_escape_string($connection_server, $pid);
     mysqli_query($connection_server, "DELETE FROM sas_customer_whitelist WHERE vendor_id='$esc_vid' AND product_id='$esc_pid'");
     $_SESSION["product_purchase_response"] = "VIP entry removed.";
+    header("Location: AISettings.php");
+    exit();
+}
+
+$voice_min_tx = (int)($get_logged_admin_details['ai_voice_min_tx'] ?? 50);
+$voice_fee_tokens = (int)($get_logged_admin_details['ai_voice_fee_tokens'] ?? 50);
+
+// Handle Voice Settings Update
+if (isset($_POST['set-voice-limit'])) {
+    bc_validate_csrf();
+    $new_min = (int)$_POST['ai_voice_min_tx'];
+    $new_fee = (int)$_POST['ai_voice_fee_tokens'];
+    mysqli_query($connection_server, "UPDATE sas_vendors SET ai_voice_min_tx='$new_min', ai_voice_fee_tokens='$new_fee' WHERE id='$esc_vid'");
+    $_SESSION['product_purchase_response'] = "✅ Voice settings updated.";
     header("Location: AISettings.php");
     exit();
 }
@@ -467,10 +485,19 @@ if ($ai_status == 0 && ($req_status === NULL || $req_status === 'rejected')):
                     <div class="alert alert-light border rounded-4">
                         <h6 class="fw-bold mb-2">Access Threshold</h6>
                         <p class="small text-muted mb-3">Set how many successful transactions a user must have before they can apply for Zero-Click Voice access.</p>
-                        <form method="post" class="d-flex gap-2">
+                        <form method="post" class="row g-3">
                             <?php echo bc_csrf_field(); ?>
-                            <input type="number" name="ai_voice_min_tx" class="form-control fw-bold" value="<?php echo $voice_min_tx; ?>" min="1">
-                            <button type="submit" name="set-voice-limit" class="btn btn-primary px-4 rounded-3">Save</button>
+                            <div class="col-6">
+                                <label class="small fw-bold">Min Success Tx</label>
+                                <input type="number" name="ai_voice_min_tx" class="form-control fw-bold" value="<?php echo $voice_min_tx; ?>" min="1">
+                            </div>
+                            <div class="col-6">
+                                <label class="small fw-bold">Fee (AI Tokens)</label>
+                                <input type="number" name="ai_voice_fee_tokens" class="form-control fw-bold" value="<?php echo $voice_fee_tokens; ?>" min="0">
+                            </div>
+                            <div class="col-12">
+                                <button type="submit" name="set-voice-limit" class="btn btn-primary w-100 rounded-3">Save Voice Settings</button>
+                            </div>
                         </form>
                     </div>
                 </div>

@@ -168,6 +168,71 @@ if (!$ai->isModelCompatible($model_to_use)) {
 
 // Action routing
 switch ($action_type) {
+    case 'voice_vtu':
+        // 1. Parse Voice Intent
+        $intent = $ai->parseVtuIntent($prompt_raw, $model_to_use);
+        if (!$intent || $intent['confidence'] < 60) {
+             echo json_encode(['status' => 'error', 'code' => 'LOW_CONFIDENCE', 'message' => 'I could not understand that command clearly. Please speak slowly and mention the network, amount, and number.']);
+             exit;
+        }
+
+        // 2. Check Authorization for Autonomous Action
+        if (($actor['ai_voice_status'] ?? 0) != 2) {
+             echo json_encode(['status' => 'error', 'code' => 'NOT_APPROVED', 'message' => 'Your account is not approved for Zero-Click Autonomous Voice transactions. Please apply in Account Settings.']);
+             exit;
+        }
+
+        // 3. Prepare for Transaction Execution
+        // We simulate the environment for the existing service handlers
+        $purchase_method = "API"; 
+        $get_api_post_info = [
+            'network'      => $intent['network'],
+            'phone_number' => $intent['phone'],
+            'amount'       => $intent['amount'],
+            'id'           => $intent['id'] ?? '' // for data/cable
+        ];
+
+        // Map service name to file
+        $service_map = [
+            'airtime'     => 'func/airtime.php',
+            'data'        => 'func/data.php',
+            'electricity' => 'func/electric.php',
+            'cable'       => 'func/cable.php',
+            'betting'     => 'func/betting.php'
+        ];
+
+        $handler_file = $service_map[strtolower($intent['service'])] ?? '';
+        if (empty($handler_file) || !file_exists(__DIR__ . "/" . $handler_file)) {
+             echo json_encode(['status' => 'error', 'message' => 'That service is not yet supported for voice commands.']);
+             exit;
+        }
+
+        // Execute Transaction
+        include_once(__DIR__ . "/" . $handler_file);
+        
+        // The handlers set $json_response_encode
+        $res = json_decode($json_response_encode ?? '{}', true);
+        
+        if (($res['status'] ?? '') === 'success') {
+            $ai_result = [
+                'status'   => 'success',
+                'response' => "✅ Autonomous Order Placed Successfully!\nType: " . ucwords($intent['service']) . "\nDest: " . $intent['phone'] . "\nAmt: ₦" . number_format($intent['amount']) . "\nRef: " . ($res['ref'] ?? 'N/A'),
+                'model'    => $model_to_use,
+                'duration_ms' => 0 // will be calculated
+            ];
+            // Override standard token fee with the autonomous fee
+            $tokens_per_call = (int)($vendor_ai['ai_voice_fee_tokens'] ?? 100);
+        } else {
+            // Transaction failed - don't charge AI tokens (Refund policy)
+            echo json_encode([
+                'status'  => 'error',
+                'code'    => 'TRANSACTION_FAILED',
+                'message' => "❌ Voice Transaction Failed: " . ($res['desc'] ?? 'Unknown Error') . ". No AI tokens were charged.",
+                'intent'  => $intent
+            ]);
+            exit;
+        }
+        break;
     case 'marketing':
         $ai_result = $ai->chat($model_to_use, $safe_prompt, ['temperature' => 0.85]);
         break;

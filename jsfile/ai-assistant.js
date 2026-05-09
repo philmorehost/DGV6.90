@@ -69,6 +69,10 @@
             #ai-send:hover { background:#6d28d9; }
             #ai-send:disabled { background:#c4b5fd; cursor:not-allowed; }
             .ai-typing { align-self:flex-start; background:#f3f0ff; color:#7c3aed; border-radius:.85rem; padding:.5rem .85rem; font-size:.78rem; }
+            .ai-icon-btn { background:none; border:none; font-size:1.2rem; cursor:pointer; opacity:.6; transition:opacity .2s; }
+            .ai-icon-btn:hover { opacity:1; }
+            .ai-icon-btn.recording { color:#ef4444; animation:ai-pulse 1.5s infinite; opacity:1; }
+            @keyframes ai-pulse { 0%{transform:scale(1)} 50%{transform:scale(1.2)} 100%{transform:scale(1)} }
             #ai-guide-toast {
                 position:fixed; bottom:92px; right:88px; width:260px; background:#1e1b4b;
                 color:#fff; border-radius:1rem; padding:.85rem 1rem; font-size:.78rem;
@@ -94,7 +98,8 @@
                     </div>
                     <div id="ai-messages" role="log" aria-live="polite"></div>
                     <div id="ai-input-row">
-                        <input id="ai-input" type="text" placeholder="Ask me anything about your business..." maxlength="500" autocomplete="off">
+                        <button id="ai-voice" class="ai-icon-btn" aria-label="Voice Command">🎤</button>
+                        <input id="ai-input" type="text" placeholder="Ask me anything..." maxlength="500" autocomplete="off">
                         <button id="ai-send" aria-label="Send">➤</button>
                     </div>
                 </div>
@@ -168,11 +173,13 @@
     }
 
     // ─── 5. Send Message ──────────────────────────────────────
-    async function sendMessage() {
+    async function sendMessage(forceAction = null) {
         const input  = document.getElementById('ai-input');
         const sendBtn = document.getElementById('ai-send');
         const prompt = input.value.trim();
         if (!prompt) return;
+
+        const action = forceAction || 'chat';
 
         input.value = '';
         sendBtn.disabled = true;
@@ -191,7 +198,7 @@
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ 
                     prompt, 
-                    action: 'chat', 
+                    action: action, 
                     context: {
                         page: PAGE_SLUG,
                         ...context
@@ -238,6 +245,37 @@
         document.getElementById('ai-input').onkeydown = (e) => {
             if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendMessage(); }
         };
+
+        // Voice Command Handling
+        const voiceBtn = document.getElementById('ai-voice');
+        if ('webkitSpeechRecognition' in window || 'SpeechRecognition' in window) {
+            const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+            const recognition = new SpeechRecognition();
+            recognition.lang = 'en-NG';
+            recognition.interimResults = false;
+
+            recognition.onstart = () => {
+                voiceBtn.classList.add('recording');
+                document.getElementById('ai-input').placeholder = "Listening...";
+            };
+            recognition.onend = () => {
+                voiceBtn.classList.remove('recording');
+                document.getElementById('ai-input').placeholder = "Ask me anything...";
+            };
+            recognition.onresult = (event) => {
+                const transcript = event.results[0][0].transcript;
+                document.getElementById('ai-input').value = transcript;
+                // If it looks like a transaction command, use the specialized handler
+                const isTx = /send|buy|recharge|topup|data|airtime|pay/i.test(transcript);
+                sendMessage(isTx ? 'voice_vtu' : 'chat');
+            };
+
+            voiceBtn.onclick = () => {
+                try { recognition.start(); } catch(e) { recognition.stop(); }
+            };
+        } else {
+            voiceBtn.style.display = 'none';
+        }
     }
 
     // ─── 7. Boot ─────────────────────────────────────────────
