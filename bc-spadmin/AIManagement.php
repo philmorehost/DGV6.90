@@ -228,7 +228,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 <h5 class="fw-bold mb-0"><i class="bi bi-person-check me-2 text-success"></i>Pending Activation Requests</h5>
                 <?php 
                 $q_pcount = mysqli_query($connection_server, "SELECT COUNT(*) as count FROM sas_vendors WHERE ai_request_status='pending'");
-                $pending_count = mysqli_fetch_assoc($q_pcount)['count'] ?? 0;
+                $pending_count = ($q_pcount && $r = mysqli_fetch_assoc($q_pcount)) ? $r['count'] : 0;
                 if($pending_count > 0): ?>
                 <span class="badge bg-danger rounded-pill"><?php echo $pending_count; ?> New</span>
                 <?php endif; ?>
@@ -240,7 +240,7 @@ document.addEventListener('DOMContentLoaded', function() {
                         <tbody>
                             <?php 
                             $req_q = mysqli_query($connection_server, "SELECT id, company_name, email, reg_date FROM sas_vendors WHERE ai_request_status='pending' ORDER BY id DESC");
-                            if (mysqli_num_rows($req_q) > 0):
+                            if ($req_q && mysqli_num_rows($req_q) > 0):
                                 while($req = mysqli_fetch_assoc($req_q)): ?>
                                 <tr>
                                     <td class="ps-4"><div class="fw-bold"><?php echo htmlspecialchars($req['company_name']); ?></div><div class="small text-muted"><?php echo $req['email']; ?></div></td>
