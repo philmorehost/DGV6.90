@@ -628,13 +628,12 @@ if (mysqli_num_rows($select_user_vendor_status_message) == 1) {
 
 <main id="main" class="main">
 <?php
-// DGV6.90 AI Edition: Inject AI assistant widget (deferred)
-$is_ai_suite_page = (basename($_SERVER["PHP_SELF"]) == 'AISuite.php');
-$_ai_user_enabled = (isset($get_logged_user_details['ai_status']) && (int)$get_logged_user_details['ai_status'] === 1) || $is_ai_suite_page;
-
-if ($_ai_user_enabled && isset($get_logged_user_details)):
+// DGV6.90 AI Edition: Inject AI assistant widget
+// Now enabled for all users to provide contextual support
+if (isset($get_logged_user_details)):
     $ai_token_bal = (int)($get_logged_user_details['ai_token_balance'] ?? 0);
     $ai_user_ctx  = bc_get_ai_user_context($get_logged_user_details);
+    $current_page = basename($_SERVER["PHP_SELF"]);
 ?>
 <script>
   window.__ai_enabled     = true;
@@ -644,13 +643,38 @@ if ($_ai_user_enabled && isset($get_logged_user_details)):
   window.__ai_tokens      = <?php echo $ai_token_bal; ?>;
   window.__ai_context     = <?php echo json_encode($ai_user_ctx); ?>;
   
-  // Proactive Engagement: Open AI Assistant if there's a recent failure
   <?php if (!empty($ai_user_ctx['session_error'])): ?>
   window.__ai_auto_open   = true;
   window.__ai_init_msg    = "I noticed your last transaction had an issue: '<?php echo addslashes($ai_user_ctx['session_error']); ?>'. <?php echo addslashes($ai_user_ctx['smart_explanation'] ?? ''); ?> How can I help you complete your purchase?";
   <?php endif; ?>
 </script>
 <script src="<?php echo $web_http_host; ?>/jsfile/ai-assistant.js" defer></script>
+
+<?php 
+// Dynamic AI Suggestions per Service Page
+$suggestions = [
+    'Airtime.php' => 'Try: "Buy MTN 100 airtime for 08012345678"',
+    'Data.php'    => 'Try: "Buy Airtel 2GB data for 08123456789"',
+    'Electric.php'=> 'Try: "Pay 2000 for IKEDC 010123456789"',
+    'Cable.php'   => 'Try: "Renew DSTV Compact for 123456789"',
+];
+if (isset($suggestions[$current_page])): ?>
+<div class="container-fluid mb-3">
+    <div class="card border-0 shadow-sm rounded-4" style="background: linear-gradient(135deg, #f5f3ff 0%, #ede9fe 100%); border-left: 5px solid #8b5cf6 !important;">
+        <div class="card-body p-3 d-flex align-items-center justify-content-between">
+            <div class="d-flex align-items-center">
+                <div class="bg-white rounded-circle p-2 me-3 shadow-sm">🤖</div>
+                <div>
+                    <div class="fw-bold text-primary x-small">AI ASSISTANT TIP</div>
+                    <div class="small text-dark"><?php echo $suggestions[$current_page]; ?></div>
+                </div>
+            </div>
+            <button onclick="window.__ai_open()" class="btn btn-primary btn-sm rounded-pill px-3 x-small shadow-sm">Use AI Now</button>
+        </div>
+    </div>
+</div>
+<?php endif; ?>
+
 <?php endif; ?>
 
 <!-- Referral Modal -->

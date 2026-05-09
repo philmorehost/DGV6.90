@@ -55,6 +55,7 @@
 
     // ─── 3. Initialization ────────────────────────────────────
     function injectWidget() {
+        if (document.getElementById('ai-widget-container')) return;
         const styleEl = document.createElement('style');
         styleEl.textContent = styles;
         document.head.appendChild(styleEl);
@@ -85,11 +86,25 @@
         fab.textContent = '🤖';
     }
 
+    function formatMarkdown(text) {
+        return text
+            .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
+            .replace(/\*(.*?)\*/g, '<em>$1</em>')
+            .replace(/\n/g, '<br>')
+            .replace(/^- (.*)/gm, '• $1');
+    }
+
     function appendMsg(role, text) {
         const msgs = document.getElementById('ai-messages');
         const div  = document.createElement('div');
         div.className = `ai-msg ${role}`;
-        div.textContent = text;
+        
+        if (role === 'bot') {
+            div.innerHTML = formatMarkdown(text);
+        } else {
+            div.textContent = text;
+        }
+        
         msgs.appendChild(div);
         msgs.scrollTop = msgs.scrollHeight;
         return div;
@@ -112,9 +127,8 @@
         if (isConfirmation && pendingVtu) {
             action = 'execute_vtu';
             payloadExtra.intent = JSON.parse(pendingVtu);
-            sessionStorage.removeItem('pending_vtu'); // One-time use
+            sessionStorage.removeItem('pending_vtu'); 
         } else if (!isConfirmation) {
-            // New unrelated request - clear any old pending
             sessionStorage.removeItem('pending_vtu');
         }
 
@@ -149,12 +163,10 @@
             if (data.status === 'success') {
                 appendMsg('bot', data.response);
                 
-                // Store pending VTU if AI proposes a transaction
                 if (data.pending_vtu) {
                     sessionStorage.setItem('pending_vtu', JSON.stringify(data.pending_vtu));
                 }
 
-                // Update token display
                 const tokEl = document.getElementById('ai-tokens');
                 if (tokEl && data.tokens_remaining !== undefined) {
                     tokEl.textContent = `${data.tokens_remaining.toLocaleString()} tokens remaining`;
@@ -170,7 +182,7 @@
                 appendMsg('error', errMessages[data.code] || data.message || 'Something went wrong.');
             }
         } catch (e) {
-            if (typing.parentNode) typing.remove();
+            if (typing && typing.parentNode) typing.remove();
             appendMsg('error', 'Connection error. Please check your internet and try again.');
         } finally {
             sendBtn.disabled = false;
@@ -190,7 +202,6 @@
             if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendMessage(); }
         };
 
-        // Voice Command Handling
         const voiceBtn = document.getElementById('ai-voice');
         if ('webkitSpeechRecognition' in window || 'SpeechRecognition' in window) {
             const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
@@ -209,7 +220,6 @@
             recognition.onresult = (event) => {
                 const transcript = event.results[0][0].transcript;
                 document.getElementById('ai-input').value = transcript;
-                // If it looks like a transaction command, use the specialized handler
                 const isTx = /send|buy|recharge|topup|data|airtime|pay/i.test(transcript);
                 sendMessage(isTx ? 'voice_vtu' : 'chat');
             };
@@ -224,21 +234,17 @@
 
     // ─── 7. Boot ─────────────────────────────────────────────
     function boot() {
-        if (document.getElementById('ai-widget-container')) return;
         injectWidget();
         bindEvents();
 
-        // Set initial token display if available
         const tokEl = document.getElementById('ai-tokens');
         if (tokEl && window.__ai_tokens !== undefined) {
             tokEl.textContent = `${window.__ai_tokens.toLocaleString()} tokens remaining`;
         }
 
-        // Proactive engagement
         if (window.__ai_auto_open) {
             setTimeout(() => {
                 openPanel();
-                // appendMsg already handled in openPanel if initialMsg exists
             }, 2000);
         }
     }

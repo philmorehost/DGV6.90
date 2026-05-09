@@ -237,7 +237,7 @@ switch ($action_type) {
             $intent = $ai->parseVtuIntent($prompt_raw, $model_to_use);
         }
 
-        if (!$intent || $intent['confidence'] < 60) {
+        if (!$intent || $intent['confidence'] < 50) {
              echo json_encode(['status' => 'error', 'code' => 'LOW_CONFIDENCE', 'message' => 'I could not understand that command clearly. Please speak slowly and mention the network, amount, and number.']);
              exit;
         }
@@ -306,7 +306,7 @@ switch ($action_type) {
         // Proactive Intent Detection for Confirmation Flow
         if (preg_match('/buy|recharge|send|topup|data|airtime|pay/i', $prompt_raw)) {
             $intent = $ai->parseVtuIntent($prompt_raw, $model_to_use);
-            if ($intent && $intent['confidence'] > 70) {
+            if ($intent && $intent['confidence'] >= 50) {
                 $ai_result['pending_vtu'] = $intent;
             }
         }
