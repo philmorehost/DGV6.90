@@ -1,16 +1,13 @@
 # DGV6.90 — /web/.htaccess
-# Emergency Fallback — Safe Mode
+# DISABLED FOR DIAGNOSTICS
 
-Options -Indexes
+# Options -Indexes
 
-<IfModule mod_rewrite.c>
-    RewriteEngine On
-    RewriteBase /web/
-
-    # 1. Simple Extension Hiding
-    # Transparently serves Login.php when user visits /web/Login
-    RewriteCond %{REQUEST_FILENAME} !-f
-    RewriteCond %{REQUEST_FILENAME} !-d
-    RewriteCond %{REQUEST_FILENAME}.php -f
-    RewriteRule ^([^/]+)$ $1.php [L,QSA]
-</IfModule>
+# <IfModule mod_rewrite.c>
+#    RewriteEngine On
+#    RewriteBase /web/
+#    RewriteCond %{REQUEST_FILENAME} !-f
+#    RewriteCond %{REQUEST_FILENAME} !-d
+#    RewriteCond %{REQUEST_FILENAME}.php -f
+#    RewriteRule ^([^/]+)$ $1.php [L,QSA]
+# </IfModule>
