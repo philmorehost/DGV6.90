@@ -76,11 +76,13 @@ if ($token_balance < $token_cost) {
     ai_json(402, ['success' => false, 'error' => 'Insufficient AI tokens. Please top up from the app.', 'tokens_remaining' => $token_balance]);
 }
 
-// ── Query Ollama ──────────────────────────────────────────────────────────────
-$engine   = BcAiEngine::getInstance();
-$ai_resp  = $engine->chat($safe_prompt);
+// ── Query Cloud AI ────────────────────────────────────────────────────────────
+$engine  = BcAiEngine::getInstance();
+$model   = getSuperAdminOption('ai_default_model', 'gemini-1.5-flash');
+$result  = $engine->chat($model, $safe_prompt);
+$ai_resp = $result['response'] ?? '';
 
-if (empty($ai_resp) || $ai_resp === false) {
+if (empty($ai_resp)) {
     ai_json(503, ['success' => false, 'error' => 'AI engine is temporarily unavailable. Please try again.', 'tokens_remaining' => $token_balance]);
 }
 

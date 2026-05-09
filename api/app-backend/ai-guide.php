@@ -46,8 +46,11 @@ $label = $page_labels[$page] ?? "the $page feature";
 $lang_note = $lang !== 'en' ? " Reply in $lang language." : '';
 $prompt = "You are a helpful Nigerian fintech guide. Give one concise, practical tip (max 2 sentences) for a user on the '$label' page of a VTU app.$lang_note";
 
-$engine = BcAiEngine::getInstance();
-$tip    = $engine->chat($prompt);
+$engine  = BcAiEngine::getInstance();
+$model   = getSuperAdminOption('ai_default_model', 'gemini-1.5-flash');
+$result  = $engine->chat($model, $prompt);
+$tip     = $result['response'] ?? '';
+
 if (empty($tip)) guide_json(200, ['success'=>true,'guide'=>"Tip: Always double-check the phone number or account details before confirming your transaction.",'cached'=>false,'page'=>$page]);
 
 // Cache for 24h

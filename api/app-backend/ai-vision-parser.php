@@ -25,9 +25,9 @@ $prompt = "You are a Nigerian Fintech OCR agent. Analyze this screenshot. "
         . "4. Network or Service Provider. "
         . "Return ONLY a JSON object: {\"service\": \"...\", \"amount\": 0, \"phone\": \"...\", \"network\": \"...\", \"confidence\": 0.9}";
 
-$engine = new AIEngine();
-// Using 'llava' as the default vision model. Ensure it is pulled in Ollama.
-$result = $engine->generateWithVision('llava', $prompt, [$image_base64]);
+$engine = ai_engine();
+$model  = getSuperAdminOption('ai_default_model', 'gemini-1.5-flash');
+$result = $engine->chatWithVision($model, $prompt, [$image_base64]);
 
 if ($result['status'] === 'success') {
     // Extract JSON from AI text
@@ -42,5 +42,5 @@ if ($result['status'] === 'success') {
         echo json_encode(['success' => false, 'error' => 'Could not parse transaction from image.']);
     }
 } else {
-    echo json_encode(['success' => false, 'error' => $result['response']]);
+    echo json_encode(['success' => false, 'error' => $result['message'] ?? 'Vision engine unavailable']);
 }

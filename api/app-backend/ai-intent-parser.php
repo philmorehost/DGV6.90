@@ -60,9 +60,9 @@ if (bc_is_rate_limited('voice_intent', $user_row['username'], 10, 60)) {
 // ── First try pattern-based parsing (fast, no token cost) ────────────────────
 $intent = parse_vtu_intent_patterns($voice_text);
 
-// ── If confidence < 0.7, fall back to Ollama ─────────────────────────────────
+// ── If confidence < 0.7, fall back to Cloud AI ──────────────────────────────
 if ($intent['confidence'] < 0.70) {
-    $ollama_prompt = "You are a VTU intent parser for a Nigerian fintech app. "
+    $cloud_prompt = "You are a VTU intent parser for a Nigerian fintech app. "
         . "Extract the transaction intent from this voice command: \"$voice_text\"\n"
         . "Return ONLY a JSON object with these fields (no markdown, no explanation):\n"
         . "{\"service\": \"airtime|data|cable|electric|betting\", \"amount\": 500, \"phone\": \"08012345678\", "
@@ -70,9 +70,11 @@ if ($intent['confidence'] < 0.70) {
         . "\"smartcard\": \"null or string\", \"meter_number\": \"null or string\", "
         . "\"betting_id\": \"null or string\", \"confidence\": 0.95}";
 
-    $engine   = BcAiEngine::getInstance();
-    $ai_raw   = $engine->chat($ollama_prompt);
-    $ai_json  = null;
+    $engine  = BcAiEngine::getInstance();
+    $model   = getSuperAdminOption('ai_default_model', 'gemini-1.5-flash');
+    $result  = $engine->chat($model, $cloud_prompt, ['temperature' => 0.1]);
+    $ai_raw  = $result['response'] ?? '';
+    $ai_json = null;
 
     // Extract JSON from response
     if (preg_match('/\{.*\}/s', $ai_raw, $matches)) {

@@ -239,12 +239,11 @@ $voice_apps_q = mysqli_query($connection_server, "SELECT id, username, email, ph
                     <h4 class="fw-bold mb-0">AI Business Suite</h4>
                     <?php 
                         $ai_prov = ai_engine()->getProvider();
-                        $prov_label = ($ai_prov === 'ollama') ? 'Ollama · Private · Local' : ucfirst($ai_prov) . ' · Cloud · High Speed';
                     ?>
-                    <small class="opacity-75">Powered by <?php echo $prov_label; ?></small>
+                    <small class="opacity-75">Powered by <?php echo ucfirst($ai_prov); ?> · Cloud · High Speed</small>
                 </div>
             </div>
-            <p class="opacity-90 mb-3">Unlock AI-powered transaction security, smart business guides, marketing copy generation, and voice-to-VTU commands. <?php echo ($ai_prov === 'ollama') ? 'All data stays on your server — never shared with third parties.' : 'Powered by state-of-the-art cloud intelligence.'; ?></p>
+            <p class="opacity-90 mb-3">Unlock AI-powered transaction security, smart business guides, marketing copy generation, and voice-to-VTU commands. Powered by state-of-the-art cloud intelligence.</p>
             <form method="post" class="d-inline">
                 <?php echo bc_csrf_field(); ?>
                 <input type="hidden" name="ai_status" value="<?php echo $ai_status ? 0 : 1; ?>">

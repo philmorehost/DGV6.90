@@ -1602,16 +1602,6 @@ mysqli_query($connection_server, "CREATE TABLE IF NOT EXISTS `sas_ai_audit_log` 
     INDEX `idx_actor`      (`actor`)
 )");
 
-// ─── AI INSTALL QUEUE TABLE (Sprint 2 — AI Engine) ─────────
-mysqli_query($connection_server, "CREATE TABLE IF NOT EXISTS `sas_ai_install_queue` (
-    `id`           INT AUTO_INCREMENT PRIMARY KEY,
-    `model_name`   VARCHAR(100) NOT NULL,
-    `status`       ENUM('pending','downloading','ready','failed') DEFAULT 'pending',
-    `admin_email`  VARCHAR(225) DEFAULT '',
-    `started_at`   TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    `completed_at` TIMESTAMP NULL,
-    UNIQUE KEY `uniq_model` (`model_name`)
-)");
 
 // ─── WHATSAPP GATEWAY TABLE (Sprint 7 — WhatsApp) ──────────
 mysqli_query($connection_server, "CREATE TABLE IF NOT EXISTS `sas_whatsapp_gateway` (
@@ -1715,7 +1705,7 @@ $ai_vendor_new_cols = [
     'ai_per_tx_cost'          => "INT DEFAULT 5 COMMENT 'AI tokens burned per successful AI call'",
     'voice_tx_threshold'      => "INT DEFAULT 100 COMMENT 'Successful txns required to unlock voice'",
     'ai_price_per_1k_tokens'  => "DECIMAL(10,2) DEFAULT 100.00 COMMENT 'NGN price for 1000 AI tokens'",
-    'ai_model_assigned'       => "VARCHAR(50) DEFAULT 'phi4-mini' COMMENT 'Ollama model assigned to vendor tier'",
+    'ai_model_assigned'       => "VARCHAR(50) DEFAULT 'gemini-1.5-flash' COMMENT 'Cloud AI model assigned to vendor tier'",
     'ai_request_status'       => "VARCHAR(20) DEFAULT NULL COMMENT 'NULL=none, pending=requested, approved=active, rejected=denied'",
     'ai_status'               => "TINYINT(1) DEFAULT 0",
     'ai_token_balance'        => "INT DEFAULT 0",
@@ -1732,12 +1722,11 @@ foreach ($ai_vendor_new_cols as $col => $def) {
 // Insert only if key does not already exist
 $ai_global_options = [
     'ai_global_enabled'         => '0',
-    'ai_default_model'          => 'phi4-mini',
+    'ai_default_model'          => 'gemini-1.5-flash',
     'ai_price_per_request'      => '5',
     'ai_whatsapp_number'        => '',
     'ai_voice_unlock_threshold' => '100',
-    'ai_provider'               => 'ollama', 
-    'ai_ollama_host'            => 'http://127.0.0.1:11434',
+    'ai_provider'               => 'gemini', 
     'ai_gemini_api_key'         => '',
     'ai_deepseek_api_key'       => '',
     'ai_groq_api_key'           => '',
@@ -1770,13 +1759,6 @@ mysqli_query($connection_server, "CREATE TABLE IF NOT EXISTS sas_ai_transactions
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 )");
 
-mysqli_query($connection_server, "CREATE TABLE IF NOT EXISTS sas_ai_install_queue (
-    id INT AUTO_INCREMENT PRIMARY KEY,
-    model_name VARCHAR(100) NOT NULL,
-    status ENUM('pending','downloading','ready','failed') DEFAULT 'pending',
-    started_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    finished_at TIMESTAMP NULL
-)");
 
 mysqli_query($connection_server, "CREATE TABLE IF NOT EXISTS sas_ai_blueprints (
     id INT AUTO_INCREMENT PRIMARY KEY,

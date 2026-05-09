@@ -4,7 +4,7 @@
  * AI Middleware — The PHP Safety Wall
  *
  * This is the single entry point for ALL AI requests from the web frontend.
- * Every call must pass through this file's gate checks before Ollama is reached.
+ * Every call must pass through this file's gate checks before Cloud AI is reached.
  *
  * Accepts: POST with JSON body or form data
  * Returns: JSON response
@@ -14,7 +14,7 @@
  * 2. AI status gate — vendor must have AI enabled
  * 3. Token gate — must have ai_token_balance >= ai_per_tx_cost
  * 4. Prompt firewall — malicious prompts are rejected
- * 5. Token deduction ONLY after successful Ollama response
+ * 5. Token deduction ONLY after successful Cloud AI response
  * 6. Every call is logged to sas_ai_transactions
  */
 
@@ -97,7 +97,7 @@ $vendor_q = mysqli_query($connection_server,
 );
 $vendor_ai = $vendor_q ? mysqli_fetch_assoc($vendor_q) : null;
 $tokens_per_call = (int)($vendor_ai['ai_per_tx_cost'] ?? 5);
-$assigned_model  = $vendor_ai['ai_model_assigned'] ?? 'phi4-mini';
+$assigned_model  = $vendor_ai['ai_model_assigned'] ?? 'gemini-1.5-flash';
 
 // Use requested model only if it matches the assigned model (prevent tier-hopping)
 $model_to_use = $assigned_model;
@@ -136,19 +136,19 @@ if ($safe_prompt === false) {
     exit;
 }
 
-// ─── CALL OLLAMA ──────────────────────────────────────────────
+// ─── CALL CLOUD AI ──────────────────────────────────────────
 $ai = ai_engine();
 
 // Action routing
 switch ($action_type) {
     case 'marketing':
-        $ai_result = $ai->generateWithFallback($model_to_use, $safe_prompt, ['temperature' => 0.85]);
+        $ai_result = $ai->chat($model_to_use, $safe_prompt, ['temperature' => 0.85]);
         break;
     case 'analysis':
-        $ai_result = $ai->generateWithFallback($model_to_use, $safe_prompt, ['temperature' => 0.3]);
+        $ai_result = $ai->chat($model_to_use, $safe_prompt, ['temperature' => 0.3]);
         break;
     default:
-        $ai_result = $ai->generateWithFallback($model_to_use, $safe_prompt);
+        $ai_result = $ai->chat($model_to_use, $safe_prompt);
         break;
 }
 

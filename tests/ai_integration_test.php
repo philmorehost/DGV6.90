@@ -72,39 +72,21 @@ if (file_exists(__DIR__ . '/../func/bc-ai-sentinel.php')) {
 test('bc-ai-sentinel.php loaded', $sentinel_loaded, $sentinel_loaded ? 'ai_sentinel_evaluate() available' : 'FILE NOT FOUND');
 
 // ─────────────────────────────────────────────────────────────
-// 4. OLLAMA CONNECTIVITY
+// 4. CLOUD AI ENGINE
 // ─────────────────────────────────────────────────────────────
-echo "\n[ OLLAMA AI ENGINE ]\n";
-$ollama_ping = false;
-$ollama_chat = false;
-$ollama_model = 'N/A';
+echo "\n[ CLOUD AI ENGINE ]\n";
+$ai_online = false;
+$active_prov = 'N/A';
 
 if (file_exists(__DIR__ . '/../func/bc-ai-engine.php')) {
     require_once __DIR__ . '/../func/bc-ai-engine.php';
-    try {
-        // Ping Ollama health endpoint
-        $ch = curl_init('http://127.0.0.1:11434/api/tags');
-        curl_setopt_array($ch, [CURLOPT_RETURNTRANSFER => true, CURLOPT_TIMEOUT => 5]);
-        $raw = curl_exec($ch);
-        $ollama_ping = ($raw !== false);
-        curl_close($ch);
-
-        if ($ollama_ping) {
-            $tags = json_decode($raw, true);
-            $models = $tags['models'] ?? [];
-            $ollama_model = !empty($models) ? ($models[0]['name'] ?? 'unknown') : 'No models loaded';
-
-            // Test actual chat
-            $engine = BcAiEngine::getInstance();
-            $response = $engine->chat("Reply with exactly: PONG");
-            $ollama_chat = !empty($response);
-        }
-    } catch (Exception $e) { $ollama_ping = false; }
+    $engine = ai_engine();
+    $ai_online = $engine->isAiOnline();
+    $active_prov = $engine->getProvider();
 }
 
-test('Ollama reachable at 127.0.0.1:11434', $ollama_ping, $ollama_ping ? 'Responding' : 'NOT RUNNING — run: ollama serve');
-test('Ollama has models installed', $ollama_model !== 'No models loaded', $ollama_model);
-test('Ollama chat response works', $ollama_chat, $ollama_chat ? 'Chat successful' : 'Chat failed (check model)');
+test('Cloud AI reachable (' . ucfirst($active_prov) . ')', $ai_online, $ai_online ? 'API Responding' : 'NOT REACHABLE — Check API Key');
+test('Active Provider set', $active_prov !== 'N/A', $active_prov);
 
 // ─────────────────────────────────────────────────────────────
 // 5. WHATSAPP BRIDGE

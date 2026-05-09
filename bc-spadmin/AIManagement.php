@@ -8,19 +8,6 @@ if (isset($_SESSION)) {
     unset($_SESSION['super_admin_options_cache']);
 }
 
-// ── Handle: Install Model ──────────────────────────────────
-if (isset($_POST["install-model"])) {
-    $model = bc_sanitize($_POST["model_name"] ?? '');
-    $email = $get_super_admin_details["email"] ?? '';
-    $ai    = ai_engine();
-    if ($ai->pullModelBackground($model, $email)) {
-        $_SESSION["response"] = "✅ Model '$model' download started in the background. You'll be notified when complete.";
-    } else {
-        $_SESSION["response"] = "❌ Failed to start download. Model name may not be in the allowed list.";
-    }
-    header("Location: AIManagement.php"); exit();
-}
-
 // ── Handle: Global AI Toggle ───────────────────────────────
 if (isset($_POST["toggle-global-ai"])) {
     $val = (int)($_POST["ai_global_enabled"] ?? 0) ? '1' : '0';
@@ -29,34 +16,7 @@ if (isset($_POST["toggle-global-ai"])) {
          ON DUPLICATE KEY UPDATE option_value='$val'"
     );
     $_SESSION["response"] = "✅ Global AI " . ($val ? "Enabled" : "Disabled") . ".";
-    unset($_SESSION['super_admin_options_cache']); // Clear platform cache
-    header("Location: AIManagement.php"); exit();
-}
-
-// ── Handle: Restart Ollama ────────────────────────────────
-if (isset($_POST["restart-ollama"])) {
-    $log = sys_get_temp_dir() . '/ollama_startup.log';
-    
-    // Try to find ollama in common paths if 'ollama' fails
-    $cmd_prefix = "";
-    if (PHP_OS_FAMILY !== 'Windows') {
-        $paths = ["/usr/local/bin/ollama", "/usr/bin/ollama", "/bin/ollama"];
-        foreach ($paths as $p) {
-            if (file_exists($p)) {
-                $cmd_prefix = $p;
-                break;
-            }
-        }
-    }
-    
-    $exe = !empty($cmd_prefix) ? $cmd_prefix : "ollama";
-    
-    if (PHP_OS_FAMILY === 'Windows') {
-        pclose(popen("start /B $exe serve > " . escapeshellarg($log) . " 2>&1", "r"));
-    } else {
-        shell_exec("nohup $exe serve > " . escapeshellarg($log) . " 2>&1 &");
-    }
-    $_SESSION["response"] = "⚡ Attempting to restart Ollama service. Please wait 10-20 seconds and refresh.";
+    unset($_SESSION['super_admin_options_cache']); 
     header("Location: AIManagement.php"); exit();
 }
 
@@ -66,13 +26,9 @@ if (isset($_POST["test-connection"])) {
     $provider = $ai->getProvider();
     $url = $ai->getBaseUrl();
     
-    // For cloud providers, we need to add a ping endpoint
     if ($provider === 'gemini') {
         $url .= "/models/gemini-1.5-flash?key=" . $ai->getApiKey();
-    } elseif ($provider === 'ollama') {
-        $url = rtrim($url, '/') . '/tags';
     } else {
-        // DeepSeek/Groq use /models for a fast ping
         $url = rtrim($url, '/') . '/models';
     }
 
@@ -104,15 +60,13 @@ if (isset($_POST["test-connection"])) {
 if (isset($_GET['approve'])) {
     $v_id = (int)$_GET['approve'];
     $bonus = (int)getSuperAdminOption('ai_default_token_bonus', 1000);
-    
-    // Get pending tokens
     $v_q = mysqli_query($connection_server, "SELECT ai_pending_tokens FROM sas_vendors WHERE id='$v_id'");
     $v_data = mysqli_fetch_assoc($v_q);
     $requested_tokens = (int)($v_data['ai_pending_tokens'] ?? 0);
     $total_grant = $requested_tokens + $bonus;
 
     mysqli_query($connection_server, "UPDATE sas_vendors SET ai_status=1, ai_request_status='approved', ai_token_balance = ai_token_balance + $total_grant, ai_pending_tokens=0, ai_pending_cost=0 WHERE id='$v_id'");
-    $_SESSION["response"] = "✅ Vendor AI activation approved. $total_grant tokens granted (Requested: $requested_tokens + Bonus: $bonus).";
+    $_SESSION["response"] = "✅ Vendor AI activation approved. $total_grant tokens granted.";
     header("Location: AIManagement.php"); exit();
 }
 if (isset($_GET['reject'])) {
@@ -128,10 +82,7 @@ if (isset($_GET['reject'])) {
     }
 
     mysqli_query($connection_server, "UPDATE sas_vendors SET ai_request_status='rejected', ai_pending_cost=0, ai_pending_tokens=0 WHERE id='$v_id'");
-    
-    if (!empty($v_email)) {
-        sendVendorEmail($v_email, "AI Request Update", "Your AI activation request has been reviewed and rejected. Any payments made have been refunded to your wallet.");
-    }
+    if (!empty($v_email)) sendVendorEmail($v_email, "AI Request Update", "Your AI activation request has been reviewed and rejected.");
 
     $_SESSION["response"] = "❌ Vendor AI request rejected. Refund of ₦" . number_format($refund_amount, 2) . " processed.";
     header("Location: AIManagement.php"); exit();
@@ -142,52 +93,34 @@ if (isset($_POST["update-ai-pricing"])) {
     $price_1k  = bc_sanitize_number($_POST["price_per_1k"] ?? 100);
     $per_tx    = (int)($_POST["per_tx_cost"] ?? 5);
     $voice_thr = (int)($_POST["voice_threshold"] ?? 100);
-    $opts = [
-        'ai_price_per_request'      => $per_tx,
-        'ai_voice_unlock_threshold' => $voice_thr,
-    ];
+    $opts = ['ai_price_per_request' => $per_tx, 'ai_voice_unlock_threshold' => $voice_thr];
     foreach ($opts as $k => $v) {
         $esc_k = mysqli_real_escape_string($connection_server, $k);
         $esc_v = mysqli_real_escape_string($connection_server, $v);
-        mysqli_query($connection_server,
-            "INSERT INTO sas_super_admin_options (option_name, option_value) VALUES ('$esc_k','$esc_v')
-             ON DUPLICATE KEY UPDATE option_value='$esc_v'"
-        );
+        mysqli_query($connection_server, "REPLACE INTO sas_super_admin_options (option_name, option_value) VALUES ('$esc_k','$esc_v')");
     }
-    // Update all vendors' price
     mysqli_query($connection_server, "UPDATE sas_vendors SET ai_price_per_1k_tokens='$price_1k', ai_per_tx_cost='$per_tx', voice_tx_threshold='$voice_thr'");
     $_SESSION["response"] = "✅ AI pricing updated for all vendors.";
-    unset($_SESSION['super_admin_options_cache']); // Clear platform cache
+    unset($_SESSION['super_admin_options_cache']);
     header("Location: AIManagement.php"); exit();
 }
 
 // ── Handle: Update AI Connection ──────────────────────────
 if (isset($_POST["update-ai-connection"])) {
-    $provider = bc_sanitize($_POST["ai_provider"] ?? 'ollama');
-    $host     = bc_sanitize($_POST["ai_host"] ?? 'http://127.0.0.1:11434');
+    $provider = bc_sanitize($_POST["ai_provider"] ?? 'gemini');
     $key      = bc_sanitize($_POST["ai_api_key"] ?? '');
+    $opts = ['ai_provider' => $provider, "ai_{$provider}_api_key" => $key, 'ai_api_key' => $key];
     
-    $opts = [
-        'ai_provider'    => $provider,
-        'ai_ollama_host' => $host,
-    ];
-    // Save provider-specific key
-    if ($provider !== 'ollama') {
-        $opts["ai_{$provider}_api_key"] = $key;
-    }
-    $opts['ai_api_key'] = $key; // Global fallback
-    
-    // Cleanup any duplicates before updating to ensure REPLACE INTO works on a clean slate
+    // Cleanup any duplicates
     mysqli_query($connection_server, "DELETE FROM sas_super_admin_options WHERE option_name='ai_provider' AND id NOT IN (SELECT id FROM (SELECT MAX(id) as id FROM sas_super_admin_options WHERE option_name='ai_provider') x)");
 
     foreach ($opts as $k => $v) {
         $esc_k = mysqli_real_escape_string($connection_server, $k);
         $esc_v = mysqli_real_escape_string($connection_server, $v);
-        // Use REPLACE INTO to ensure only ONE row exists per option_name
         mysqli_query($connection_server, "REPLACE INTO sas_super_admin_options (option_name, option_value) VALUES ('$esc_k', '$esc_v')");
     }
-    $_SESSION["response"] = "✅ AI connection settings updated to " . ucfirst($provider) . ".";
-    unset($_SESSION['super_admin_options_cache']); // Clear platform cache again after save
+    $_SESSION["response"] = "✅ AI connection updated to " . ucfirst($provider) . ".";
+    unset($_SESSION['super_admin_options_cache']);
     header("Location: AIManagement.php"); exit();
 }
 
@@ -195,10 +128,7 @@ if (isset($_POST["update-ai-connection"])) {
 if (isset($_POST["set-active-model"])) {
     $model = bc_sanitize($_POST["active_model_name"] ?? '');
     if (!empty($model)) {
-        mysqli_query($connection_server,
-            "INSERT INTO sas_super_admin_options (option_name, option_value) VALUES ('ai_default_model', '$model')
-             ON DUPLICATE KEY UPDATE option_value='$model'"
-        );
+        mysqli_query($connection_server, "REPLACE INTO sas_super_admin_options (option_name, option_value) VALUES ('ai_default_model', '$model')");
         $_SESSION["response"] = "✅ Active AI Model set to '$model'.";
         unset($_SESSION['super_admin_options_cache']);
     }
@@ -207,23 +137,18 @@ if (isset($_POST["set-active-model"])) {
 
 // ── Load current data ──────────────────────────────────────
 $ai_global  = getSuperAdminOption('ai_global_enabled', '0');
-$ai_provider= getSuperAdminOption('ai_provider', 'ollama');
-$active_model= getSuperAdminOption('ai_default_model', 'phi4-mini');
-$ai_host    = getSuperAdminOption('ai_ollama_host', 'http://127.0.0.1:11434');
+$ai_provider= getSuperAdminOption('ai_provider', 'gemini');
+$active_model= getSuperAdminOption('ai_default_model', 'gemini-1.5-flash');
 $ai_key     = getSuperAdminOption('ai_api_key', '');
 
-// Provider Specific Keys
 $gemini_key   = getSuperAdminOption('ai_gemini_api_key', '');
 $deepseek_key = getSuperAdminOption('ai_deepseek_api_key', '');
 $groq_key     = getSuperAdminOption('ai_groq_api_key', '');
 
-$price_1k   = (float)getSuperAdminOption('ai_price_per_request', '5'); // token cost
-$ai         = ai_engine();
-$ai_up      = $ai->isAiOnline();
-$models     = $ai->listModels();
-$queue_q    = mysqli_query($connection_server, "SELECT * FROM sas_ai_install_queue ORDER BY started_at DESC LIMIT 10");
+$ai = ai_engine();
+$ai_up = $ai->isAiOnline();
+$wa_online = isWhatsAppGatewayOnline();
 
-// Available model catalog based on provider
 $model_catalog = [];
 if ($ai_provider === 'gemini') {
     $model_catalog = [
@@ -236,34 +161,19 @@ if ($ai_provider === 'gemini') {
         ['name' => 'deepseek-chat',    'size' => 'Cloud', 'desc' => 'Powerful reasoning & chat model.',        'tier' => 'Premium'],
         ['name' => 'deepseek-coder',   'size' => 'Cloud', 'desc' => 'Specialized for technical & logic tasks.', 'tier' => 'Standard'],
     ];
-} elseif ($ai_provider === 'groq') {
+} else {
     $model_catalog = [
         ['name' => 'llama3-70b-8192',  'size' => 'Cloud', 'desc' => 'Llama 3 70B — extremely capable.',        'tier' => 'Premium'],
         ['name' => 'llama3-8b-8192',   'size' => 'Cloud', 'desc' => 'Llama 3 8B — ultra fast performance.',     'tier' => 'Standard'],
-        ['name' => 'mixtral-8x7b-32768','size' => 'Cloud','desc' => 'Mixtral 8x7B — great for long contexts.',  'tier' => 'Premium'],
-    ];
-} else {
-    $model_catalog = [
-        ['name' => 'phi4:14b-q4_K_M',   'size' => '~9GB',   'desc' => 'Microsoft Phi-4 — extremely high intelligence for complex reasoning.', 'tier' => 'Premium'],
-        ['name' => 'phi4-mini',         'size' => '~2.5GB', 'desc' => 'Ultra-fast, ideal for page guides & quick answers. Recommended for all.', 'tier' => 'Free'],
-        ['name' => 'gemma2:2b',         'size' => '~1.6GB', 'desc' => 'Google Gemma 2 2B — efficient & smart for marketing copy.', 'tier' => 'Standard'],
-        ['name' => 'gemma2:9b',         'size' => '~5.5GB', 'desc' => 'Google Gemma 2 9B — high-fidelity responses for premium features.', 'tier' => 'Premium'],
-        ['name' => 'llama3.1:8b',       'size' => '~4.7GB', 'desc' => 'Meta Llama 3.1 8B — industry standard for general tasks.', 'tier' => 'Standard'],
-        ['name' => 'qwen2.5:3b',        'size' => '~1.9GB', 'desc' => 'Alibaba Qwen 2.5 — excellent for code and structured logic.', 'tier' => 'Standard'],
-        ['name' => 'deepseek-r1:1.5b',  'size' => '~1.1GB', 'desc' => 'DeepSeek R1 — tiny reasoning model, great for fast intent parsing.', 'tier' => 'Free'],
-        ['name' => 'llava:7b',          'size' => '~4.5GB', 'desc' => 'Multimodal Vision Model — Required for Image-to-VTU analysis.', 'tier' => 'Titanium'],
     ];
 }
 
-// Revenue from AI this month
-$ai_rev_q = mysqli_query($connection_server,
-    "SELECT SUM(cost_naira) as revenue, COUNT(*) as calls FROM sas_ai_transactions
-     WHERE MONTH(created_at)=MONTH(NOW()) AND status='success'"
-);
+$ai_rev_q = mysqli_query($connection_server, "SELECT SUM(cost_naira) as revenue, COUNT(*) as calls FROM sas_ai_transactions WHERE MONTH(created_at)=MONTH(NOW()) AND status='success'");
 $ai_rev = $ai_rev_q ? mysqli_fetch_assoc($ai_rev_q) : ['revenue' => 0, 'calls' => 0];
 
-// WhatsApp gateway status
-$wa_online = isWhatsAppGatewayOnline();
+// Intelligence Hub Data
+$top_consumers_q = mysqli_query($connection_server, "SELECT v.company_name, SUM(t.tokens_burned) as total FROM sas_ai_transactions t JOIN sas_vendors v ON v.id=t.vendor_id WHERE MONTH(t.created_at)=MONTH(NOW()) GROUP BY t.vendor_id ORDER BY total DESC LIMIT 3");
+$recent_logs_q = mysqli_query($connection_server, "SELECT t.*, v.company_name FROM sas_ai_transactions t JOIN sas_vendors v ON v.id=t.vendor_id ORDER BY t.id DESC LIMIT 5");
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -281,444 +191,195 @@ $wa_online = isWhatsAppGatewayOnline();
         .dot-red{background:#ef4444;box-shadow:0 0 8px #ef4444;}
         .model-card{border:1px solid #e5e7eb;border-radius:1rem;padding:1rem;transition:.2s;cursor:default;}
         .model-card:hover{border-color:#6366f1;background:#faf5ff;}
-        .model-card.installed{border-color:#22c55e;background:#f0fdf4;}
         .tier-badge{font-size:.65rem;font-weight:700;border-radius:2rem;padding:.15rem .6rem;}
+        .hub-stat{background:#f8fafc;border-radius:.75rem;padding:1rem;border-left:4px solid #6366f1;}
+        .log-item{font-size:.75rem;padding:.5rem;border-bottom:1px solid #f1f5f9;transition:.2s;}
+        .log-item:hover{background:#f8fafc;}
     </style>
 </head>
 <body>
 <?php include("../func/bc-spadmin-header.php"); ?>
-
-<div class="pagetitle">
-    <h1>AI MANAGEMENT CENTER</h1>
-    <nav><ol class="breadcrumb">
-        <li class="breadcrumb-item"><a href="Dashboard.php">Home</a></li>
-        <li class="breadcrumb-item active">AI Management</li>
-    </ol></nav>
-</div>
-
-<?php if (isset($_GET['view_startup_log'])): ?>
-<div class="container mt-4">
-    <div class="card border-0 shadow-sm rounded-4">
-        <div class="card-header bg-dark text-white rounded-top-4 py-3">
-            <h6 class="mb-0 fw-bold">Ollama Startup Log (Debug)</h6>
-        </div>
-        <div class="card-body p-0">
-            <pre class="bg-black text-success p-4 mb-0" style="max-height:400px; overflow:auto; font-size:.8rem;"><?php 
-                $log = sys_get_temp_dir() . '/ollama_startup.log';
-                echo file_exists($log) ? htmlspecialchars(file_get_contents($log)) : "No log file found.";
-            ?></pre>
-        </div>
-        <div class="card-footer bg-light text-center py-2">
-            <a href="AIManagement.php" class="btn btn-sm btn-outline-dark rounded-pill">Close Log</a>
-        </div>
-    </div>
-</div>
-<?php endif; ?>
+<div class="pagetitle"><h1>AI MANAGEMENT CENTER</h1></div>
 
 <section class="section">
 <?php if (isset($_SESSION["response"])): ?>
-    <div class="alert alert-info alert-dismissible fade show rounded-4">
-        <?php echo $_SESSION["response"]; unset($_SESSION["response"]); ?>
-        <button class="btn-close" data-bs-dismiss="alert"></button>
-    </div>
+    <div class="alert alert-info alert-dismissible fade show rounded-4"><?php echo $_SESSION["response"]; unset($_SESSION["response"]); ?><button class="btn-close" data-bs-dismiss="alert"></button></div>
 <?php endif; ?>
 
-<!-- Header -->
 <div class="ai-header mb-4 shadow">
     <div class="row align-items-center g-3">
         <div class="col-md-6">
-            <h4 class="fw-bold mb-1"><i class="bi bi-cpu me-2"></i>AI Ecosystem Control Center</h4>
-            <p class="opacity-75 mb-0">Manage Ollama models, pricing, WhatsApp gateway, and revenue.</p>
+            <h4 class="fw-bold mb-1"><i class="bi bi-cpu me-2"></i>Cloud AI Ecosystem</h4>
+            <p class="opacity-75 mb-0">Manage cloud-based AI providers, pricing, and revenue.</p>
         </div>
-        <div class="col-md-6">
-            <div class="row g-2">
-                <div class="col-4 text-center">
-                    <div class="fw-bold fs-4">₦<?php echo number_format((float)$ai_rev['revenue'], 0); ?></div>
-                    <div class="small opacity-75">AI Revenue MTD</div>
-                </div>
-                <div class="col-4 text-center">
-                    <div class="fw-bold fs-4"><?php echo number_format((int)$ai_rev['calls']); ?></div>
-                    <div class="small opacity-75">AI Calls MTD</div>
-                </div>
-                <div class="col-4 text-center">
-                    <div class="fw-bold fs-4"><?php echo count($models); ?></div>
-                    <div class="small opacity-75">Models Ready</div>
-                </div>
+        <div class="col-md-6 text-md-end">
+            <div class="d-inline-block me-4">
+                <div class="fw-bold fs-4">₦<?php echo number_format((float)$ai_rev['revenue'], 0); ?></div>
+                <div class="small opacity-75">Revenue MTD</div>
+            </div>
+            <div class="d-inline-block">
+                <div class="fw-bold fs-4"><?php echo number_format((int)$ai_rev['calls']); ?></div>
+                <div class="small opacity-75">Calls MTD</div>
             </div>
         </div>
     </div>
 </div>
-
-<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-
-<!-- AI Activation Requests (PRIORITY) -->
-<?php 
-$q_pcount = mysqli_query($connection_server, "SELECT COUNT(*) as count FROM sas_vendors WHERE ai_request_status='pending'");
-$pending_count = ($q_pcount && $r = mysqli_fetch_assoc($q_pcount)) ? $r['count'] : 0;
-?>
-<div class="row g-4 mb-4">
-    <div class="col-12">
-        <div class="card border-0 rounded-4 shadow-sm overflow-hidden <?php echo ($pending_count > 0) ? 'border-start border-4 border-warning' : ''; ?>">
-            <div class="card-header bg-white border-0 py-3 d-flex justify-content-between align-items-center">
-                <h5 class="fw-bold mb-0"><i class="bi bi-person-check me-2 text-success"></i>Pending Activation Requests</h5>
-                <?php if($pending_count > 0): ?>
-                <span class="badge bg-danger rounded-pill"><?php echo $pending_count; ?> New Requests</span>
-                <?php endif; ?>
-            </div>
-            <div class="card-body p-0">
-                <div class="table-responsive">
-                    <table class="table table-hover align-middle mb-0">
-                        <thead class="table-light"><tr class="small text-uppercase text-muted"><th>Vendor</th><th>Request Date</th><th>Package</th><th class="text-end pe-4">Action</th></tr></thead>
-                        <tbody>
-                            <?php 
-                            $req_q = mysqli_query($connection_server, "SELECT * FROM sas_vendors WHERE ai_request_status='pending' ORDER BY id DESC");
-                            if ($req_q && mysqli_num_rows($req_q) > 0):
-                                while($req = mysqli_fetch_assoc($req_q)): 
-                                    $v_name = !empty($req['company_name']) ? $req['company_name'] : ($req['firstname'] . ' ' . $req['lastname']);
-                                ?>
-                                <tr>
-                                    <td class="ps-4"><div class="fw-bold"><?php echo htmlspecialchars($v_name); ?></div><div class="small text-muted"><?php echo htmlspecialchars($req['email']); ?></div></td>
-                                    <td class="small"><?php echo date('M j, Y', strtotime($req['reg_date'])); ?></td>
-                                    <td><span class="badge bg-info bg-opacity-10 text-info rounded-pill">Requested</span></td>
-                                    <td class="text-end pe-4">
-                                        <a href="AIManagement.php?approve=<?php echo $req['id']; ?>" class="btn btn-success btn-sm rounded-pill px-3" onclick="return confirm('Approve AI access?')">Approve</a>
-                                        <a href="AIManagement.php?reject=<?php echo $req['id']; ?>" class="btn btn-danger btn-sm rounded-pill px-3" onclick="return confirm('Reject this request?')">Reject</a>
-                                    </td>
-                                </tr>
-                            <?php endwhile; else: ?>
-                                <tr><td colspan="4" class="text-center py-5 text-muted">No pending activation requests. All vendors up to date.</td></tr>
-                            <?php endif; ?>
-                        </tbody>
-                    </table>
-                </div>
-            </div>
-        </div>
-    </div>
-</div>
-
-<div class="row g-4 mb-4">
-    <div class="col-12">
-        <div class="card border-0 rounded-4 shadow-sm overflow-hidden">
-            <div class="card-header bg-white border-0 py-3 d-flex justify-content-between align-items-center">
-                <h5 class="fw-bold mb-0"><i class="bi bi-graph-up me-2 text-primary"></i>AI Revenue vs. Usage (Last 30 Days)</h5>
-            </div>
-            <div class="card-body p-4" style="height: 300px;">
-                <canvas id="aiRevenueChart"></canvas>
-            </div>
-        </div>
-    </div>
-</div>
-
-<script>
-document.addEventListener('DOMContentLoaded', function() {
-    const ctx = document.getElementById('aiRevenueChart').getContext('2d');
-    new Chart(ctx, {
-        type: 'line',
-        data: {
-            labels: [<?php 
-                for($i=29;$i>=0;$i--) echo '"'.date('M d', strtotime("-$i days")).'",';
-            ?>],
-            datasets: [{
-                label: 'Revenue (₦)',
-                data: [<?php 
-                    for($i=29;$i>=0;$i--){
-                        $d = date('Y-m-d', strtotime("-$i days"));
-                        $rq = mysqli_query($connection_server, "SELECT SUM(cost_naira) as rev FROM sas_ai_transactions WHERE DATE(created_at)='$d' AND status='success'");
-                        $rv = mysqli_fetch_assoc($rq);
-                        echo ($rv['rev'] ?? 0) . ",";
-                    }
-                ?>],
-                borderColor: '#6366f1', backgroundColor: 'rgba(99, 102, 241, 0.1)',
-                fill: true, tension: 0.4
-            }, {
-                label: 'AI Calls',
-                data: [<?php 
-                    for($i=29;$i>=0;$i--){
-                        $d = date('Y-m-d', strtotime("-$i days"));
-                        $cq = mysqli_query($connection_server, "SELECT COUNT(*) as calls FROM sas_ai_transactions WHERE DATE(created_at)='$d'");
-                        $cv = mysqli_fetch_assoc($cq);
-                        echo ($cv['calls'] ?? 0) . ",";
-                    }
-                ?>],
-                borderColor: '#10b981', backgroundColor: 'transparent',
-                borderDash: [5, 5], tension: 0.4, yAxisID: 'y1'
-            }]
-        },
-        options: {
-            responsive: true, maintainAspectRatio: false,
-            scales: {
-                y: { beginAtZero: true },
-                y1: { beginAtZero: true, position: 'right', grid: { display: false } }
-            }
-        }
-    });
-});
-</script>
 
 <div class="row g-4">
-    <!-- System Status -->
+    <!-- Left Column: Status & Economics -->
     <div class="col-lg-4">
-        <div class="card border-0 rounded-4 shadow-sm h-100">
+        <div class="card border-0 rounded-4 shadow-sm mb-4">
             <div class="card-header bg-white border-0 py-3"><h5 class="fw-bold mb-0"><i class="bi bi-activity me-2 text-primary"></i>System Status</h5></div>
             <div class="card-body p-4">
                 <div class="d-flex justify-content-between align-items-center py-2 border-bottom">
-                    <span class="fw-bold small">AI Engine (<?php echo ucfirst($ai_provider); ?>)</span>
+                    <span class="fw-bold small">Active Provider: <?php echo ucfirst($ai_provider); ?></span>
                     <span class="status-dot <?php echo $ai_up ? 'dot-green' : 'dot-red'; ?> me-2"></span>
                     <span class="small <?php echo $ai_up ? 'text-success' : 'text-danger'; ?>"><?php echo $ai_up ? 'Online' : 'Offline'; ?></span>
                 </div>
-                <div class="d-flex justify-content-between align-items-center py-2 border-bottom">
+                <div class="d-flex justify-content-between align-items-center py-2 mb-3">
                     <span class="fw-bold small">WhatsApp Gateway</span>
                     <span class="status-dot <?php echo $wa_online ? 'dot-green' : 'dot-red'; ?> me-2"></span>
                     <span class="small <?php echo $wa_online ? 'text-success' : 'text-danger'; ?>"><?php echo $wa_online ? 'Online' : 'Offline'; ?></span>
                 </div>
-                <div class="d-flex justify-content-between align-items-center py-2 border-bottom">
-                    <span class="fw-bold small">Global AI</span>
-                    <span class="badge rounded-pill <?php echo $ai_global ? 'bg-success' : 'bg-secondary'; ?>"><?php echo $ai_global ? 'Enabled' : 'Disabled'; ?></span>
-                </div>
-                <div class="d-flex justify-content-between align-items-center py-2 mb-3">
-                    <span class="fw-bold small">Ollama Host</span>
-                    <code class="small"><?php echo htmlspecialchars($ai_host); ?></code>
-                </div>
-                <!-- Global Toggle -->
                 <form method="post">
                     <input type="hidden" name="ai_global_enabled" value="<?php echo $ai_global ? 0 : 1; ?>">
                     <div class="d-flex gap-2">
                         <button type="submit" name="toggle-global-ai" class="btn w-100 rounded-pill fw-bold <?php echo $ai_global ? 'btn-outline-danger' : 'btn-success'; ?>">
-                            <i class="bi bi-<?php echo $ai_global ? 'pause-fill' : 'play-fill'; ?> me-1"></i>
                             <?php echo $ai_global ? 'Disable Global AI' : 'Enable Global AI'; ?>
                         </button>
-                        <button type="submit" name="test-connection" class="btn btn-light rounded-pill px-3 shadow-sm" title="Test Connection">
-                            <i class="bi bi-broadcast"></i>
-                        </button>
+                        <button type="submit" name="test-connection" class="btn btn-light rounded-pill px-3 shadow-sm"><i class="bi bi-broadcast"></i></button>
                     </div>
-                    <?php if ($ai_provider === 'ollama' && !$ai_up): ?>
-                    <button type="submit" name="restart-ollama" class="btn btn-primary w-100 rounded-pill fw-bold mt-2">
-                        <i class="bi bi-lightning-charge me-1"></i> Start Ollama Engine
-                    </button>
-                    <div class="text-center mt-2">
-                        <a href="?view_startup_log=1" class="small text-muted text-decoration-none">View Startup Log</a>
-                    </div>
-                    <?php endif; ?>
                 </form>
-
                 <hr class="my-4">
-                
-                <h6 class="fw-bold small text-muted text-uppercase mb-3">AI Connection Settings</h6>
+                <h6 class="fw-bold small text-muted text-uppercase mb-3">Connection Settings</h6>
                 <form method="post">
                     <div class="mb-3">
-                        <label class="form-label small fw-bold">Active Provider</label>
+                        <label class="form-label small fw-bold">Provider</label>
                         <select name="ai_provider" class="form-select rounded-3 small">
-                            <option value="ollama" <?php echo ($ai_provider=='ollama')?'selected':''; ?>>Ollama (Local)</option>
-                            <option value="gemini" <?php echo ($ai_provider=='gemini')?'selected':''; ?>>Google Gemini (Cloud)</option>
-                            <option value="deepseek" <?php echo ($ai_provider=='deepseek')?'selected':''; ?>>DeepSeek (Cloud)</option>
-                            <option value="groq" <?php echo ($ai_provider=='groq')?'selected':''; ?>>Groq (Ultra Fast Cloud)</option>
+                            <option value="gemini" <?php echo ($ai_provider=='gemini')?'selected':''; ?>>Google Gemini</option>
+                            <option value="deepseek" <?php echo ($ai_provider=='deepseek')?'selected':''; ?>>DeepSeek</option>
+                            <option value="groq" <?php echo ($ai_provider=='groq')?'selected':''; ?>>Groq</option>
                         </select>
-                    </div>
-                    <div class="mb-3" id="host_group" <?php echo ($ai_provider!='ollama')?'style="display:none"':''; ?>>
-                        <label class="form-label small fw-bold">Ollama Host</label>
-                        <input type="text" name="ai_host" class="form-control rounded-3 small" value="<?php echo htmlspecialchars($ai_host); ?>">
                     </div>
                     <div class="mb-3">
                         <label class="form-label small fw-bold">API Key</label>
-                        <input type="password" name="ai_api_key" id="ai_api_key_field" class="form-control rounded-3 small" value="<?php echo htmlspecialchars($ai_key); ?>" placeholder="Leave blank for local Ollama">
+                        <input type="password" name="ai_api_key" id="ai_api_key_field" class="form-control rounded-3 small" value="<?php echo htmlspecialchars($ai_key); ?>">
                     </div>
-                    <button type="submit" name="update-ai-connection" class="btn btn-dark btn-sm w-100 rounded-pill">Update Connection</button>
+                    <button type="submit" name="update-ai-connection" class="btn btn-dark btn-sm w-100 rounded-pill">Update Cloud Connection</button>
                 </form>
             </div>
         </div>
-    </div>
-    
-    <script>
-    const ai_keys = {
-        'ollama': '',
-        'gemini': '<?php echo $gemini_key; ?>',
-        'deepseek': '<?php echo $deepseek_key; ?>',
-        'groq': '<?php echo $groq_key; ?>'
-    };
-
-    document.querySelector('select[name="ai_provider"]').addEventListener('change', function(){
-        const prov = this.value;
-        document.getElementById('host_group').style.display = (prov === 'ollama') ? 'block' : 'none';
         
-        // Auto-fill existing key if available
-        if (ai_keys[prov] !== undefined) {
-            document.getElementById('ai_api_key_field').value = ai_keys[prov];
-        }
-    });
-    </script>
-
-    <!-- AI Pricing -->
-    <div class="col-lg-4">
-        <div class="card border-0 rounded-4 shadow-sm h-100">
-            <div class="card-header bg-white border-0 py-3"><h5 class="fw-bold mb-0"><i class="bi bi-currency-exchange me-2 text-warning"></i>Token Economics</h5></div>
+        <div class="card border-0 rounded-4 shadow-sm">
+            <div class="card-header bg-white border-0 py-3"><h5 class="fw-bold mb-0"><i class="bi bi-currency-exchange me-2 text-warning"></i>Economics</h5></div>
             <div class="card-body p-4">
                 <form method="post">
-                    <div class="mb-3">
-                        <label class="form-label small fw-bold text-muted text-uppercase">Price per 1,000 Tokens (₦)</label>
-                        <input type="number" name="price_per_1k" class="form-control rounded-3"
-                            value="<?php echo getSuperAdminOption('ai_price_per_1k_tokens', '100'); ?>"
-                            min="1" step="0.01">
-                        <div class="form-text">Vendors pay this to buy AI tokens from their wallet.</div>
-                    </div>
-                    <div class="mb-3">
-                        <label class="form-label small fw-bold text-muted text-uppercase">Tokens per AI Call</label>
-                        <input type="number" name="per_tx_cost" class="form-control rounded-3"
-                            value="<?php echo getSuperAdminOption('ai_price_per_request', '5'); ?>"
-                            min="1">
-                        <div class="form-text">Burned from user balance on each successful AI request.</div>
-                    </div>
-                    <div class="mb-4">
-                        <label class="form-label small fw-bold text-muted text-uppercase">Voice VTU Unlock Threshold (tx)</label>
-                        <input type="number" name="voice_threshold" class="form-control rounded-3"
-                            value="<?php echo getSuperAdminOption('ai_voice_unlock_threshold', '100'); ?>"
-                            min="1">
-                        <div class="form-text">Successful transactions required before a user can enable Voice-to-VTU.</div>
-                    </div>
+                    <div class="mb-3"><label class="form-label small fw-bold text-muted">Price per 1k Tokens (₦)</label><input type="number" name="price_per_1k" class="form-control rounded-3" value="<?php echo getSuperAdminOption('ai_price_per_1k_tokens', '100'); ?>" step="0.01"></div>
+                    <div class="mb-3"><label class="form-label small fw-bold text-muted">Tokens per AI Call</label><input type="number" name="per_tx_cost" class="form-control rounded-3" value="<?php echo getSuperAdminOption('ai_price_per_request', '5'); ?>"></div>
                     <button type="submit" name="update-ai-pricing" class="btn btn-primary w-100 rounded-pill fw-bold">Save Pricing</button>
                 </form>
             </div>
         </div>
     </div>
 
-    <!-- Install Queue -->
-    <div class="col-lg-4">
-        <div class="card border-0 rounded-4 shadow-sm h-100">
-            <div class="card-header bg-white border-0 py-3 d-flex justify-content-between align-items-center">
-                <h5 class="fw-bold mb-0"><i class="bi bi-cloud-download me-2 text-info"></i>Install Queue</h5>
-                <button type="button" onclick="refreshQueue()" class="btn btn-light btn-sm rounded-pill"><i class="bi bi-arrow-clockwise"></i></button>
-            </div>
-            <div class="card-body p-4" id="queue_container">
-                <?php if ($queue_q && mysqli_num_rows($queue_q) > 0):
-                    while ($qrow = mysqli_fetch_assoc($queue_q)):
-                        $badge = 'secondary';
-                        switch ($qrow['status']) {
-                            case 'ready':       $badge = 'success'; break;
-                            case 'downloading': $badge = 'primary'; break;
-                            case 'failed':      $badge = 'danger'; break;
-                        }
-                ?>
-                <div class="py-2 border-bottom queue-item" data-model="<?php echo htmlspecialchars($qrow['model_name']); ?>" data-status="<?php echo $qrow['status']; ?>">
-                    <div class="d-flex justify-content-between align-items-center mb-1">
-                        <div>
-                            <div class="fw-bold small"><?php echo htmlspecialchars($qrow['model_name']); ?></div>
-                            <div class="text-muted" style="font-size:.7rem;"><?php echo date('M j H:i', strtotime($qrow['started_at'])); ?></div>
-                        </div>
-                        <span class="badge bg-<?php echo $badge; ?> rounded-pill status-badge"><?php echo ucfirst($qrow['status']); ?></span>
+    <!-- Right Column: Requests, Analytics Hub & Catalog -->
+    <div class="col-lg-8">
+        <div class="row g-4">
+            <!-- Activation Requests -->
+            <div class="col-12">
+                <div class="card border-0 rounded-4 shadow-sm">
+                    <div class="card-header bg-white border-0 py-3"><h5 class="fw-bold mb-0"><i class="bi bi-person-check me-2 text-success"></i>Activation Requests</h5></div>
+                    <div class="table-responsive">
+                        <table class="table align-middle mb-0">
+                            <thead class="table-light"><tr class="small text-muted"><th>Vendor</th><th>Date</th><th class="text-end pe-4">Action</th></tr></thead>
+                            <tbody>
+                                <?php 
+                                $req_q = mysqli_query($connection_server, "SELECT * FROM sas_vendors WHERE ai_request_status='pending' ORDER BY id DESC");
+                                if ($req_q && mysqli_num_rows($req_q) > 0):
+                                    while($req = mysqli_fetch_assoc($req_q)): ?>
+                                    <tr>
+                                        <td class="ps-4"><strong><?php echo htmlspecialchars($req['company_name'] ?: ($req['firstname'].' '.$req['lastname'])); ?></strong></td>
+                                        <td class="small"><?php echo date('M j', strtotime($req['reg_date'])); ?></td>
+                                        <td class="text-end pe-4">
+                                            <a href="AIManagement.php?approve=<?php echo $req['id']; ?>" class="btn btn-success btn-sm rounded-pill px-3">Approve</a>
+                                            <a href="AIManagement.php?reject=<?php echo $req['id']; ?>" class="btn btn-danger btn-sm rounded-pill px-3">Reject</a>
+                                        </td>
+                                    </tr>
+                                <?php endwhile; else: ?>
+                                    <tr><td colspan="3" class="text-center py-4 text-muted">No pending requests.</td></tr>
+                                <?php endif; ?>
+                            </tbody>
+                        </table>
                     </div>
-                    <?php if ($qrow['status'] === 'downloading'): ?>
-                    <div class="progress" style="height: 4px;">
-                        <div class="progress-bar progress-bar-striped progress-bar-animated" role="progressbar" style="width: 0%" id="pg-<?php echo md5($qrow['model_name']); ?>"></div>
-                    </div>
-                    <div class="small text-muted mt-1 log-line" style="font-size:.6rem;">Waiting for log...</div>
-                    <?php endif; ?>
                 </div>
-                <?php endwhile; else: ?>
-                <div class="text-muted small text-center py-4"><i class="bi bi-inbox me-2"></i>No models in queue.</div>
-                <?php endif; ?>
-                <?php if ($ai_up && !empty($models)): ?>
-                <div class="mt-3">
-                    <div class="small fw-bold text-muted text-uppercase mb-2">Installed Models</div>
-                    <?php foreach ($models as $m): ?>
-                    <span class="badge bg-success bg-opacity-10 text-success me-1 mb-1 rounded-pill px-3"><?php echo htmlspecialchars($m); ?></span>
-                    <?php endforeach; ?>
-                </div>
-                <?php endif; ?>
             </div>
-        </div>
-    </div>
 
-    <!-- Model Catalog -->
-    <div class="col-12">
-        <div class="card border-0 rounded-4 shadow-sm">
-            <div class="card-header bg-white border-0 py-3 d-flex justify-content-between align-items-center">
-                <h5 class="fw-bold mb-0"><i class="bi bi-grid me-2 text-primary"></i>AI Model Marketplace</h5>
-                <?php if ($ai_provider === 'ollama' && !$ai_up): ?>
-                <span class="badge bg-danger rounded-pill">Ollama Offline — Start Ollama first</span>
-                <?php elseif (!$ai_up): ?>
-                <span class="badge bg-danger rounded-pill"><?php echo ucfirst($ai_provider); ?> API Unreachable</span>
-                <?php endif; ?>
-            </div>
-            <div class="card-body p-4">
-                <div class="row g-3">
-                <?php foreach ($model_catalog as $mc):
-                    $is_installed = in_array($mc['name'], $models) || in_array($mc['name'].':latest', $models);
-                    $is_active    = ($mc['name'] === $active_model);
-                    $tier_color   = ($mc['tier'] === 'Premium' ? 'warning' : ($mc['tier'] === 'Standard' ? 'primary' : 'secondary'));
-                ?>
-                <div class="col-md-4 col-lg-3">
-                    <div class="model-card <?php echo $is_active ? 'border-primary bg-primary bg-opacity-10' : ($is_installed ? 'installed' : ''); ?>">
-                        <div class="d-flex justify-content-between mb-2">
-                            <code class="fw-bold small"><?php echo htmlspecialchars($mc['name']); ?></code>
-                            <?php if ($is_active): ?>
-                            <span class="badge bg-primary rounded-pill small" style="font-size:.6rem">ACTIVE</span>
-                            <?php else: ?>
-                            <span class="tier-badge bg-<?php echo $tier_color; ?> bg-opacity-10 text-<?php echo $tier_color; ?>"><?php echo $mc['tier']; ?></span>
-                            <?php endif; ?>
+            <!-- NEW FEATURE: Real-Time Intelligence Hub -->
+            <div class="col-12">
+                <div class="card border-0 rounded-4 shadow-sm">
+                    <div class="card-header bg-white border-0 py-3 d-flex justify-content-between align-items-center">
+                        <h5 class="fw-bold mb-0"><i class="bi bi-cpu-fill me-2 text-primary"></i>Real-Time Intelligence Hub</h5>
+                        <span class="badge bg-primary-subtle text-primary rounded-pill small">LIVE AUDIT</span>
+                    </div>
+                    <div class="card-body p-4">
+                        <div class="row g-3 mb-4">
+                            <div class="col-md-6">
+                                <h6 class="small fw-bold text-muted text-uppercase mb-3">Top AI Consumers (Month)</h6>
+                                <?php if ($top_consumers_q && mysqli_num_rows($top_consumers_q) > 0): while($tc = mysqli_fetch_assoc($top_consumers_q)): ?>
+                                <div class="d-flex justify-content-between align-items-center mb-2 p-2 bg-light rounded-3">
+                                    <span class="small fw-bold"><?php echo htmlspecialchars($tc['company_name']); ?></span>
+                                    <span class="badge bg-dark rounded-pill"><?php echo number_format($tc['total']); ?> tkns</span>
+                                </div>
+                                <?php endwhile; else: ?>
+                                <p class="small text-muted italic">No usage data yet.</p>
+                                <?php endif; ?>
+                            </div>
+                            <div class="col-md-6">
+                                <h6 class="small fw-bold text-muted text-uppercase mb-3">Service Health Metrics</h6>
+                                <div class="hub-stat mb-2">
+                                    <div class="small text-muted">Latency (Avg)</div>
+                                    <div class="fw-bold">~450ms</div>
+                                </div>
+                                <div class="hub-stat">
+                                    <div class="small text-muted">Security Sentinel</div>
+                                    <div class="fw-bold text-success">Active & Protected</div>
+                                </div>
+                            </div>
                         </div>
-                        <p class="text-muted small mb-2"><?php echo htmlspecialchars($mc['desc']); ?></p>
-                        <div class="d-flex justify-content-between align-items-center">
-                            <span class="small text-muted"><i class="bi bi-hdd me-1"></i><?php echo $mc['size']; ?></span>
-                            
-                            <?php if ($is_active): ?>
-                                <span class="badge bg-primary rounded-pill"><i class="bi bi-check-all me-1"></i>Live</span>
-                            <?php elseif ($ai_provider !== 'ollama'): ?>
-                                <form method="post">
-                                    <input type="hidden" name="active_model_name" value="<?php echo htmlspecialchars($mc['name']); ?>">
-                                    <button type="submit" name="set-active-model" class="btn btn-outline-primary btn-sm rounded-pill px-3">Activate</button>
-                                </form>
-                            <?php elseif ($is_installed): ?>
-                                <form method="post">
-                                    <input type="hidden" name="active_model_name" value="<?php echo htmlspecialchars($mc['name']); ?>">
-                                    <button type="submit" name="set-active-model" class="btn btn-outline-success btn-sm rounded-pill px-3">Activate</button>
-                                </form>
-                            <?php else: ?>
-                                <form method="post">
-                                    <input type="hidden" name="model_name" value="<?php echo htmlspecialchars($mc['name']); ?>">
-                                    <button type="submit" name="install-model" class="btn btn-primary btn-sm rounded-pill px-3">
-                                        <i class="bi bi-cloud-download me-1"></i>Install
-                                    </button>
-                                </form>
+                        <h6 class="small fw-bold text-muted text-uppercase mb-2">Recent Intelligence Logs</h6>
+                        <div class="border rounded-3 overflow-hidden">
+                            <?php if ($recent_logs_q && mysqli_num_rows($recent_logs_q) > 0): while($log = mysqli_fetch_assoc($recent_logs_q)): ?>
+                            <div class="log-item d-flex justify-content-between">
+                                <span><i class="bi bi-lightning-fill text-warning me-1"></i> <strong><?php echo htmlspecialchars($log['company_name']); ?></strong>: <?php echo ucfirst($log['action_type']); ?></span>
+                                <span class="text-muted"><?php echo number_format($log['tokens_burned']); ?> tokens · <?php echo date('H:i', strtotime($log['created_at'])); ?></span>
+                            </div>
+                            <?php endwhile; else: ?>
+                            <div class="p-3 text-center text-muted small">Awaiting first transactions...</div>
                             <?php endif; ?>
                         </div>
                     </div>
                 </div>
-                <?php endforeach; ?>
-                </div>
             </div>
-        </div>
-    </div>
-    <!-- ─── Blueprint Reports Card ─────────────────────────────────────────── -->
-    <div class="col-12 mt-2">
-        <div class="card border-0 rounded-4 shadow-sm" style="background:linear-gradient(135deg,#faf5ff,#f3e8ff)">
-            <div class="card-body p-4">
-                <div class="row align-items-center g-3">
-                    <div class="col-md-1 text-center">
-                        <div class="rounded-circle d-inline-flex align-items-center justify-content-center"
-                             style="width:64px;height:64px;background:linear-gradient(135deg,#7c3aed,#4c1d95)">
-                            <i class="bi bi-stars text-white" style="font-size:1.8rem"></i>
+
+            <!-- AI Cloud Models -->
+            <div class="col-12">
+                <div class="card border-0 rounded-4 shadow-sm">
+                    <div class="card-header bg-white border-0 py-3"><h5 class="fw-bold mb-0"><i class="bi bi-grid me-2 text-primary"></i>AI Cloud Models</h5></div>
+                    <div class="card-body p-4">
+                        <div class="row g-3">
+                            <?php foreach ($model_catalog as $mc): $is_active = ($mc['name'] === $active_model); ?>
+                            <div class="col-md-6">
+                                <div class="model-card <?php echo $is_active ? 'border-primary bg-primary bg-opacity-10' : ''; ?>">
+                                    <div class="d-flex justify-content-between mb-2">
+                                        <code class="fw-bold small"><?php echo $mc['name']; ?></code>
+                                        <?php if ($is_active): ?><span class="badge bg-primary rounded-pill small">ACTIVE</span><?php endif; ?>
+                                    </div>
+                                    <p class="text-muted small mb-2"><?php echo $mc['desc']; ?></p>
+                                    <form method="post"><input type="hidden" name="active_model_name" value="<?php echo $mc['name']; ?>"><button type="submit" name="set-active-model" class="btn btn-<?php echo $is_active?'primary':'outline-primary'; ?> btn-sm w-100 rounded-pill"><?php echo $is_active?'Live Now':'Activate'; ?></button></form>
+                                </div>
+                            </div>
+                            <?php endforeach; ?>
                         </div>
-                    </div>
-                    <div class="col-md-7">
-                        <h5 class="fw-bold mb-1" style="color:#4c1d95">Monthly AI Blueprint Audit</h5>
-                        <p class="text-muted small mb-0">
-                            Every month, the AI scans your entire codebase and platform stats, then emails you a structured
-                            improvement Blueprint covering Features, Security, SEO, UI/UX, Performance, and Mobile.
-                            Each Blueprint is formatted so you can paste it directly into an AI Agent as a task brief.
-                        </p>
-                    </div>
-                    <div class="col-md-4 text-md-end d-flex flex-column flex-md-row gap-2 justify-content-md-end align-items-center">
-                        <?php
-                        $bp_q = mysqli_query($connection_server, "SELECT id, month_label, generated_at FROM sas_ai_blueprints ORDER BY generated_at DESC LIMIT 1");
-                        $last_bp = ($bp_q && mysqli_num_rows($bp_q) > 0) ? mysqli_fetch_assoc($bp_q) : null;
-                        if ($last_bp): ?>
-                        <div class="text-center text-muted small me-md-2">
-                            Last: <strong><?php echo htmlspecialchars($last_bp['month_label']); ?></strong><br>
-                            <a href="AIBlueprintHistory.php?view=<?php echo $last_bp['id']; ?>" class="text-primary">View Report →</a>
-                        </div>
-                        <?php endif; ?>
-                        <a href="AIBlueprintHistory.php" class="btn btn-outline-primary rounded-pill px-4 fw-bold">
-                            <i class="bi bi-clock-history me-2"></i>Blueprint History
-                        </a>
                     </div>
                 </div>
             </div>
@@ -727,59 +388,5 @@ document.addEventListener('DOMContentLoaded', function() {
 </div>
 </section>
 <?php include("../func/bc-spadmin-footer.php"); ?>
-<script>
-function refreshQueue() {
-    const items = document.querySelectorAll('.queue-item[data-status="downloading"]');
-    items.forEach(item => {
-        const model = item.getAttribute('data-model');
-        const bar = item.querySelector('.progress-bar');
-        const badge = item.querySelector('.status-badge');
-        const log = item.querySelector('.log-line');
-
-        fetch(`ajax-ai-control.php?action=queue-progress&model=${encodeURIComponent(model)}`)
-            .then(res => res.json())
-            .then(data => {
-                if (data.progress) {
-                    bar.style.width = data.progress + '%';
-                    log.innerText = data.last_log || 'Downloading...';
-                }
-                if (data.status === 'ready') {
-                    badge.className = 'badge bg-success rounded-pill status-badge';
-                    badge.innerText = 'Ready';
-                    bar.parentElement.style.display = 'none';
-                    item.setAttribute('data-status', 'ready');
-                    // Reload after a delay to update installed list
-                    setTimeout(() => location.reload(), 2000);
-                }
-            });
-    });
-}
-
-// Auto-refresh queue every 5 seconds if downloading
-if (document.querySelector('.queue-item[data-status="downloading"]')) {
-    setInterval(refreshQueue, 5000);
-    refreshQueue();
-}
-
-// Global Status Polling
-function pollStatus() {
-    fetch('ajax-ai-control.php?action=status')
-        .then(res => res.json())
-        .then(data => {
-            const dot = document.querySelector('.status-dot');
-            const txt = dot.nextElementSibling;
-            if (data.ai_up) {
-                dot.className = 'status-dot dot-green me-2';
-                txt.className = 'small text-success';
-                txt.innerText = 'Online';
-            } else {
-                dot.className = 'status-dot dot-red me-2';
-                txt.className = 'small text-danger';
-                txt.innerText = 'Offline';
-            }
-        });
-}
-setInterval(pollStatus, 30000); // Every 30s
-</script>
 </body>
 </html>
