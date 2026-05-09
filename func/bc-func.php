@@ -49,11 +49,12 @@ function bc_get_ai_user_context($user_details) {
     if (!$user_details || !isset($user_details['username'])) return [];
 
     $username = mysqli_real_escape_string($connection_server, $user_details['username']);
-    $vendor_id = (int)$user_details['vendor_id'];
+    $vendor_id = (int)($user_details['vendor_id'] ?? 0);
 
     // 1. Get recent failed transactions
-    $failed_q = mysqli_query($connection_server, "SELECT name, status_description, amount, date FROM sas_transactions WHERE vendor_id='$vendor_id' AND username='$username' AND status=0 ORDER BY id DESC LIMIT 1");
-    $last_fail = mysqli_fetch_assoc($failed_q);
+    // Note: Using type_alternative as 'name' and description as 'status_description'
+    $failed_q = mysqli_query($connection_server, "SELECT type_alternative as name, description as status_description, amount, date FROM sas_transactions WHERE vendor_id='$vendor_id' AND username='$username' AND status=3 ORDER BY id DESC LIMIT 1");
+    $last_fail = ($failed_q) ? mysqli_fetch_assoc($failed_q) : null;
 
     // 2. Identify current wallet state
     $balance = (float)($user_details['balance'] ?? 0);

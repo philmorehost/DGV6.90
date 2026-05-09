@@ -629,9 +629,12 @@ if (mysqli_num_rows($select_user_vendor_status_message) == 1) {
 <main id="main" class="main">
 <?php
 // DGV6.90 AI Edition: Inject AI assistant widget (deferred)
-$_ai_user_enabled = isset($get_logged_user_details['ai_status']) && (int)$get_logged_user_details['ai_status'] === 1;
-if ($_ai_user_enabled || basename($_SERVER["PHP_SELF"]) == 'AISuite.php'):
+$is_ai_suite_page = (basename($_SERVER["PHP_SELF"]) == 'AISuite.php');
+$_ai_user_enabled = (isset($get_logged_user_details['ai_status']) && (int)$get_logged_user_details['ai_status'] === 1) || $is_ai_suite_page;
+
+if ($_ai_user_enabled && isset($get_logged_user_details)):
     $ai_token_bal = (int)($get_logged_user_details['ai_token_balance'] ?? 0);
+    $ai_user_ctx  = bc_get_ai_user_context($get_logged_user_details);
 ?>
 <script>
   window.__ai_enabled     = true;
@@ -639,6 +642,13 @@ if ($_ai_user_enabled || basename($_SERVER["PHP_SELF"]) == 'AISuite.php'):
   window.__ai_handler_url = '<?php echo $web_http_host; ?>/web/ai-handler.php?context=user';
   window.__ai_guide_url   = '<?php echo $web_http_host; ?>/web/ai-guide-cache.php?context=user';
   window.__ai_tokens      = <?php echo $ai_token_bal; ?>;
+  window.__ai_context     = <?php echo json_encode($ai_user_ctx); ?>;
+  
+  // Proactive Engagement: Open AI Assistant if there's a recent failure
+  <?php if (!empty($ai_user_ctx['session_error'])): ?>
+  window.__ai_auto_open   = true;
+  window.__ai_init_msg    = "I noticed your last transaction had an issue: '<?php echo addslashes($ai_user_ctx['session_error']); ?>'. <?php echo addslashes($ai_user_ctx['smart_explanation'] ?? ''); ?> How can I help you complete your purchase?";
+  <?php endif; ?>
 </script>
 <script src="<?php echo $web_http_host; ?>/jsfile/ai-assistant.js" defer></script>
 <?php endif; ?>
