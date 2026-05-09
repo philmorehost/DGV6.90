@@ -1091,33 +1091,55 @@ if ($connection_server) {
     $create_login_attempts_table = mysqli_query($connection_server, "CREATE TABLE IF NOT EXISTS sas_login_attempts (id INT NOT NULL AUTO_INCREMENT, vendor_id INT UNSIGNED NOT NULL, username VARCHAR(225), ip_address VARCHAR(50) NOT NULL, success TINYINT(1) NOT NULL, timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP, PRIMARY KEY (id))");
 
     if ($create_login_attempts_table) {
-        // Optimization DG6.7: Add indexes to speed up brute force checks
-        $check_idx = mysqli_query($connection_server, "SHOW INDEX FROM sas_login_attempts WHERE Key_name = 'idx_login_lookup'");
-        if (mysqli_num_rows($check_idx) == 0) {
-            mysqli_query($connection_server, "ALTER TABLE sas_login_attempts ADD INDEX idx_login_lookup (vendor_id, ip_address, timestamp)");
+        $check_col = mysqli_query($connection_server, "SHOW COLUMNS FROM sas_login_attempts LIKE 'vendor_id'");
+        if (mysqli_num_rows($check_col) == 0) {
+            mysqli_query($connection_server, "ALTER TABLE sas_login_attempts ADD COLUMN vendor_id INT UNSIGNED NOT NULL AFTER id");
         }
+        // Optimization DG6.7: Add indexes to speed up brute force checks
+        try {
+            $check_idx = mysqli_query($connection_server, "SHOW INDEX FROM sas_login_attempts WHERE Key_name = 'idx_login_lookup'");
+            if (mysqli_num_rows($check_idx) == 0) {
+                mysqli_query($connection_server, "ALTER TABLE sas_login_attempts ADD INDEX idx_login_lookup (vendor_id, ip_address, timestamp)");
+            }
+        } catch (mysqli_sql_exception $e) { error_log($e->getMessage()); }
     }
 
     //Create Blocked IPs Table
     $create_blocked_ips_table = mysqli_query($connection_server, "CREATE TABLE IF NOT EXISTS sas_blocked_ips (ip_address VARCHAR(50) NOT NULL, vendor_id INT UNSIGNED NOT NULL, block_until DATETIME NOT NULL, reason VARCHAR(225), PRIMARY KEY (ip_address, vendor_id))");
 
     if ($create_blocked_ips_table) {
-        // Optimization DG6.7: Add index for expiry checks
-        $check_idx = mysqli_query($connection_server, "SHOW INDEX FROM sas_blocked_ips WHERE Key_name = 'idx_block_expiry'");
-        if (mysqli_num_rows($check_idx) == 0) {
-            mysqli_query($connection_server, "ALTER TABLE sas_blocked_ips ADD INDEX idx_block_expiry (block_until)");
+        $check_col = mysqli_query($connection_server, "SHOW COLUMNS FROM sas_blocked_ips LIKE 'vendor_id'");
+        if (mysqli_num_rows($check_col) == 0) {
+            try {
+                mysqli_query($connection_server, "ALTER TABLE sas_blocked_ips DROP PRIMARY KEY, ADD COLUMN vendor_id INT UNSIGNED NOT NULL AFTER ip_address, ADD PRIMARY KEY (ip_address, vendor_id)");
+            } catch (Exception $e) {}
         }
+        // Optimization DG6.7: Add index for expiry checks
+        try {
+            $check_idx = mysqli_query($connection_server, "SHOW INDEX FROM sas_blocked_ips WHERE Key_name = 'idx_block_expiry'");
+            if (mysqli_num_rows($check_idx) == 0) {
+                mysqli_query($connection_server, "ALTER TABLE sas_blocked_ips ADD INDEX idx_block_expiry (block_until)");
+            }
+        } catch (mysqli_sql_exception $e) { error_log($e->getMessage()); }
     }
 
     //Create Blocked Accounts Table
     $create_blocked_accounts_table = mysqli_query($connection_server, "CREATE TABLE IF NOT EXISTS sas_blocked_accounts (username VARCHAR(225) NOT NULL, vendor_id INT UNSIGNED NOT NULL, block_until DATETIME NOT NULL, reason VARCHAR(225), PRIMARY KEY (username, vendor_id))");
 
     if ($create_blocked_accounts_table) {
-        // Optimization DG6.7: Add index for expiry checks
-        $check_idx = mysqli_query($connection_server, "SHOW INDEX FROM sas_blocked_accounts WHERE Key_name = 'idx_acc_block_expiry'");
-        if (mysqli_num_rows($check_idx) == 0) {
-            mysqli_query($connection_server, "ALTER TABLE sas_blocked_accounts ADD INDEX idx_acc_block_expiry (block_until)");
+        $check_col = mysqli_query($connection_server, "SHOW COLUMNS FROM sas_blocked_accounts LIKE 'vendor_id'");
+        if (mysqli_num_rows($check_col) == 0) {
+            try {
+                mysqli_query($connection_server, "ALTER TABLE sas_blocked_accounts DROP PRIMARY KEY, ADD COLUMN vendor_id INT UNSIGNED NOT NULL AFTER username, ADD PRIMARY KEY (username, vendor_id)");
+            } catch (Exception $e) {}
         }
+        // Optimization DG6.7: Add index for expiry checks
+        try {
+            $check_idx = mysqli_query($connection_server, "SHOW INDEX FROM sas_blocked_accounts WHERE Key_name = 'idx_acc_block_expiry'");
+            if (mysqli_num_rows($check_idx) == 0) {
+                mysqli_query($connection_server, "ALTER TABLE sas_blocked_accounts ADD INDEX idx_acc_block_expiry (block_until)");
+            }
+        } catch (mysqli_sql_exception $e) { error_log($e->getMessage()); }
     }
 
     //Create Country Security Table
