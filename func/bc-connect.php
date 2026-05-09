@@ -1,8 +1,8 @@
 <?php
-    // ─── PHP 8 MySQLi Exception Mode ─────────────────────────────────────────────
-    // Errors are now thrown as mysqli_sql_exception instead of silent failures.
-    // Error display is controlled by bc-php-compat.php (ENV-aware).
-    mysqli_report(MYSQLI_REPORT_ERROR | MYSQLI_REPORT_STRICT);
+    // ─── PHP 8.1+ Compatibility Fix ──────────────────────────────────────────────
+    // PHP 8.1+ enables STRICT exception mode for MySQLi by default.
+    // DGV6.90 legacy code expects mysqli_query to return false on failure instead of crashing.
+    mysqli_report(MYSQLI_REPORT_OFF);
 
 	date_default_timezone_set('Africa/Lagos');
 	include_once(__DIR__ . "/db-dtl.php");
