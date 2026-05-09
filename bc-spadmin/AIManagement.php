@@ -259,16 +259,18 @@ $pending_count = ($q_pcount && $r = mysqli_fetch_assoc($q_pcount)) ? $r['count']
                         <thead class="table-light"><tr class="small text-uppercase text-muted"><th>Vendor</th><th>Request Date</th><th>Package</th><th class="text-end pe-4">Action</th></tr></thead>
                         <tbody>
                             <?php 
-                            $req_q = mysqli_query($connection_server, "SELECT id, company_name, email, reg_date FROM sas_vendors WHERE ai_request_status='pending' ORDER BY id DESC");
+                            $req_q = mysqli_query($connection_server, "SELECT * FROM sas_vendors WHERE ai_request_status='pending' ORDER BY id DESC");
                             if ($req_q && mysqli_num_rows($req_q) > 0):
-                                while($req = mysqli_fetch_assoc($req_q)): ?>
+                                while($req = mysqli_fetch_assoc($req_q)): 
+                                    $v_name = !empty($req['company_name']) ? $req['company_name'] : ($req['firstname'] . ' ' . $req['lastname']);
+                                ?>
                                 <tr>
-                                    <td class="ps-4"><div class="fw-bold"><?php echo htmlspecialchars($req['company_name']); ?></div><div class="small text-muted"><?php echo $req['email']; ?></div></td>
+                                    <td class="ps-4"><div class="fw-bold"><?php echo htmlspecialchars($v_name); ?></div><div class="small text-muted"><?php echo htmlspecialchars($req['email']); ?></div></td>
                                     <td class="small"><?php echo date('M j, Y', strtotime($req['reg_date'])); ?></td>
                                     <td><span class="badge bg-info bg-opacity-10 text-info rounded-pill">Requested</span></td>
                                     <td class="text-end pe-4">
-                                        <a href="AIManagement.php?approve-vendor=<?php echo $req['id']; ?>" class="btn btn-success btn-sm rounded-pill px-3" onclick="return confirm('Approve AI access?')">Approve</a>
-                                        <a href="AIManagement.php?reject-vendor=<?php echo $req['id']; ?>" class="btn btn-danger btn-sm rounded-pill px-3" onclick="return confirm('Reject this request?')">Reject</a>
+                                        <a href="AIManagement.php?approve=<?php echo $req['id']; ?>" class="btn btn-success btn-sm rounded-pill px-3" onclick="return confirm('Approve AI access?')">Approve</a>
+                                        <a href="AIManagement.php?reject=<?php echo $req['id']; ?>" class="btn btn-danger btn-sm rounded-pill px-3" onclick="return confirm('Reject this request?')">Reject</a>
                                     </td>
                                 </tr>
                             <?php endwhile; else: ?>
@@ -523,7 +525,7 @@ document.addEventListener('DOMContentLoaded', function() {
                             
                             <?php if ($is_active): ?>
                                 <span class="badge bg-primary rounded-pill"><i class="bi bi-check-all me-1"></i>Live</span>
-                            <?php elseif ($ai_provider !== 'ollama' && $ai_up): ?>
+                            <?php elseif ($ai_provider !== 'ollama'): ?>
                                 <form method="post">
                                     <input type="hidden" name="active_model_name" value="<?php echo htmlspecialchars($mc['name']); ?>">
                                     <button type="submit" name="set-active-model" class="btn btn-outline-primary btn-sm rounded-pill px-3">Activate</button>
