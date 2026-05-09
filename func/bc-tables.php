@@ -1749,3 +1749,39 @@ if ($check_options_table && mysqli_num_rows($check_options_table) > 0) {
     }
 }
 
+// ─── AI INFRASTRUCTURE TABLES ───────────────────────────────
+mysqli_query($connection_server, "CREATE TABLE IF NOT EXISTS sas_ai_transactions (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    vendor_id INT NOT NULL,
+    username VARCHAR(100) NOT NULL,
+    tokens_burned INT NOT NULL,
+    cost_naira DECIMAL(10,2) NOT NULL,
+    service_type VARCHAR(50) NOT NULL,
+    status ENUM('success','failed') DEFAULT 'success',
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+)");
+
+mysqli_query($connection_server, "CREATE TABLE IF NOT EXISTS sas_ai_install_queue (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    model_name VARCHAR(100) NOT NULL,
+    status ENUM('pending','downloading','ready','failed') DEFAULT 'pending',
+    started_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    finished_at TIMESTAMP NULL
+)");
+
+mysqli_query($connection_server, "CREATE TABLE IF NOT EXISTS sas_ai_blueprints (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    month_label VARCHAR(20) NOT NULL,
+    blueprint_json TEXT NOT NULL,
+    generated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+)");
+
+mysqli_query($connection_server, "CREATE TABLE IF NOT EXISTS sas_ai_audit_log (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    event_type VARCHAR(50) NOT NULL,
+    action VARCHAR(100) NOT NULL,
+    actor VARCHAR(100) NOT NULL,
+    detail TEXT,
+    ip_address VARCHAR(45),
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+)");

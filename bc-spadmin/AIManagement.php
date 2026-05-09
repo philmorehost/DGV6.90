@@ -432,8 +432,8 @@ document.addEventListener('DOMContentLoaded', function() {
                     </div>
                     <div class="col-md-4 text-md-end d-flex flex-column flex-md-row gap-2 justify-content-md-end align-items-center">
                         <?php
-                        $last_bp = mysqli_fetch_assoc(mysqli_query($connection_server,
-                            "SELECT id, month_label, generated_at FROM sas_ai_blueprints ORDER BY generated_at DESC LIMIT 1") ?: false);
+                        $bp_q = mysqli_query($connection_server, "SELECT id, month_label, generated_at FROM sas_ai_blueprints ORDER BY generated_at DESC LIMIT 1");
+                        $last_bp = ($bp_q && mysqli_num_rows($bp_q) > 0) ? mysqli_fetch_assoc($bp_q) : null;
                         if ($last_bp): ?>
                         <div class="text-center text-muted small me-md-2">
                             Last: <strong><?php echo htmlspecialchars($last_bp['month_label']); ?></strong><br>
