@@ -243,6 +243,7 @@ switch ($action_type) {
         $ai_result = $ai->chat($model_to_use, $safe_prompt);
         break;
 }
+$ai_duration = $ai_result['duration_ms'] ?? 0;
 
 // ─── SUCCESS: Deduct tokens, log, respond ────────────────────
 if ($ai_result['status'] === 'success') {
@@ -267,8 +268,8 @@ if ($ai_result['status'] === 'success') {
 
     mysqli_query($connection_server,
         "INSERT INTO sas_ai_transactions
-         (vendor_id, username, action_type, model_used, tokens_burned, cost_naira, prompt_hash, status)
-         VALUES ('$safe_vid', '" . mysqli_real_escape_string($connection_server, $username) . "', '$esc_action', '$esc_model', '$tokens_per_call', '$cost_naira', '$esc_hash', 'success')"
+         (vendor_id, username, action_type, model_used, tokens_burned, duration_ms, cost_naira, prompt_hash, status)
+         VALUES ('$safe_vid', '" . mysqli_real_escape_string($connection_server, $username) . "', '$esc_action', '$esc_model', '$tokens_per_call', '$ai_duration', '$cost_naira', '$esc_hash', 'success')"
     );
 
     // Return response to frontend

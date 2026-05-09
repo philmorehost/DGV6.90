@@ -98,6 +98,12 @@ if ($connection_server) {
             INDEX (reference),
             INDEX (vendor_id)
         )");
+        
+        // Migration: AI Transaction Logs Performance Column
+        $check_ai_perf = mysqli_query($connection_server, "SHOW COLUMNS FROM `sas_ai_transactions` LIKE 'duration_ms'");
+        if (mysqli_num_rows($check_ai_perf) == 0) {
+            mysqli_query($connection_server, "ALTER TABLE `sas_ai_transactions` ADD COLUMN `duration_ms` INT DEFAULT 0 AFTER tokens_burned");
+        }
 
         // Migration: Crypto Wallet Table Schema Fix (Index limit)
         $check_crypto_wallet_schema = mysqli_query($connection_server, "SHOW COLUMNS FROM `sas_user_crypto_wallets` LIKE 'username'");

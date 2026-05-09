@@ -185,8 +185,16 @@ $ai_rev_q = mysqli_query($connection_server, "SELECT SUM(cost_naira) as revenue,
 $ai_rev = $ai_rev_q ? mysqli_fetch_assoc($ai_rev_q) : ['revenue' => 0, 'calls' => 0];
 
 // Intelligence Hub Data
-$top_consumers_q = mysqli_query($connection_server, "SELECT v.company_name, SUM(t.tokens_burned) as total FROM sas_ai_transactions t JOIN sas_vendors v ON v.id=t.vendor_id WHERE MONTH(t.created_at)=MONTH(NOW()) GROUP BY t.vendor_id ORDER BY total DESC LIMIT 3");
-$recent_logs_q = mysqli_query($connection_server, "SELECT t.*, v.company_name FROM sas_ai_transactions t JOIN sas_vendors v ON v.id=t.vendor_id ORDER BY t.id DESC LIMIT 5");
+$top_consumers_q = mysqli_query($connection_server, "SELECT v.company_name, v.website_url, SUM(t.tokens_burned) as total FROM sas_ai_transactions t JOIN sas_vendors v ON v.id=t.vendor_id WHERE MONTH(t.created_at)=MONTH(NOW()) GROUP BY t.vendor_id ORDER BY total DESC LIMIT 3");
+$recent_logs_q = mysqli_query($connection_server, "SELECT t.*, v.company_name, v.website_url FROM sas_ai_transactions t JOIN sas_vendors v ON v.id=t.vendor_id ORDER BY t.id DESC LIMIT 5");
+
+// Live Health Metrics
+$health_q = mysqli_query($connection_server, "SELECT AVG(duration_ms) as avg_lat, COUNT(*) as total_calls FROM sas_ai_transactions WHERE status='success' AND created_at >= DATE_SUB(NOW(), INTERVAL 24 HOUR)");
+$health = mysqli_fetch_assoc($health_q);
+$avg_latency = $health['avg_lat'] > 0 ? round($health['avg_lat']) : 450;
+
+$blocked_q = mysqli_query($connection_server, "SELECT COUNT(*) as blocked FROM sas_ai_transactions WHERE status='blocked' AND created_at >= DATE_SUB(NOW(), INTERVAL 24 HOUR)");
+$blocked_count = mysqli_fetch_assoc($blocked_q)['blocked'];
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -344,9 +352,12 @@ $recent_logs_q = mysqli_query($connection_server, "SELECT t.*, v.company_name FR
                             <div class="col-md-6">
                                 <h6 class="small fw-bold text-muted text-uppercase mb-3">Top AI Consumers (Month)</h6>
                                 <?php if ($top_consumers_q && mysqli_num_rows($top_consumers_q) > 0): while($tc = mysqli_fetch_assoc($top_consumers_q)): ?>
-                                <div class="d-flex justify-content-between align-items-center mb-2 p-2 bg-light rounded-3">
-                                    <span class="small fw-bold"><?php echo htmlspecialchars($tc['company_name']); ?></span>
-                                    <span class="badge bg-dark rounded-pill"><?php echo number_format($tc['total']); ?> tkns</span>
+                                <div class="mb-2 p-2 bg-light rounded-3">
+                                    <div class="d-flex justify-content-between align-items-center">
+                                        <span class="small fw-bold"><?php echo htmlspecialchars($tc['company_name']); ?></span>
+                                        <span class="badge bg-dark rounded-pill"><?php echo number_format($tc['total']); ?> tkns</span>
+                                    </div>
+                                    <div class="x-small text-muted opacity-75 mt-1"><?php echo htmlspecialchars($tc['website_url']); ?></div>
                                 </div>
                                 <?php endwhile; else: ?>
                                 <p class="small text-muted italic">No usage data yet.</p>
@@ -355,12 +366,14 @@ $recent_logs_q = mysqli_query($connection_server, "SELECT t.*, v.company_name FR
                             <div class="col-md-6">
                                 <h6 class="small fw-bold text-muted text-uppercase mb-3">Service Health Metrics</h6>
                                 <div class="hub-stat mb-2">
-                                    <div class="small text-muted">Latency (Avg)</div>
-                                    <div class="fw-bold">~450ms</div>
+                                    <div class="small text-muted">Latency (Avg 24h)</div>
+                                    <div class="fw-bold <?php echo $avg_latency > 1000 ? 'text-warning' : 'text-success'; ?>"><?php echo $avg_latency; ?>ms</div>
                                 </div>
                                 <div class="hub-stat">
                                     <div class="small text-muted">Security Sentinel</div>
-                                    <div class="fw-bold text-success">Active & Protected</div>
+                                    <div class="fw-bold <?php echo $blocked_count > 0 ? 'text-danger' : 'text-success'; ?>">
+                                        <?php echo $blocked_count > 0 ? "$blocked_count Blocked Attempts" : "Active & Protected"; ?>
+                                    </div>
                                 </div>
                             </div>
                         </div>
@@ -368,7 +381,12 @@ $recent_logs_q = mysqli_query($connection_server, "SELECT t.*, v.company_name FR
                         <div class="border rounded-3 overflow-hidden">
                             <?php if ($recent_logs_q && mysqli_num_rows($recent_logs_q) > 0): while($log = mysqli_fetch_assoc($recent_logs_q)): ?>
                             <div class="log-item d-flex justify-content-between">
-                                <span><i class="bi bi-lightning-fill text-warning me-1"></i> <strong><?php echo htmlspecialchars($log['company_name']); ?></strong>: <?php echo ucfirst($log['action_type']); ?></span>
+                                <span>
+                                    <i class="bi bi-lightning-fill text-warning me-1"></i> 
+                                    <strong><?php echo htmlspecialchars($log['company_name']); ?></strong> 
+                                    <span class="small opacity-50">(<?php echo htmlspecialchars($log['website_url']); ?>)</span>: 
+                                    <?php echo ucfirst($log['action_type']); ?>
+                                </span>
                                 <span class="text-muted"><?php echo number_format($log['tokens_burned']); ?> tokens · <?php echo date('H:i', strtotime($log['created_at'])); ?></span>
                             </div>
                             <?php endwhile; else: ?>

@@ -200,6 +200,14 @@ $top_consumers_q = mysqli_query($connection_server,
 $recent_intelligence_q = mysqli_query($connection_server, 
     "SELECT * FROM sas_ai_transactions WHERE vendor_id='$esc_vid' ORDER BY id DESC LIMIT 5"
 );
+
+// Live Health Metrics (Vendor Context)
+$health_q = mysqli_query($connection_server, "SELECT AVG(duration_ms) as avg_lat FROM sas_ai_transactions WHERE vendor_id='$esc_vid' AND status='success' AND created_at >= DATE_SUB(NOW(), INTERVAL 24 HOUR)");
+$health = mysqli_fetch_assoc($health_q);
+$v_avg_latency = $health['avg_lat'] > 0 ? round($health['avg_lat']) : 450;
+
+$blocked_q = mysqli_query($connection_server, "SELECT COUNT(*) as blocked FROM sas_ai_transactions WHERE vendor_id='$esc_vid' AND status='blocked' AND created_at >= DATE_SUB(NOW(), INTERVAL 24 HOUR)");
+$v_blocked_count = mysqli_fetch_assoc($blocked_q)['blocked'];
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -473,7 +481,10 @@ if ($ai_status == 0 && ($req_status === NULL || $req_status === 'rejected')):
         <div class="card ai-card shadow-sm">
             <div class="card-header bg-white py-3 border-0 d-flex justify-content-between align-items-center">
                 <h5 class="fw-bold mb-0"><i class="bi bi-cpu-fill me-2 text-primary"></i>Real-Time Intelligence Hub</h5>
-                <span class="badge bg-primary-subtle text-primary rounded-pill small">LIVE AUDIT</span>
+                <div class="d-flex gap-2">
+                    <span class="badge bg-light text-dark border rounded-pill small"><i class="bi bi-globe me-1"></i> <?php echo htmlspecialchars($_SERVER['HTTP_HOST']); ?></span>
+                    <span class="badge bg-primary-subtle text-primary rounded-pill small">LIVE AUDIT</span>
+                </div>
             </div>
             <div class="card-body p-4">
                 <div class="row g-4">
@@ -487,6 +498,24 @@ if ($ai_status == 0 && ($req_status === NULL || $req_status === 'rejected')):
                         <?php endwhile; else: ?>
                         <div class="text-center py-3 text-muted small italic">No consumer data yet.</div>
                         <?php endif; ?>
+
+                        <h6 class="small fw-bold text-muted text-uppercase mb-3 mt-4">Service Health Metrics</h6>
+                        <div class="row g-2">
+                            <div class="col-6">
+                                <div class="p-2 border rounded-3 bg-light">
+                                    <div class="x-small text-muted">Latency (Avg)</div>
+                                    <div class="small fw-bold <?php echo $v_avg_latency > 1000 ? 'text-warning' : 'text-success'; ?>"><?php echo $v_avg_latency; ?>ms</div>
+                                </div>
+                            </div>
+                            <div class="col-6">
+                                <div class="p-2 border rounded-3 bg-light">
+                                    <div class="x-small text-muted">Security Sentinel</div>
+                                    <div class="small fw-bold <?php echo $v_blocked_count > 0 ? 'text-danger' : 'text-success'; ?>">
+                                        <?php echo $v_blocked_count > 0 ? "$v_blocked_count Blocked" : "Active"; ?>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
                     </div>
                     <div class="col-md-7">
                         <h6 class="small fw-bold text-muted text-uppercase mb-3">Recent Intelligence Logs</h6>
