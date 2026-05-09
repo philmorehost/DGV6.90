@@ -236,6 +236,13 @@
     function boot() {
         injectWidget();
         bindEvents();
+
+        // Set initial token display if available
+        const tokEl = document.getElementById('ai-tokens');
+        if (tokEl && window.__ai_tokens !== undefined) {
+            tokEl.textContent = `${window.__ai_tokens.toLocaleString()} tokens remaining`;
+        }
+
         // Load page guide after 1.5s delay (non-blocking)
         setTimeout(loadPageGuide, 1500);
     }
