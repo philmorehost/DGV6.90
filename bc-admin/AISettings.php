@@ -234,20 +234,21 @@ $v_blocked_count = ($blocked_q && $row_b = mysqli_fetch_assoc($blocked_q)) ? $ro
 <body>
 <?php include("../func/bc-admin-header.php"); ?>
 
-<main id="main" class="main p-4">
+<main id="main" class="main">
     <div class="pagetitle mb-4">
         <h1 class="fw-900">Intelligence Command Center</h1>
         <nav><ol class="breadcrumb"><li class="breadcrumb-item"><a href="Dashboard.php">Home</a></li><li class="breadcrumb-item active">AI Control</li></ol></nav>
     </div>
 
-    <?php if (isset($_SESSION["product_purchase_response"])): ?>
-        <div class="alert alert-info border-0 rounded-4 shadow-sm animate__animated animate__fadeInDown">
-            <i class="bi bi-info-circle me-2"></i> <?php echo $_SESSION["product_purchase_response"]; unset($_SESSION["product_purchase_response"]); ?>
-        </div>
-    <?php endif; ?>
+    <section class="section dashboard">
+        <?php if (isset($_SESSION["product_purchase_response"])): ?>
+            <div class="alert alert-info border-0 rounded-4 shadow-sm animate__animated animate__fadeInDown">
+                <i class="bi bi-info-circle me-2"></i> <?php echo $_SESSION["product_purchase_response"]; unset($_SESSION["product_purchase_response"]); ?>
+            </div>
+        <?php endif; ?>
 
-    <!-- PREMIUM HERO BANNER -->
-    <div class="ai-header-banner animate__animated animate__fadeIn">
+        <!-- PREMIUM HERO BANNER -->
+        <div class="ai-header-banner animate__animated animate__fadeIn">
         <div class="row align-items-center">
             <div class="col-lg-7">
                 <div class="d-flex align-items-center mb-3">
@@ -551,8 +552,7 @@ $v_blocked_count = ($blocked_q && $row_b = mysqli_fetch_assoc($blocked_q)) ? $ro
                 </table>
             </div>
         </div>
-    </div>
-
+    </section>
 </main>
 
 <script src="../assets-2/vendor/bootstrap/js/bootstrap.bundle.min.js"></script>
