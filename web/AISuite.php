@@ -6,7 +6,7 @@
         exit();
     }
 
-    $get_logged_user_details = mysqli_fetch_array(mysqli_query($connection_server, "SELECT * FROM sas_users WHERE username='".$_SESSION["logged_username"]."'"));
+    // User details are already fetched in bc-config.php as $get_logged_user_details
     $get_all_site_details = mysqli_fetch_array(mysqli_query($connection_server, "SELECT * FROM sas_site_details WHERE vendor_id='".$get_logged_user_details["vendor_id"]."'"));
 
     // Handle AI Applications
