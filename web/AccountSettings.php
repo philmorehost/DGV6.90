@@ -415,7 +415,7 @@ if (isset($_POST["buy-user-ai-tokens"])) {
                 </form>
             </div>
 
-                        <div class="card shadow-sm border-0 p-4 rounded-4 mt-4" style="background: linear-gradient(135deg, #f8fafc, #f1f5f9);">
+            <div class="card shadow-sm border-0 p-4 rounded-4 mt-4" style="background: linear-gradient(135deg, #f8fafc, #f1f5f9);">
                 <h5 class="fw-bold mb-3"><i class="bi bi-mic-fill me-2 text-primary"></i>Autonomous AI Access</h5>
                 <p class="small text-muted mb-3">Unlock "Zero-Click" Voice commands. Earn this feature by completing successful transactions.</p>
                 
@@ -443,6 +443,47 @@ if (isset($_POST["buy-user-ai-tokens"])) {
                         </button>
                     </form>
                 <?php endif; ?>
+            </div>
+
+            <!-- AI TOKEN PURCHASE CARD (NEW) -->
+            <div class="card shadow-sm border-0 p-4 rounded-4 mt-4" style="background: #fff;">
+                <h5 class="fw-bold mb-3"><i class="bi bi-coin me-2 text-warning"></i>AI Token Wallet</h5>
+                <div class="d-flex align-items-center justify-content-between mb-4 p-3 bg-light rounded-3">
+                    <div>
+                        <span class="text-muted small d-block">Current Balance</span>
+                        <h4 class="fw-bold mb-0"><?php echo number_format($user_tokens); ?> <span class="small text-muted" style="font-size: 12px;">Tokens</span></h4>
+                    </div>
+                    <i class="bi bi-cpu fs-1 text-primary opacity-25"></i>
+                </div>
+
+                <form method="post">
+                    <?php echo bc_csrf_field(); ?>
+                    <div class="mb-3">
+                        <label class="form-label small fw-bold text-muted">PURCHASE AMOUNT</label>
+                        <select name="token_amount" class="form-select bg-light border-0" required onchange="updateTokenCost(this.value)">
+                            <option value="1000">1,000 Tokens (₦<?php echo number_format($user_token_price, 2); ?>)</option>
+                            <option value="5000">5,000 Tokens (₦<?php echo number_format($user_token_price * 5, 2); ?>)</option>
+                            <option value="10000">10,000 Tokens (₦<?php echo number_format($user_token_price * 10, 2); ?>)</option>
+                            <option value="50000">50,000 Tokens (₦<?php echo number_format($user_token_price * 50, 2); ?>)</option>
+                        </select>
+                    </div>
+                    <div class="p-3 rounded-3 mb-4" style="background: #eef2ff;">
+                        <div class="d-flex justify-content-between small">
+                            <span class="text-muted">Total Cost:</span>
+                            <span class="fw-bold text-primary" id="token-cost">₦<?php echo number_format($user_token_price, 2); ?></span>
+                        </div>
+                    </div>
+                    <button type="submit" name="buy-user-ai-tokens" class="btn btn-warning w-100 rounded-pill fw-bold py-2 shadow-sm">
+                        <i class="bi bi-cart-plus me-1"></i> BUY TOKENS
+                    </button>
+                </form>
+                <script>
+                    function updateTokenCost(amount) {
+                        const price = <?php echo $user_token_price / 1000; ?>;
+                        const cost = amount * price;
+                        document.getElementById('token-cost').innerText = '₦' + cost.toLocaleString(undefined, {minimumFractionDigits: 2});
+                    }
+                </script>
             </div>
 
             <div class="card shadow-sm border-0 p-4 rounded-4 mt-4 bg-primary text-white">
