@@ -184,16 +184,16 @@ if ($ai_provider === 'gemini') {
 $ai_rev_q = mysqli_query($connection_server, "SELECT SUM(cost_naira) as revenue, COUNT(*) as calls FROM sas_ai_transactions WHERE MONTH(created_at)=MONTH(NOW()) AND status='success'");
 $ai_rev = $ai_rev_q ? mysqli_fetch_assoc($ai_rev_q) : ['revenue' => 0, 'calls' => 0];
 
-// Intelligence Hub Data (Month-to-Date)
-$top_consumers_q = mysqli_query($connection_server, "SELECT v.company_name, v.website_url, SUM(t.tokens_burned) as total FROM sas_ai_transactions t JOIN sas_vendors v ON v.id=t.vendor_id WHERE t.created_at >= DATE_FORMAT(NOW() ,'%Y-%m-01') GROUP BY t.vendor_id ORDER BY total DESC LIMIT 3");
-$recent_logs_q = mysqli_query($connection_server, "SELECT t.*, v.company_name, v.website_url FROM sas_ai_transactions t JOIN sas_vendors v ON v.id=t.vendor_id ORDER BY t.id DESC LIMIT 5");
+// Intelligence Hub Data (Last 30 Days for visibility)
+$top_consumers_q = mysqli_query($connection_server, "SELECT COALESCE(v.company_name, t.username) as name, v.website_url, SUM(t.tokens_burned) as total FROM sas_ai_transactions t LEFT JOIN sas_vendors v ON v.id=t.vendor_id WHERE t.created_at >= DATE_SUB(NOW(), INTERVAL 30 DAY) GROUP BY t.vendor_id, t.username ORDER BY total DESC LIMIT 5");
+$recent_logs_q = mysqli_query($connection_server, "SELECT t.*, COALESCE(v.company_name, 'System Admin') as vendor_name, v.website_url FROM sas_ai_transactions t LEFT JOIN sas_vendors v ON v.id=t.vendor_id ORDER BY t.id DESC LIMIT 10");
 
 // Live Health Metrics
-$health_q = mysqli_query($connection_server, "SELECT AVG(duration_ms) as avg_lat, COUNT(*) as total_calls FROM sas_ai_transactions WHERE status='success' AND created_at >= DATE_SUB(NOW(), INTERVAL 24 HOUR)");
+$health_q = mysqli_query($connection_server, "SELECT AVG(duration_ms) as avg_lat, COUNT(*) as total_calls FROM sas_ai_transactions WHERE status='success' AND created_at >= DATE_SUB(NOW(), INTERVAL 7 DAY)");
 $health = ($health_q) ? mysqli_fetch_assoc($health_q) : ['avg_lat' => 0, 'total_calls' => 0];
 $avg_latency = ($health && $health['avg_lat'] > 0) ? round($health['avg_lat']) : 450;
 
-$blocked_q = mysqli_query($connection_server, "SELECT COUNT(*) as blocked FROM sas_ai_transactions WHERE status='blocked' AND created_at >= DATE_SUB(NOW(), INTERVAL 24 HOUR)");
+$blocked_q = mysqli_query($connection_server, "SELECT COUNT(*) as blocked FROM sas_ai_transactions WHERE status='blocked' AND created_at >= DATE_SUB(NOW(), INTERVAL 7 DAY)");
 $blocked_count = ($blocked_q && $row_b = mysqli_fetch_assoc($blocked_q)) ? $row_b['blocked'] : 0;
 ?>
 <!DOCTYPE html>
@@ -354,10 +354,10 @@ $blocked_count = ($blocked_q && $row_b = mysqli_fetch_assoc($blocked_q)) ? $row_
                                 <?php if ($top_consumers_q && mysqli_num_rows($top_consumers_q) > 0): while($tc = mysqli_fetch_assoc($top_consumers_q)): ?>
                                 <div class="mb-2 p-2 bg-light rounded-3">
                                     <div class="d-flex justify-content-between align-items-center">
-                                        <span class="small fw-bold"><?php echo htmlspecialchars($tc['company_name']); ?></span>
+                                        <span class="small fw-bold"><?php echo htmlspecialchars($tc['name'] ?: 'Unknown Actor'); ?></span>
                                         <span class="badge bg-dark rounded-pill"><?php echo number_format($tc['total']); ?> tkns</span>
                                     </div>
-                                    <div class="x-small text-muted opacity-75 mt-1"><?php echo htmlspecialchars($tc['website_url']); ?></div>
+                                    <div class="x-small text-muted opacity-75 mt-1"><?php echo htmlspecialchars($tc['website_url'] ?: 'internal-request'); ?></div>
                                 </div>
                                 <?php endwhile; else: ?>
                                 <p class="small text-muted italic">No usage data yet.</p>
@@ -383,8 +383,8 @@ $blocked_count = ($blocked_q && $row_b = mysqli_fetch_assoc($blocked_q)) ? $row_
                             <div class="log-item d-flex justify-content-between">
                                 <span>
                                     <i class="bi bi-lightning-fill text-warning me-1"></i> 
-                                    <strong><?php echo htmlspecialchars($log['company_name']); ?></strong> 
-                                    <span class="small opacity-50">(<?php echo htmlspecialchars($log['website_url']); ?>)</span>: 
+                                    <strong><?php echo htmlspecialchars($log['vendor_name']); ?></strong> 
+                                    <span class="small opacity-50">(<?php echo htmlspecialchars($log['website_url'] ?: $log['username']); ?>)</span>: 
                                     <?php echo ucfirst($log['action_type']); ?>
                                 </span>
                                 <span class="text-muted"><?php echo number_format($log['tokens_burned']); ?> tokens · <?php echo date('H:i', strtotime($log['created_at'])); ?></span>

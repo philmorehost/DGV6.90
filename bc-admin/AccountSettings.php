@@ -965,11 +965,20 @@ if (isset($_POST["update-site-details"])) {
     header("Location: " . $_SERVER["REQUEST_URI"]);
 }
 
-$get_admin_payment_details = mysqli_fetch_array(mysqli_query($connection_server, "SELECT * FROM sas_admin_payments WHERE vendor_id='" . $get_logged_admin_details["id"] . "' LIMIT 1"));
-$get_admin_payment_order_details = mysqli_fetch_array(mysqli_query($connection_server, "SELECT * FROM sas_admin_payment_orders WHERE vendor_id='" . $get_logged_admin_details["id"] . "' LIMIT 1"));
-$get_user_daily_purchase_limit_details = mysqli_fetch_array(mysqli_query($connection_server, "SELECT * FROM sas_daily_purchase_limit WHERE vendor_id='" . $get_logged_admin_details["id"] . "' LIMIT 1"));
-$get_user_minimum_funding_details = mysqli_fetch_array(mysqli_query($connection_server, "SELECT * FROM sas_user_minimum_funding WHERE vendor_id='" . $get_logged_admin_details["id"] . "' LIMIT 1"));
-$get_site_details = mysqli_fetch_array(mysqli_query($connection_server, "SELECT * FROM sas_site_details WHERE vendor_id='" . $get_logged_admin_details["id"] . "' LIMIT 1"));
+$q_admin_payment = mysqli_query($connection_server, "SELECT * FROM sas_admin_payments WHERE vendor_id='" . $get_logged_admin_details["id"] . "' LIMIT 1");
+$get_admin_payment_details = ($q_admin_payment && mysqli_num_rows($q_admin_payment) > 0) ? mysqli_fetch_array($q_admin_payment) : ['account_name' => '', 'bank_name' => '', 'account_number' => '', 'phone_number' => '', 'amount_charged' => 0];
+
+$q_payment_order = mysqli_query($connection_server, "SELECT * FROM sas_admin_payment_orders WHERE vendor_id='" . $get_logged_admin_details["id"] . "' LIMIT 1");
+$get_admin_payment_order_details = ($q_payment_order && mysqli_num_rows($q_payment_order) > 0) ? mysqli_fetch_array($q_payment_order) : ['min_amount' => 100, 'max_amount' => 10000];
+
+$q_purchase_limit = mysqli_query($connection_server, "SELECT * FROM sas_daily_purchase_limit WHERE vendor_id='" . $get_logged_admin_details["id"] . "' LIMIT 1");
+$get_user_daily_purchase_limit_details = ($q_purchase_limit && mysqli_num_rows($q_purchase_limit) > 0) ? mysqli_fetch_array($q_purchase_limit) : ['limit_phone' => 5, 'limit_cable' => 5, 'limit_betting' => 5, 'limit_electric' => 5];
+
+$q_min_funding = mysqli_query($connection_server, "SELECT * FROM sas_user_minimum_funding WHERE vendor_id='" . $get_logged_admin_details["id"] . "' LIMIT 1");
+$get_user_minimum_funding_details = ($q_min_funding && mysqli_num_rows($q_min_funding) > 0) ? mysqli_fetch_array($q_min_funding) : ['min_amount' => 0];
+
+$q_site_details = mysqli_query($connection_server, "SELECT * FROM sas_site_details WHERE vendor_id='" . $get_logged_admin_details["id"] . "' LIMIT 1");
+$get_site_details = ($q_site_details && mysqli_num_rows($q_site_details) > 0) ? mysqli_fetch_array($q_site_details) : ['site_title' => '', 'site_desc' => '', 'apk_download_url' => ''];
 
 
 ?>
