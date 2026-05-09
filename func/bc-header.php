@@ -627,6 +627,7 @@ if (mysqli_num_rows($select_user_vendor_status_message) == 1) {
 </aside><!-- End Sidebar-->
 
 <main id="main" class="main">
+<?php
 // DGV6.90 AI Edition: Inject AI assistant widget (deferred)
 $is_ai_suite_page = (basename($_SERVER["PHP_SELF"]) == 'AISuite.php');
 $_ai_user_enabled = (isset($get_logged_user_details['ai_status']) && (int)$get_logged_user_details['ai_status'] === 1) || $is_ai_suite_page;
