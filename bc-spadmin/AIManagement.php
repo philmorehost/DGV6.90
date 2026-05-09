@@ -36,10 +36,25 @@ if (isset($_POST["toggle-global-ai"])) {
 // ── Handle: Restart Ollama ────────────────────────────────
 if (isset($_POST["restart-ollama"])) {
     $log = sys_get_temp_dir() . '/ollama_startup.log';
+    
+    // Try to find ollama in common paths if 'ollama' fails
+    $cmd_prefix = "";
+    if (PHP_OS_FAMILY !== 'Windows') {
+        $paths = ["/usr/local/bin/ollama", "/usr/bin/ollama", "/bin/ollama"];
+        foreach ($paths as $p) {
+            if (file_exists($p)) {
+                $cmd_prefix = $p;
+                break;
+            }
+        }
+    }
+    
+    $exe = !empty($cmd_prefix) ? $cmd_prefix : "ollama";
+    
     if (PHP_OS_FAMILY === 'Windows') {
-        pclose(popen("start /B ollama serve > " . escapeshellarg($log) . " 2>&1", "r"));
+        pclose(popen("start /B $exe serve > " . escapeshellarg($log) . " 2>&1", "r"));
     } else {
-        shell_exec("nohup ollama serve > " . escapeshellarg($log) . " 2>&1 &");
+        shell_exec("nohup $exe serve > " . escapeshellarg($log) . " 2>&1 &");
     }
     $_SESSION["response"] = "⚡ Attempting to restart Ollama service. Please wait 10-20 seconds and refresh.";
     header("Location: AIManagement.php"); exit();
@@ -48,19 +63,39 @@ if (isset($_POST["restart-ollama"])) {
 // ── Handle: Test Connection ───────────────────────────────
 if (isset($_POST["test-connection"])) {
     $ai = ai_engine();
-    $ch = curl_init(rtrim($ai->base_url, '/') . '/api/tags');
+    $provider = $ai->getProvider();
+    $url = $ai->getBaseUrl();
+    
+    // For cloud providers, we need to add a ping endpoint
+    if ($provider === 'gemini') {
+        $url .= "/models/gemini-1.5-flash?key=" . $ai->getApiKey();
+    } elseif ($provider === 'ollama') {
+        $url = rtrim($url, '/') . '/tags';
+    } else {
+        // DeepSeek/Groq use /models for a fast ping
+        $url = rtrim($url, '/') . '/models';
+    }
+
+    $ch = curl_init($url);
     curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-    curl_setopt($ch, CURLOPT_TIMEOUT, 5);
+    curl_setopt($ch, CURLOPT_TIMEOUT, 10);
     curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
+    
+    if (in_array($provider, ['deepseek', 'groq'])) {
+        curl_setopt($ch, CURLOPT_HTTPHEADER, ["Authorization: Bearer " . $ai->getApiKey()]);
+    }
+
     $res = curl_exec($ch);
     $err = curl_error($ch);
     $info = curl_getinfo($ch);
     curl_close($ch);
 
-    if ($res !== false) {
-        $_SESSION["response"] = "✅ Connection Successful! Ollama is reachable.";
+    if ($res !== false && $info['http_code'] < 400) {
+        $_SESSION["response"] = "✅ Connection Successful! " . ucfirst($provider) . " is reachable.";
     } else {
-        $_SESSION["response"] = "❌ Connection Failed: $err (HTTP Code: {$info['http_code']}). Check if the host and port are correct.";
+        $msg = $err ?: "HTTP Error " . $info['http_code'];
+        if ($info['http_code'] == 401 || $info['http_code'] == 403) $msg .= " (Invalid API Key)";
+        $_SESSION["response"] = "❌ Connection Failed for " . ucfirst($provider) . ": $msg";
     }
     header("Location: AIManagement.php"); exit();
 }

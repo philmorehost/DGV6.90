@@ -55,6 +55,10 @@ class AIEngine
         }
     }
 
+    public function getBaseUrl(): string { return $this->base_url; }
+    public function getApiKey(): string { return $this->api_key; }
+    public function getProvider(): string { return $this->provider; }
+
     /**
      * Unified Chat/Generation Entry Point
      */
