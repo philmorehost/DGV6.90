@@ -13,10 +13,10 @@ define('BC_PHP_COMPAT_LOADED', true);
 $_bc_app_env = strtolower((string)(getenv('APP_ENV') ?: 'production'));
 $_bc_is_dev  = ($_bc_app_env === 'development' || $_bc_app_env === 'dev');
 
-// ── Error display: Force ON for debugging ─────────────────────────────────────
-error_reporting(E_ALL);
-ini_set('display_errors', '1');
-ini_set('display_startup_errors', '1');
+// ── Error display: Production Mode (Hide from users, log to file) ─────────────
+error_reporting(E_ALL & ~E_NOTICE & ~E_WARNING & ~E_DEPRECATED & ~E_STRICT);
+ini_set('display_errors', $_bc_is_dev ? '1' : '0');
+ini_set('display_startup_errors', $_bc_is_dev ? '1' : '0');
 
 // ── Log errors to file ────────────────────────────────────────────────────────
 $_bc_log_dir = dirname(__DIR__) . '/logs';
