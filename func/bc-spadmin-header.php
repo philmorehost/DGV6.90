@@ -396,9 +396,16 @@ function hex2rgb($hex) {
       </li>
 
       <li class="nav-item">
+        <?php 
+          $q_ai_req = mysqli_query($connection_server, "SELECT COUNT(*) as count FROM sas_vendors WHERE ai_request_status='pending'");
+          $ai_req_count = ($q_ai_req && $r = mysqli_fetch_assoc($q_ai_req)) ? $r['count'] : 0;
+        ?>
         <a class="nav-link <?php echo ($current_page == 'AIManagement.php') ? 'active_item' : 'collapsed'; ?>" href="<?php echo $web_http_host; ?>/bc-spadmin/AIManagement.php">
           <i class="bi bi-cpu-fill"></i>
           <span>AI Manager</span> 
+          <?php if($ai_req_count > 0): ?>
+          <span class="badge bg-danger rounded-pill ms-auto me-2"><?php echo $ai_req_count; ?></span>
+          <?php endif; ?>
         </a>
       </li>
 

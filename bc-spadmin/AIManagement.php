@@ -221,7 +221,52 @@ $wa_online = isWhatsAppGatewayOnline();
         </div>
     </div>
 </div>
+
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+<!-- AI Activation Requests (PRIORITY) -->
+<?php 
+$q_pcount = mysqli_query($connection_server, "SELECT COUNT(*) as count FROM sas_vendors WHERE ai_request_status='pending'");
+$pending_count = ($q_pcount && $r = mysqli_fetch_assoc($q_pcount)) ? $r['count'] : 0;
+?>
+<div class="row g-4 mb-4">
+    <div class="col-12">
+        <div class="card border-0 rounded-4 shadow-sm overflow-hidden <?php echo ($pending_count > 0) ? 'border-start border-4 border-warning' : ''; ?>">
+            <div class="card-header bg-white border-0 py-3 d-flex justify-content-between align-items-center">
+                <h5 class="fw-bold mb-0"><i class="bi bi-person-check me-2 text-success"></i>Pending Activation Requests</h5>
+                <?php if($pending_count > 0): ?>
+                <span class="badge bg-danger rounded-pill"><?php echo $pending_count; ?> New Requests</span>
+                <?php endif; ?>
+            </div>
+            <div class="card-body p-0">
+                <div class="table-responsive">
+                    <table class="table table-hover align-middle mb-0">
+                        <thead class="table-light"><tr class="small text-uppercase text-muted"><th>Vendor</th><th>Request Date</th><th>Package</th><th class="text-end pe-4">Action</th></tr></thead>
+                        <tbody>
+                            <?php 
+                            $req_q = mysqli_query($connection_server, "SELECT id, company_name, email, reg_date FROM sas_vendors WHERE ai_request_status='pending' ORDER BY id DESC");
+                            if ($req_q && mysqli_num_rows($req_q) > 0):
+                                while($req = mysqli_fetch_assoc($req_q)): ?>
+                                <tr>
+                                    <td class="ps-4"><div class="fw-bold"><?php echo htmlspecialchars($req['company_name']); ?></div><div class="small text-muted"><?php echo $req['email']; ?></div></td>
+                                    <td class="small"><?php echo date('M j, Y', strtotime($req['reg_date'])); ?></td>
+                                    <td><span class="badge bg-info bg-opacity-10 text-info rounded-pill">Requested</span></td>
+                                    <td class="text-end pe-4">
+                                        <a href="AIManagement.php?approve-vendor=<?php echo $req['id']; ?>" class="btn btn-success btn-sm rounded-pill px-3" onclick="return confirm('Approve AI access?')">Approve</a>
+                                        <a href="AIManagement.php?reject-vendor=<?php echo $req['id']; ?>" class="btn btn-danger btn-sm rounded-pill px-3" onclick="return confirm('Reject this request?')">Reject</a>
+                                    </td>
+                                </tr>
+                            <?php endwhile; else: ?>
+                                <tr><td colspan="4" class="text-center py-5 text-muted">No pending activation requests. All vendors up to date.</td></tr>
+                            <?php endif; ?>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
 <div class="row g-4 mb-4">
     <div class="col-12">
         <div class="card border-0 rounded-4 shadow-sm overflow-hidden">
@@ -280,49 +325,6 @@ document.addEventListener('DOMContentLoaded', function() {
     });
 });
 </script>
-</script>
-
-<!-- AI Activation Requests -->
-<div class="row g-4 mb-4">
-    <div class="col-12">
-        <div class="card border-0 rounded-4 shadow-sm overflow-hidden">
-            <div class="card-header bg-white border-0 py-3 d-flex justify-content-between align-items-center">
-                <h5 class="fw-bold mb-0"><i class="bi bi-person-check me-2 text-success"></i>Pending Activation Requests</h5>
-                <?php 
-                $q_pcount = mysqli_query($connection_server, "SELECT COUNT(*) as count FROM sas_vendors WHERE ai_request_status='pending'");
-                $pending_count = ($q_pcount && $r = mysqli_fetch_assoc($q_pcount)) ? $r['count'] : 0;
-                if($pending_count > 0): ?>
-                <span class="badge bg-danger rounded-pill"><?php echo $pending_count; ?> New</span>
-                <?php endif; ?>
-            </div>
-            <div class="card-body p-0">
-                <div class="table-responsive">
-                    <table class="table table-hover align-middle mb-0">
-                        <thead class="table-light"><tr class="small text-uppercase text-muted"><th>Vendor</th><th>Request Date</th><th>Package</th><th class="text-end pe-4">Action</th></tr></thead>
-                        <tbody>
-                            <?php 
-                            $req_q = mysqli_query($connection_server, "SELECT id, company_name, email, reg_date FROM sas_vendors WHERE ai_request_status='pending' ORDER BY id DESC");
-                            if ($req_q && mysqli_num_rows($req_q) > 0):
-                                while($req = mysqli_fetch_assoc($req_q)): ?>
-                                <tr>
-                                    <td class="ps-4"><div class="fw-bold"><?php echo htmlspecialchars($req['company_name']); ?></div><div class="small text-muted"><?php echo $req['email']; ?></div></td>
-                                    <td class="small"><?php echo date('M j, Y', strtotime($req['reg_date'])); ?></td>
-                                    <td><span class="badge bg-info bg-opacity-10 text-info rounded-pill">Requested</span></td>
-                                    <td class="text-end pe-4">
-                                        <a href="AIManagement.php?approve-vendor=<?php echo $req['id']; ?>" class="btn btn-success btn-sm rounded-pill px-3" onclick="return confirm('Approve AI access?')">Approve</a>
-                                        <a href="AIManagement.php?reject-vendor=<?php echo $req['id']; ?>" class="btn btn-danger btn-sm rounded-pill px-3" onclick="return confirm('Reject this request?')">Reject</a>
-                                    </td>
-                                </tr>
-                            <?php endwhile; else: ?>
-                                <tr><td colspan="4" class="text-center py-5 text-muted">No pending activation requests.</td></tr>
-                            <?php endif; ?>
-                        </tbody>
-                    </table>
-                </div>
-            </div>
-        </div>
-    </div>
-</div>
 
 <div class="row g-4">
     <!-- System Status -->
