@@ -1733,6 +1733,7 @@ $ai_global_options = [
     'ai_whatsapp_number'        => '',
     'ai_voice_unlock_threshold' => '100',
     'ai_ollama_host'            => 'http://127.0.0.1:11434',
+    'ai_api_key'                => '',       // For remote providers if used
     'ai_token_purchase_price_1k'=> '100.00', // How much super admin charges vendor per 1k tokens
     'ai_default_token_bonus'    => '1000',   // Bonus tokens on first approval
 ];

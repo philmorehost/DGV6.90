@@ -65,9 +65,31 @@ if (isset($_POST["update-ai-pricing"])) {
     header("Location: AIManagement.php"); exit();
 }
 
+// ── Handle: Update AI Connection ──────────────────────────
+if (isset($_POST["update-ai-connection"])) {
+    $host = bc_sanitize($_POST["ai_host"] ?? 'http://127.0.0.1:11434');
+    $key  = bc_sanitize($_POST["ai_api_key"] ?? '');
+    
+    $opts = [
+        'ai_ollama_host' => $host,
+        'ai_api_key'     => $key,
+    ];
+    foreach ($opts as $k => $v) {
+        $esc_k = mysqli_real_escape_string($connection_server, $k);
+        $esc_v = mysqli_real_escape_string($connection_server, $v);
+        mysqli_query($connection_server,
+            "INSERT INTO sas_super_admin_options (option_name, option_value) VALUES ('$esc_k','$esc_v')
+             ON DUPLICATE KEY UPDATE option_value='$esc_v'"
+        );
+    }
+    $_SESSION["response"] = "✅ AI connection settings updated.";
+    header("Location: AIManagement.php"); exit();
+}
+
 // ── Load current data ──────────────────────────────────────
 $ai_global  = getSuperAdminOption('ai_global_enabled', '0');
 $ai_host    = getSuperAdminOption('ai_ollama_host', 'http://127.0.0.1:11434');
+$ai_key     = getSuperAdminOption('ai_api_key', '');
 $price_1k   = (float)getSuperAdminOption('ai_price_per_request', '5'); // token cost
 $ai         = ai_engine();
 $ollama_up  = $ai->isOllamaOnline();
@@ -293,6 +315,21 @@ document.addEventListener('DOMContentLoaded', function() {
                         <i class="bi bi-<?php echo $ai_global ? 'pause-fill' : 'play-fill'; ?> me-1"></i>
                         <?php echo $ai_global ? 'Disable Global AI' : 'Enable Global AI'; ?>
                     </button>
+                </form>
+
+                <hr class="my-4">
+                
+                <h6 class="fw-bold small text-muted text-uppercase mb-3">AI Connection Settings</h6>
+                <form method="post">
+                    <div class="mb-3">
+                        <label class="form-label small fw-bold">Ollama / AI Host</label>
+                        <input type="text" name="ai_host" class="form-control rounded-3 small" value="<?php echo htmlspecialchars($ai_host); ?>">
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label small fw-bold">Global API Key</label>
+                        <input type="password" name="ai_api_key" class="form-control rounded-3 small" value="<?php echo htmlspecialchars($ai_key); ?>" placeholder="Leave blank if not needed">
+                    </div>
+                    <button type="submit" name="update-ai-connection" class="btn btn-dark btn-sm w-100 rounded-pill">Update Connection</button>
                 </form>
             </div>
         </div>
