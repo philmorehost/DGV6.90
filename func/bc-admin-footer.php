@@ -42,16 +42,11 @@
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js" defer></script>
 
 <?php if(isset($_SESSION["product_purchase_response"])){ ?>
-
 <script>
-  Swal.fire ('Message!', '<?php echo $_SESSION["product_purchase_response"]; ?>', 'success') ;
-            //Swal.fire({ position:'top-end',type:'',title:'Oops', text: 'kindly fill all form', showConfirmButton:1,timer:2500 });
-          setTimeout(() => {
-                fetch('/func/unset-product-response.php')
-                    .then(response => response.text());
-            }, 1000); // 3 seconds
-
+  Swal.fire('Message!', '<?php echo addslashes($_SESSION["product_purchase_response"]); ?>', 'success');
 </script>
+<?php unset($_SESSION["product_purchase_response"]); ?>
+<?php } ?>
 
 
 	<!-- <div style="text-align: center; max-height: 40%;" id="customAlertDiv" class="bg-2 box-shadow m-z-index-2 s-z-index-2 m-scroll-auto s-scroll-auto m-block-dp s-block-dp m-position-fix s-position-fix m-top-20 s-top-30 br-radius-5px m-width-60 s-width-26 m-height-auto s-height-auto m-padding-lt-1 s-padding-lt-1 m-padding-rt-1 s-padding-rt-1 m-padding-tp-5 s-padding-tp-1 m-padding-bm-5 s-padding-bm-1 m-margin-lt-19 s-margin-lt-26 m-margin-bm-2 s-margin-bm-2">

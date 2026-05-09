@@ -5,7 +5,6 @@
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js" defer></script>
 
 <?php if (isset($_SESSION["product_purchase_response"])) { ?>
-
 <script>
   <?php
     $msg = $_SESSION["product_purchase_response"];
@@ -15,12 +14,9 @@
     }
   ?>
   Swal.fire ('<?php echo ($type == "error" ? "Alert!" : "Message!"); ?>', '<?php echo addslashes($msg); ?>', '<?php echo $type; ?>') ;
-          setTimeout(() => {
-                fetch('/func/unset-product-response.php')
-                    .then(response => response.text());
-            }, 1000);
-
 </script>
+<?php unset($_SESSION["product_purchase_response"]); ?>
+<?php } ?>
 
 
 	<!-- <div style="text-align: center; max-height: 40%;" id="customAlertDiv"
