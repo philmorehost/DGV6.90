@@ -13,7 +13,7 @@
         $output = fopen('php://output', 'w');
         fputcsv($output, array('S/N', 'Vendor', 'Fullname', 'Username ID', 'Level', 'Balance', 'Phone number', 'Address', 'Referral', 'API Status', 'APIKey', 'Security Answer', 'Reg Date'));
 
-        $sql = "SELECT u.*, v.site_url FROM sas_users u LEFT JOIN sas_vendors v ON u.vendor_id = v.id";
+        $sql = "SELECT u.*, v.website_url FROM sas_users u LEFT JOIN sas_vendors v ON u.vendor_id = v.id";
         $where = [];
         if($status != 'all') $where[] = "u.status='$status'";
         if($vid > 0) $where[] = "u.vendor_id='$vid'";
@@ -31,7 +31,7 @@
 
             fputcsv($output, array(
                 $sn++,
-                $row['site_url'] ?? 'N/A',
+                $row['website_url'] ?? 'N/A',
                 $fullname,
                 $row['username'],
                 accountLevel($row['account_level']),
@@ -206,10 +206,10 @@
                         <select id="user-vendor-filter" class="form-select" onchange="fetchUsers(1)">
                             <option value="0">All Vendors</option>
                             <?php
-                                $vs = mysqli_query($connection_server, "SELECT id, site_url FROM sas_vendors WHERE status=1 ORDER BY site_url ASC");
+                                $vs = mysqli_query($connection_server, "SELECT id, website_url FROM sas_vendors WHERE status=1 ORDER BY website_url ASC");
                                 while($vrow = mysqli_fetch_assoc($vs)){
                                     $selected = (isset($_GET["vid"]) && $_GET["vid"] == $vrow['id']) ? 'selected' : '';
-                                    echo '<option value="'.$vrow['id'].'" '.$selected.'>'.$vrow['site_url'].'</option>';
+                                    echo '<option value="'.$vrow['id'].'" '.$selected.'>'.$vrow['website_url'].'</option>';
                                 }
                             ?>
                         </select>
@@ -334,7 +334,7 @@
                     <td>
                         <div class="fw-bold text-dark">${u.fullname}</div>
                         <div class="small text-muted">@${u.username} | ${u.phone_number}</div>
-                        <div class="small text-primary"><i class="bi bi-globe me-1"></i>${u.site_url}</div>
+                        <div class="small text-primary"><i class="bi bi-globe me-1"></i>${u.website_url}</div>
                     </td>
                     <td>
                         <div class="fw-bold">₦${u.balance_formatted}</div>

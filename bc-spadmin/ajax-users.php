@@ -18,7 +18,7 @@ $vid = isset($_GET['vid']) ? (int)$_GET['vid'] : 0;
 
 $search_statement = "";
 if (!empty($search)) {
-    $search_statement = " AND (u.email LIKE '%$search%' OR u.phone_number LIKE '%$search%' OR u.username LIKE '%$search%' OR u.firstname LIKE '%$search%' OR u.lastname LIKE '%$search%' OR v.site_url LIKE '%$search%')";
+    $search_statement = " AND (u.email LIKE '%$search%' OR u.phone_number LIKE '%$search%' OR u.username LIKE '%$search%' OR u.firstname LIKE '%$search%' OR u.lastname LIKE '%$search%' OR v.website_url LIKE '%$search%')";
 }
 
 $status_statement = ($status !== 'all') ? " AND u.status='$status'" : "";
@@ -30,7 +30,7 @@ $total_records = mysqli_fetch_assoc($total_query)['count'] ?? 0;
 $total_pages = ceil($total_records / $limit);
 
 // Get users
-$sql = "SELECT u.*, v.site_url, v.id as vid, r.username as referral_username_raw
+$sql = "SELECT u.*, v.website_url, v.id as vid, r.username as referral_username_raw
         FROM sas_users u
         LEFT JOIN sas_vendors v ON u.vendor_id = v.id
         LEFT JOIN sas_users r ON u.referral_id = r.id
