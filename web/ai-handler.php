@@ -24,8 +24,9 @@ include_once(__DIR__ . "/../func/bc-config.php");
 header('Content-Type: application/json; charset=UTF-8');
 header('X-Content-Type-Options: nosniff');
 
-// ─── Only accept POST requests ────────────────────────────────
-if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+// ─── Modified method check: Allow GET only for 'apply' action ────────────────
+$action_type = $_REQUEST['action'] ?? 'chat'; 
+if ($_SERVER['REQUEST_METHOD'] !== 'POST' && $action_type !== 'apply') {
     http_response_code(405);
     echo json_encode(['status' => 'error', 'message' => 'Method not allowed']);
     exit;
@@ -35,7 +36,6 @@ if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
 $raw_input = file_get_contents('php://input');
 $json_input = json_decode($raw_input, true);
 $prompt_raw    = $json_input['prompt'] ?? $_POST['prompt'] ?? '';
-$action_type   = $json_input['action'] ?? $_POST['action'] ?? 'chat';
 $request_model = $json_input['model'] ?? $_POST['model'] ?? '';
 
 // ─── GATE 1: Authentication ──────────────────────────────────
@@ -100,13 +100,57 @@ if (!$actor) {
     exit;
 }
 
+// ─── Special Action: Apply/Activate AI ───────────────────────
+if ($action_type === 'apply' && !$is_admin_actor) {
+    $v_q = mysqli_query($connection_server, "SELECT ai_status, ai_voice_min_tx FROM sas_vendors WHERE id='$safe_vid' LIMIT 1");
+    $v_ai = mysqli_fetch_assoc($v_q);
+    
+    if (($v_ai['ai_status'] ?? 0) != 1) {
+        if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+            echo json_encode(['status' => 'error', 'message' => 'AI features are disabled by the platform admin.']); exit;
+        } else {
+            $_SESSION['product_purchase_response'] = "AI features are currently disabled by the admin.";
+            header("Location: Dashboard.php"); exit;
+        }
+    }
+
+    $threshold = (int)($v_ai['ai_voice_min_tx'] ?? 50);
+    $q_tx = mysqli_query($connection_server, "SELECT COUNT(*) as total FROM sas_transactions WHERE vendor_id='$safe_vid' AND username='$esc_name' AND status=1");
+    $tx_data = mysqli_fetch_assoc($q_tx);
+    $total_tx = (int)($tx_data['total'] ?? 0);
+
+    if ($total_tx < $threshold) {
+        $msg = "You need at least $threshold successful transactions to activate AI. Current: $total_tx";
+        if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+            echo json_encode(['status' => 'error', 'message' => $msg]); exit;
+        } else {
+            $_SESSION['product_purchase_response'] = $msg;
+            header("Location: Dashboard.php"); exit;
+        }
+    }
+
+    // Activate: Status=1 (Assistant), Voice=1 (Pending Review)
+    // Grant 500 starter tokens if they have 0
+    $tokens = (int)$actor['ai_token_balance'] > 0 ? (int)$actor['ai_token_balance'] : 500;
+    
+    mysqli_query($connection_server, "UPDATE sas_users SET ai_status=1, ai_voice_status=1, ai_token_balance='$tokens' WHERE id='{$actor['id']}'");
+    
+    $success_msg = "🎉 AI Assistant Activated! You now have access to Voice-to-VTU and Smart Chat. $tokens tokens granted.";
+    if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+        echo json_encode(['status' => 'success', 'message' => $success_msg]); exit;
+    } else {
+        $_SESSION['product_purchase_response'] = $success_msg;
+        header("Location: Dashboard.php"); exit;
+    }
+}
+
 // ─── GATE 3: AI Status Check ─────────────────────────────────
 if ((int)$actor['ai_status'] !== 1) {
     http_response_code(403);
     echo json_encode([
         'status'  => 'error',
         'code'    => 'AI_DISABLED',
-        'message' => 'AI features are not enabled. Visit AI Settings to get started.',
+        'message' => 'AI features are not enabled. Visit Account Settings to get started.',
     ]);
     exit;
 }

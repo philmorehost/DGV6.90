@@ -216,8 +216,9 @@ if (isset($_POST["apply-ai-voice"])) {
     $v_limit = $v_limit_row['ai_voice_min_tx'] ?? 50;
 
     if ($tx_count >= $v_limit) {
-        mysqli_query($connection_server, "UPDATE sas_users SET ai_voice_status=1 WHERE id='$uid'");
-        $_SESSION["product_purchase_response"] = "Application submitted successfully! Your account is pending review by the admin.";
+        // Activate AI Assistant immediately, set Voice to Pending (1)
+        mysqli_query($connection_server, "UPDATE sas_users SET ai_status=1, ai_voice_status=1 WHERE id='$uid'");
+        $_SESSION["product_purchase_response"] = "✅ AI Assistant enabled! Your Zero-Click Voice access is now pending admin review.";
     } else {
         $_SESSION["product_purchase_response"] = "You have not met the transaction requirement to apply.";
     }
