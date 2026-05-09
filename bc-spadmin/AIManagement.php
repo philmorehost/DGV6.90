@@ -279,12 +279,12 @@ document.addEventListener('DOMContentLoaded', function() {
             <div class="card-body p-4">
                 <?php if ($queue_q && mysqli_num_rows($queue_q) > 0):
                     while ($qrow = mysqli_fetch_assoc($queue_q)):
-                        $badge = match($qrow['status']) {
-                            'ready'       => 'success',
-                            'downloading' => 'primary',
-                            'failed'      => 'danger',
-                            default       => 'secondary'
-                        };
+                        $badge = 'secondary';
+                        switch ($qrow['status']) {
+                            case 'ready':       $badge = 'success'; break;
+                            case 'downloading': $badge = 'primary'; break;
+                            case 'failed':      $badge = 'danger'; break;
+                        }
                 ?>
                 <div class="d-flex justify-content-between align-items-center py-2 border-bottom">
                     <div>
@@ -321,7 +321,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 <div class="row g-3">
                 <?php foreach ($model_catalog as $mc):
                     $is_installed = in_array($mc['name'], $models) || in_array($mc['name'].':latest', $models);
-                    $tier_color = match($mc['tier']) { 'Premium' => 'warning', 'Standard' => 'primary', default => 'secondary' };
+                    $tier_color = ($mc['tier'] === 'Premium' ? 'warning' : ($mc['tier'] === 'Standard' ? 'primary' : 'secondary'));
                 ?>
                 <div class="col-md-4 col-lg-3">
                     <div class="model-card <?php echo $is_installed ? 'installed' : ''; ?>">

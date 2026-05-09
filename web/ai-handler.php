@@ -140,11 +140,17 @@ if ($safe_prompt === false) {
 $ai = ai_engine();
 
 // Action routing
-$ai_result = match($action_type) {
-    'marketing' => $ai->generateWithFallback($model_to_use, $safe_prompt, ['temperature' => 0.85]),
-    'analysis'  => $ai->generateWithFallback($model_to_use, $safe_prompt, ['temperature' => 0.3]),
-    default     => $ai->generateWithFallback($model_to_use, $safe_prompt),
-};
+switch ($action_type) {
+    case 'marketing':
+        $ai_result = $ai->generateWithFallback($model_to_use, $safe_prompt, ['temperature' => 0.85]);
+        break;
+    case 'analysis':
+        $ai_result = $ai->generateWithFallback($model_to_use, $safe_prompt, ['temperature' => 0.3]);
+        break;
+    default:
+        $ai_result = $ai->generateWithFallback($model_to_use, $safe_prompt);
+        break;
+}
 
 // ─── SUCCESS: Deduct tokens, log, respond ────────────────────
 if ($ai_result['status'] === 'success') {

@@ -18,16 +18,10 @@ define('BC_PHP_COMPAT_LOADED', true);
 $_bc_app_env = strtolower((string)(getenv('APP_ENV') ?: 'production'));
 $_bc_is_dev  = ($_bc_app_env === 'development' || $_bc_app_env === 'dev');
 
-// ── Error display: NEVER show errors to end users in production ────────────────
-if ($_bc_is_dev) {
-    error_reporting(E_ALL);
-    ini_set('display_errors', '1');
-    ini_set('display_startup_errors', '1');
-} else {
-    error_reporting(E_ALL & ~E_DEPRECATED & ~E_NOTICE);
-    ini_set('display_errors', '0');
-    ini_set('display_startup_errors', '0');
-}
+// ── Error display: Force ON for debugging ─────────────────────────────────────
+error_reporting(E_ALL);
+ini_set('display_errors', '1');
+ini_set('display_startup_errors', '1');
 
 // ── Log errors to file (always, regardless of environment) ────────────────────
 $_bc_log_dir = dirname(__DIR__) . '/logs';
@@ -44,13 +38,16 @@ set_error_handler(function (int $errno, string $errstr, string $errfile, int $er
     // Don't handle errors that are suppressed with @
     if (!(error_reporting() & $errno)) return false;
 
-    $level = match (true) {
-        (bool)($errno & (E_ERROR | E_PARSE | E_CORE_ERROR | E_COMPILE_ERROR)) => 'FATAL',
-        (bool)($errno & (E_WARNING | E_CORE_WARNING | E_COMPILE_WARNING))     => 'WARNING',
-        (bool)($errno & E_NOTICE)                                              => 'NOTICE',
-        (bool)($errno & E_DEPRECATED)                                          => 'DEPRECATED',
-        default                                                                 => 'INFO',
-    };
+    $level = 'INFO';
+    if ($errno & (E_ERROR | E_PARSE | E_CORE_ERROR | E_COMPILE_ERROR)) {
+        $level = 'FATAL';
+    } elseif ($errno & (E_WARNING | E_CORE_WARNING | E_COMPILE_WARNING)) {
+        $level = 'WARNING';
+    } elseif ($errno & E_NOTICE) {
+        $level = 'NOTICE';
+    } elseif ($errno & E_DEPRECATED) {
+        $level = 'DEPRECATED';
+    }
 
     $short_file = str_replace(dirname(__DIR__), '', $errfile);
     error_log("[DGV-$level] $errstr in $short_file:$errline");
