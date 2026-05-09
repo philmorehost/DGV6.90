@@ -102,7 +102,7 @@ if (!$actor) {
 
 // ─── Special Action: Apply/Activate AI ───────────────────────
 if ($action_type === 'apply' && !$is_admin_actor) {
-    $v_q = mysqli_query($connection_server, "SELECT ai_status, ai_voice_min_tx FROM sas_vendors WHERE id='$safe_vid' LIMIT 1");
+    $v_q = mysqli_query($connection_server, "SELECT ai_status, voice_tx_threshold FROM sas_vendors WHERE id='$safe_vid' LIMIT 1");
     $v_ai = mysqli_fetch_assoc($v_q);
     
     if (($v_ai['ai_status'] ?? 0) != 1) {
@@ -114,7 +114,7 @@ if ($action_type === 'apply' && !$is_admin_actor) {
         }
     }
 
-    $threshold = (int)($v_ai['ai_voice_min_tx'] ?? 50);
+    $threshold = (int)($v_ai['voice_tx_threshold'] ?? 50);
     $q_tx = mysqli_query($connection_server, "SELECT COUNT(*) as total FROM sas_transactions WHERE vendor_id='$safe_vid' AND username='$esc_name' AND status=1");
     $tx_data = mysqli_fetch_assoc($q_tx);
     $total_tx = (int)($tx_data['total'] ?? 0);

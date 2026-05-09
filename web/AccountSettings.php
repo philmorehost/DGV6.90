@@ -211,9 +211,9 @@ if (isset($_POST["apply-ai-voice"])) {
     $tx_count = ($tx_count_q && $row_c = mysqli_fetch_assoc($tx_count_q)) ? (int)$row_c['c'] : 0;
     
     // Get vendor limit
-    $v_limit_q = mysqli_query($connection_server, "SELECT ai_voice_min_tx FROM sas_vendors WHERE id='".$get_logged_user_details["vendor_id"]."'");
+    $v_limit_q = mysqli_query($connection_server, "SELECT voice_tx_threshold FROM sas_vendors WHERE id='".$get_logged_user_details["vendor_id"]."'");
     $v_limit_row = ($v_limit_q) ? mysqli_fetch_assoc($v_limit_q) : null;
-    $v_limit = $v_limit_row['ai_voice_min_tx'] ?? 50;
+    $v_limit = $v_limit_row['voice_tx_threshold'] ?? 50;
 
     if ($tx_count >= $v_limit) {
         // Activate AI Assistant immediately, set Voice to Pending (1)
@@ -276,10 +276,10 @@ if (isset($_POST["buy-user-ai-tokens"])) {
     $tx_count_q = mysqli_query($connection_server, "SELECT COUNT(*) as c FROM sas_transactions WHERE username='".$get_logged_user_details["username"]."' AND status=1");
     $tx_count = ($tx_count_q && $row_c = mysqli_fetch_assoc($tx_count_q)) ? (int)$row_c['c'] : 0;
     
-    $v_q = mysqli_query($connection_server, "SELECT ai_voice_min_tx, ai_user_token_price, ai_status FROM sas_vendors WHERE id='".$get_logged_user_details["vendor_id"]."'");
+    $v_q = mysqli_query($connection_server, "SELECT voice_tx_threshold, ai_user_token_price, ai_status FROM sas_vendors WHERE id='".$get_logged_user_details["vendor_id"]."'");
     $v_data = mysqli_fetch_assoc($v_q);
     
-    $v_limit = $v_data['ai_voice_min_tx'] ?? 50;
+    $v_limit = $v_data['voice_tx_threshold'] ?? 50;
     $v_limit = max(1, (int)$v_limit);
     $user_token_price = (float)($v_data['ai_user_token_price'] ?? 150.00);
     $ai_system_on = (int)($v_data['ai_status'] ?? 0);

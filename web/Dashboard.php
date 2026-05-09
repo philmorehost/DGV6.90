@@ -444,13 +444,13 @@ $is_kyc_compliant = ($get_logged_user_details['kyc_status'] == 2);
             <div class="col-lg-4">
                 <!-- AI ELIGIBILITY CARD (NEW) -->
                 <?php
-                $v_ai_q = mysqli_query($connection_server, "SELECT ai_status, ai_voice_min_tx FROM sas_vendors WHERE id='".$get_logged_user_details["vendor_id"]."'");
+                $v_ai_q = mysqli_query($connection_server, "SELECT ai_status, voice_tx_threshold FROM sas_vendors WHERE id='".$get_logged_user_details["vendor_id"]."'");
                 $v_ai = mysqli_fetch_assoc($v_ai_q);
                 
                 if (($v_ai['ai_status'] ?? 0) == 1):
                     $tx_count_q = mysqli_query($connection_server, "SELECT COUNT(*) as c FROM sas_transactions WHERE username='".$get_logged_user_details["username"]."' AND status=1");
                     $tx_count = ($tx_count_q && $row_c = mysqli_fetch_assoc($tx_count_q)) ? (int)$row_c['c'] : 0;
-                    $threshold = (int)($v_ai['ai_voice_min_tx'] ?? 50);
+                    $threshold = (int)($v_ai['voice_tx_threshold'] ?? 50);
                     $v_status = (int)$get_logged_user_details['ai_voice_status'];
 
                     if ($v_status == 1): ?>
