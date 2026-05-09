@@ -17,51 +17,135 @@ class AIEngine
 {
     // ─── Configuration ────────────────────────────────────────
     private string $base_url;
-    private int    $timeout_generate = 60;   // Seconds for generation calls
-    private int    $timeout_list     = 10;   // Seconds for list/ping calls
-    private bool   $debug            = false; // Set to true only for dev
-
-    // Default model fallback chain (fastest → most capable)
-    private array $model_chain = ['phi4-mini', 'gemma4:e2b', 'gemma4:26b', 'llama4-scout'];
+    private string $api_key          = '';
+    private string $provider         = 'ollama'; // 'ollama', 'gemini', 'deepseek', 'groq'
+    private int    $timeout_generate = 60;   
+    private int    $timeout_list     = 10;   
+    private bool   $debug            = false; 
 
     public function __construct(string $override_host = '')
     {
         global $connection_server;
 
-        // Read host from DB if not overridden
-        if (!empty($override_host)) {
-            $this->base_url = rtrim($override_host, '/') . '/api';
-        } else {
-            $host = 'http://127.0.0.1:11434'; // Safe default
-            if ($connection_server) {
-                $q = mysqli_query($connection_server,
-                    "SELECT option_value FROM sas_super_admin_options WHERE option_name='ai_ollama_host' LIMIT 1"
-                );
-                if ($q && $row = mysqli_fetch_assoc($q)) {
-                    $candidate = trim($row['option_value']);
-                    // Safety: only allow localhost URLs, never a public IP
-                    if (preg_match('/^http:\/\/(127\.0\.0\.1|localhost)(:\d+)?$/', $candidate)) {
-                        $host = $candidate;
-                    }
-                }
-            }
-            $this->base_url = $host . '/api';
+        // Load Global Configuration
+        $this->provider = getSuperAdminOption('ai_provider', 'ollama');
+        $this->api_key  = getSuperAdminOption('ai_api_key', '');
+        $host           = getSuperAdminOption('ai_ollama_host', 'http://127.0.0.1:11434');
+
+        if (!empty($override_host)) $host = $override_host;
+
+        switch ($this->provider) {
+            case 'gemini':
+                $this->base_url = 'https://generativelanguage.googleapis.com/v1beta';
+                break;
+            case 'deepseek':
+                $this->base_url = 'https://api.deepseek.com/v1';
+                break;
+            case 'groq':
+                $this->base_url = 'https://api.groq.com/openai/v1';
+                break;
+            default: // ollama
+                $this->base_url = rtrim($host, '/') . '/api';
+                break;
         }
     }
 
-    // ─────────────────────────────────────────────────────────
-    // 1. CORE GENERATION
-    // ─────────────────────────────────────────────────────────
+    /**
+     * Unified Chat/Generation Entry Point
+     */
+    public function chat(string $model, string $prompt, array $options = []): array
+    {
+        switch ($this->provider) {
+            case 'gemini':   return $this->chatGemini($model, $prompt, $options);
+            case 'deepseek': return $this->chatOpenAICompatible($this->base_url, $model, $prompt, $options);
+            case 'groq':     return $this->chatOpenAICompatible($this->base_url, $model, $prompt, $options);
+            default:         return $this->generate($model, $prompt, false, $options);
+        }
+    }
 
     /**
-     * Send a prompt to an Ollama model and return the response.
-     *
-     * @param string $model   Ollama model name (e.g. 'phi4-mini', 'gemma4:e2b')
-     * @param string $prompt  Sanitized prompt text (must pass bc_firewall_prompt() first)
-     * @param bool   $stream  If true, stream output (for SSE endpoints). Default: false.
-     * @param array  $options Ollama generation options (temperature, top_p, etc.)
-     *
-     * @return array ['status' => 'success'|'error', 'response' => string, 'model' => string, 'duration_ms' => int]
+     * Google Gemini API Handler
+     */
+    private function chatGemini(string $model, string $prompt, array $options): array
+    {
+        // Default to gemini-1.5-flash if not specified or unknown
+        if (strpos($model, 'gemini') === false) $model = 'gemini-1.5-flash';
+        
+        $url = "{$this->base_url}/models/{$model}:generateContent?key={$this->api_key}";
+        $payload = json_encode([
+            'contents' => [['parts' => [['text' => $prompt]]]],
+            'generationConfig' => [
+                'temperature' => $options['temperature'] ?? 0.7,
+                'maxOutputTokens' => $options['num_predict'] ?? 1024,
+            ]
+        ]);
+
+        $start = microtime(true);
+        $raw = $this->curlPost($url, $payload, $this->timeout_generate);
+        $duration_ms = (int)((microtime(true) - $start) * 1000);
+
+        if ($raw === false) return $this->errorResult('Gemini API unreachable', $model, $duration_ms);
+        
+        $data = json_decode($raw, true);
+        $text = $data['candidates'][0]['content']['parts'][0]['text'] ?? '';
+
+        if (empty($text)) {
+            $err = $data['error']['message'] ?? 'Unknown Gemini Error';
+            return $this->errorResult($err, $model, $duration_ms);
+        }
+
+        return [
+            'status' => 'success',
+            'response' => $text,
+            'model' => $model,
+            'duration_ms' => $duration_ms,
+            'provider' => 'gemini'
+        ];
+    }
+
+    /**
+     * OpenAI Compatible API Handler (DeepSeek, Groq, etc.)
+     */
+    private function chatOpenAICompatible(string $endpoint, string $model, string $prompt, array $options): array
+    {
+        $url = "{$endpoint}/chat/completions";
+        $payload = json_encode([
+            'model' => $model,
+            'messages' => [['role' => 'user', 'content' => $prompt]],
+            'temperature' => $options['temperature'] ?? 0.7,
+            'max_tokens' => $options['num_predict'] ?? 1024,
+        ]);
+
+        $headers = [
+            'Content-Type: application/json',
+            "Authorization: Bearer {$this->api_key}"
+        ];
+
+        $start = microtime(true);
+        $raw = $this->curlPost($url, $payload, $this->timeout_generate, $headers);
+        $duration_ms = (int)((microtime(true) - $start) * 1000);
+
+        if ($raw === false) return $this->errorResult("{$this->provider} API unreachable", $model, $duration_ms);
+        
+        $data = json_decode($raw, true);
+        $text = $data['choices'][0]['message']['content'] ?? '';
+
+        if (empty($text)) {
+            $err = $data['error']['message'] ?? 'Unknown API Error';
+            return $this->errorResult($err, $model, $duration_ms);
+        }
+
+        return [
+            'status' => 'success',
+            'response' => $text,
+            'model' => $model,
+            'duration_ms' => $duration_ms,
+            'provider' => $this->provider
+        ];
+    }
+
+    /**
+     * Original Ollama Generation Handler
      */
     public function generate(string $model, string $prompt, bool $stream = false, array $options = []): array
     {
@@ -402,18 +486,53 @@ PROMPT;
     // 4. PRIVATE HELPERS
     // ─────────────────────────────────────────────────────────
 
-    private function curlPost(string $url, string $body, int $timeout = 30): string|false
+    /**
+     * Check if the currently selected AI provider is reachable and active.
+     */
+    public function isAiOnline(): bool
+    {
+        switch ($this->provider) {
+            case 'gemini':
+                $url = "{$this->base_url}/models/gemini-1.5-flash?key={$this->api_key}";
+                $res = $this->curlGet($url);
+                return ($res !== false && strpos($res, 'gemini-1.5-flash') !== false);
+            
+            case 'deepseek':
+                $url = "{$this->base_url}/models";
+                $headers = ["Authorization: Bearer {$this->api_key}"];
+                $res = $this->curlGet($url, 10, $headers);
+                return ($res !== false && strpos($res, 'deepseek') !== false);
+
+            case 'groq':
+                $url = "{$this->base_url}/models";
+                $headers = ["Authorization: Bearer {$this->api_key}"];
+                $res = $this->curlGet($url, 10, $headers);
+                return ($res !== false && strpos($res, 'groq') !== false);
+
+            default: // ollama
+                $res = $this->curlGet(str_replace('/api', '', $this->base_url));
+                return ($res !== false && strpos($res, 'Ollama is running') !== false);
+        }
+    }
+
+    /**
+     * Compatibility alias for legacy calls
+     */
+    public function isOllamaOnline(): bool { return $this->isAiOnline(); }
+
+    private function curlPost(string $url, string $body, int $timeout = 30, array $headers = []): string|false
     {
         $ch = curl_init($url);
+        $final_headers = array_merge(['Content-Type: application/json'], $headers);
+
         curl_setopt_array($ch, [
             CURLOPT_POST           => true,
             CURLOPT_POSTFIELDS     => $body,
             CURLOPT_RETURNTRANSFER => true,
             CURLOPT_TIMEOUT        => $timeout,
             CURLOPT_CONNECTTIMEOUT => 5,
-            CURLOPT_HTTPHEADER     => ['Content-Type: application/json'],
-            // Force localhost-only — never follow redirects to external URLs
-            CURLOPT_FOLLOWLOCATION => false,
+            CURLOPT_HTTPHEADER     => $final_headers,
+            CURLOPT_FOLLOWLOCATION => true,
         ]);
         $result = curl_exec($ch);
         $error  = curl_error($ch);
@@ -423,14 +542,15 @@ PROMPT;
         return ($result === false) ? false : $result;
     }
 
-    private function curlGet(string $url, int $timeout = 10): string|false
+    private function curlGet(string $url, int $timeout = 10, array $headers = []): string|false
     {
         $ch = curl_init($url);
         curl_setopt_array($ch, [
             CURLOPT_RETURNTRANSFER => true,
             CURLOPT_TIMEOUT        => $timeout,
             CURLOPT_CONNECTTIMEOUT => 3,
-            CURLOPT_FOLLOWLOCATION => false,
+            CURLOPT_HTTPHEADER     => $headers,
+            CURLOPT_FOLLOWLOCATION => true,
         ]);
         $result = curl_exec($ch);
         curl_close($ch);

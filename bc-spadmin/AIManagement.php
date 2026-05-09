@@ -67,10 +67,12 @@ if (isset($_POST["update-ai-pricing"])) {
 
 // ── Handle: Update AI Connection ──────────────────────────
 if (isset($_POST["update-ai-connection"])) {
-    $host = bc_sanitize($_POST["ai_host"] ?? 'http://127.0.0.1:11434');
-    $key  = bc_sanitize($_POST["ai_api_key"] ?? '');
+    $provider = bc_sanitize($_POST["ai_provider"] ?? 'ollama');
+    $host     = bc_sanitize($_POST["ai_host"] ?? 'http://127.0.0.1:11434');
+    $key      = bc_sanitize($_POST["ai_api_key"] ?? '');
     
     $opts = [
+        'ai_provider'    => $provider,
         'ai_ollama_host' => $host,
         'ai_api_key'     => $key,
     ];
@@ -88,11 +90,12 @@ if (isset($_POST["update-ai-connection"])) {
 
 // ── Load current data ──────────────────────────────────────
 $ai_global  = getSuperAdminOption('ai_global_enabled', '0');
+$ai_provider= getSuperAdminOption('ai_provider', 'ollama');
 $ai_host    = getSuperAdminOption('ai_ollama_host', 'http://127.0.0.1:11434');
 $ai_key     = getSuperAdminOption('ai_api_key', '');
 $price_1k   = (float)getSuperAdminOption('ai_price_per_request', '5'); // token cost
 $ai         = ai_engine();
-$ollama_up  = $ai->isOllamaOnline();
+$ai_up      = $ai->isAiOnline();
 $models     = $ai->listModels();
 $queue_q    = mysqli_query($connection_server, "SELECT * FROM sas_ai_install_queue ORDER BY started_at DESC LIMIT 10");
 
@@ -291,9 +294,9 @@ document.addEventListener('DOMContentLoaded', function() {
             <div class="card-header bg-white border-0 py-3"><h5 class="fw-bold mb-0"><i class="bi bi-activity me-2 text-primary"></i>System Status</h5></div>
             <div class="card-body p-4">
                 <div class="d-flex justify-content-between align-items-center py-2 border-bottom">
-                    <span class="fw-bold small">Ollama Engine</span>
-                    <span class="status-dot <?php echo $ollama_up ? 'dot-green' : 'dot-red'; ?> me-2"></span>
-                    <span class="small <?php echo $ollama_up ? 'text-success' : 'text-danger'; ?>"><?php echo $ollama_up ? 'Online' : 'Offline'; ?></span>
+                    <span class="fw-bold small">AI Engine (<?php echo ucfirst($ai_provider); ?>)</span>
+                    <span class="status-dot <?php echo $ai_up ? 'dot-green' : 'dot-red'; ?> me-2"></span>
+                    <span class="small <?php echo $ai_up ? 'text-success' : 'text-danger'; ?>"><?php echo $ai_up ? 'Online' : 'Offline'; ?></span>
                 </div>
                 <div class="d-flex justify-content-between align-items-center py-2 border-bottom">
                     <span class="fw-bold small">WhatsApp Gateway</span>
@@ -322,18 +325,33 @@ document.addEventListener('DOMContentLoaded', function() {
                 <h6 class="fw-bold small text-muted text-uppercase mb-3">AI Connection Settings</h6>
                 <form method="post">
                     <div class="mb-3">
-                        <label class="form-label small fw-bold">Ollama / AI Host</label>
+                        <label class="form-label small fw-bold">Active Provider</label>
+                        <select name="ai_provider" class="form-select rounded-3 small">
+                            <option value="ollama" <?php echo ($ai_provider=='ollama')?'selected':''; ?>>Ollama (Local)</option>
+                            <option value="gemini" <?php echo ($ai_provider=='gemini')?'selected':''; ?>>Google Gemini (Cloud)</option>
+                            <option value="deepseek" <?php echo ($ai_provider=='deepseek')?'selected':''; ?>>DeepSeek (Cloud)</option>
+                            <option value="groq" <?php echo ($ai_provider=='groq')?'selected':''; ?>>Groq (Ultra Fast Cloud)</option>
+                        </select>
+                    </div>
+                    <div class="mb-3" id="host_group" <?php echo ($ai_provider!='ollama')?'style="display:none"':''; ?>>
+                        <label class="form-label small fw-bold">Ollama Host</label>
                         <input type="text" name="ai_host" class="form-control rounded-3 small" value="<?php echo htmlspecialchars($ai_host); ?>">
                     </div>
                     <div class="mb-3">
-                        <label class="form-label small fw-bold">Global API Key</label>
-                        <input type="password" name="ai_api_key" class="form-control rounded-3 small" value="<?php echo htmlspecialchars($ai_key); ?>" placeholder="Leave blank if not needed">
+                        <label class="form-label small fw-bold">API Key</label>
+                        <input type="password" name="ai_api_key" class="form-control rounded-3 small" value="<?php echo htmlspecialchars($ai_key); ?>" placeholder="Leave blank for local Ollama">
                     </div>
                     <button type="submit" name="update-ai-connection" class="btn btn-dark btn-sm w-100 rounded-pill">Update Connection</button>
                 </form>
             </div>
         </div>
     </div>
+    
+    <script>
+    document.querySelector('select[name="ai_provider"]').addEventListener('change', function(){
+        document.getElementById('host_group').style.display = (this.value === 'ollama') ? 'block' : 'none';
+    });
+    </script>
 
     <!-- AI Pricing -->
     <div class="col-lg-4">
