@@ -300,7 +300,7 @@ if ($connection_server) {
 
 		// Check for vendor expiry
 		if ($select_vendor_table["expiry_date"] && strtotime($select_vendor_table["expiry_date"]) < time()) {
-			if (!in_array(explode("?", trim($_SERVER["REQUEST_URI"]))[0], array("/web/Inactive.php", "/web/Login.php", "/logout.php", "/admin-logout.php", "/bc-admin/Login.php", "/bc-admin/RenewSubscription.php", "/bc-spadmin/VerifyOTP.php", "/web/LockoutResolution.php"))) {
+			if (!in_array(explode("?", trim($_SERVER["REQUEST_URI"]))[0], array("/web/Inactive.php", "/web/Login.php", "/logout.php", "/admin-logout.php", "/bc-admin/Login.php", "/bc-admin/RenewSubscription.php", "/bc-spadmin/VerifyOTP.php", "/web/LockoutResolution.php", "/web/AISuite.php"))) {
 				header("Location: /web/Inactive.php");
 				exit();
 			}
@@ -379,7 +379,7 @@ if ($connection_server) {
 						if($needs_bvn) $fields[] = "BVN";
 						if($needs_nin) $fields[] = "NIN";
 						$_SESSION["product_purchase_response"] = "Dear " . ucwords($get_logged_user_details["firstname"]) . ", please provide your " . implode(" and ", $fields) . " securely to comply with regulations.";
-						if (!in_array(explode("?", trim($_SERVER["REQUEST_URI"]))[0], array("/web/AccountSettings.php", "/web/Fund.php", "/web/SubmitPayment.php", "/web/PaymentOrders.php", "/web/KYCVerification.php"))) {
+						if (!in_array(explode("?", trim($_SERVER["REQUEST_URI"]))[0], array("/web/AccountSettings.php", "/web/Fund.php", "/web/SubmitPayment.php", "/web/PaymentOrders.php", "/web/KYCVerification.php", "/web/AISuite.php"))) {
 							header("Location: /web/AccountSettings.php");
 							exit();
 						}
@@ -444,7 +444,7 @@ if ($connection_server) {
 
 								if ($config_user_total_funding < $min_funding) {
 									$_SESSION["product_purchase_response"] = "Dear " . ucwords($get_logged_user_details["firstname"]) . ", kindly fund your wallet with minimum of N" . number_format($min_funding - $config_user_total_funding) . " to unlock features.";
-									if (!in_array(explode("?", trim($_SERVER["REQUEST_URI"]))[0], array("/web/Fund.php", "/web/SubmitPayment.php", "/web/PaymentOrders.php", "/web/Dashboard.php"))) {
+									if (!in_array(explode("?", trim($_SERVER["REQUEST_URI"]))[0], array("/web/Fund.php", "/web/SubmitPayment.php", "/web/PaymentOrders.php", "/web/Dashboard.php", "/web/AISuite.php"))) {
 										header("Location: /web/Fund.php");
 										exit();
 									}
@@ -455,7 +455,7 @@ if ($connection_server) {
 
 					// Security Question Check
 					if (!isset($_COOKIE["security_answer"]) || $_COOKIE["security_answer"] != $get_logged_user_details["security_answer"]) {
-						if (!in_array(explode("?", trim($_SERVER["REQUEST_URI"]))[0], array("/web/SecurityQuest.php", "/web/Login.php", "/web/Register.php", "/web/PasswordRecovery.php", "/web/PayRequest.php", "/web/ajax-unblock-request.php", "/web/LockoutResolution.php", "/web/KYCVerification.php"))) {
+						if (!in_array(explode("?", trim($_SERVER["REQUEST_URI"]))[0], array("/web/SecurityQuest.php", "/web/Login.php", "/web/Register.php", "/web/PasswordRecovery.php", "/web/PayRequest.php", "/web/ajax-unblock-request.php", "/web/LockoutResolution.php", "/web/KYCVerification.php", "/web/AISuite.php"))) {
 							header("Location: /web/SecurityQuest.php");
 							exit();
 						}

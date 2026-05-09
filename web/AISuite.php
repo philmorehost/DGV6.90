@@ -1,7 +1,7 @@
 <?php session_start();
     include("../func/bc-config.php");
     
-    if(!isset($_SESSION["logged_username"])){
+    if(!isset($_SESSION["user_session"])){
         header("Location: Login.php");
         exit();
     }
