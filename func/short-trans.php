@@ -1,12 +1,13 @@
 <?php
-    $select_user_requeried_transaction_details = mysqli_query($connection_server, "SELECT * FROM sas_transactions WHERE vendor_id='".$get_logged_user_details["vendor_id"]."' && username='".$get_logged_user_details["username"]."' && reference='".trim(strip_tags($_GET["requery"]))."'");
-    if(mysqli_num_rows($select_user_requeried_transaction_details) == 1){
-        $purchase_method = "web";
-        include("../web/func/requery-transaction.php");
-        $json_response_decode = json_decode($json_response_encode,true);
-        $_SESSION["product_purchase_response"] = $json_response_decode["desc"];
-    }
-    
+    if(isset($_GET["requery"]) && !empty($_GET["requery"])){
+        $select_user_requeried_transaction_details = mysqli_query($connection_server, "SELECT * FROM sas_transactions WHERE vendor_id='".$get_logged_user_details["vendor_id"]."' && username='".$get_logged_user_details["username"]."' && reference='".trim(strip_tags($_GET["requery"]))."'");
+        if(mysqli_num_rows($select_user_requeried_transaction_details) == 1){
+            $purchase_method = "web";
+            include("../web/func/requery-transaction.php");
+            $json_response_decode = json_decode($json_response_encode,true);
+            $_SESSION["product_purchase_response"] = $json_response_decode["desc"];
+        }
+    }    
     $vid = $get_logged_user_details["vendor_id"];
     $uname = $get_logged_user_details["username"];
     $get_user_transaction_details = mysqli_query($connection_server, "SELECT t.*, p.product_name, a.api_type

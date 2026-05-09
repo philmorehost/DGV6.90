@@ -1204,10 +1204,7 @@ function alterAPI($userID, $apiID, $column_name, $column_value)
 function toDecimal($number, $decimalIndex)
 {
 	if (is_numeric($number) && is_numeric($decimalIndex)) {
-		$exp_number = array_filter(explode(".", trim($number)));
-		$firstNumber = $exp_number[0];
-		$decimalNumber = substr($exp_number[1], 0, $decimalIndex);
-		return ($firstNumber + 0) . "." . sprintf("%0" . $decimalIndex . "d", $decimalNumber);
+		return number_format((float)$number, (int)$decimalIndex, '.', '');
 	} else {
 		return "non-numeric string";
 	}

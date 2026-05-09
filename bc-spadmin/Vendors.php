@@ -203,9 +203,9 @@
 
     <?php
     	//Redirect To Vendor Page
-        $getVendorUrl = mysqli_real_escape_string($connection_server, trim(strip_tags($_GET["vendorUrl"])));
-    	$getVendorLogAuth = mysqli_real_escape_string($connection_server, trim(strip_tags($_GET["vendorLogAuth"])));
-        $getRedirectUrl = mysqli_real_escape_string($connection_server, trim(strip_tags($_GET["redirect"])));
+        $getVendorUrl = isset($_GET["vendorUrl"]) ? mysqli_real_escape_string($connection_server, trim(strip_tags($_GET["vendorUrl"]))) : "";
+    	$getVendorLogAuth = isset($_GET["vendorLogAuth"]) ? mysqli_real_escape_string($connection_server, trim(strip_tags($_GET["vendorLogAuth"]))) : "";
+        $getRedirectUrl = isset($_GET["redirect"]) ? mysqli_real_escape_string($connection_server, trim(strip_tags($_GET["redirect"]))) : "";
     	
     	if(isset($_GET["vendorUrl"]) && !empty($getVendorUrl) && isset($_GET["vendorLogAuth"]) && !empty($getVendorLogAuth)){
             if(isset($_GET["redirect"]) && !empty($getRedirectUrl)){
