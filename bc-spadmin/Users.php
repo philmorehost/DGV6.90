@@ -120,6 +120,17 @@
     </div>
 
     <section class="section dashboard">
+      <?php
+          $vid_filter = isset($_GET["vid"]) ? (int)$_GET["vid"] : 0;
+          $stats_vendor_stmt = ($vid_filter > 0) ? " WHERE vendor_id='$vid_filter'" : "";
+          $stats_q = mysqli_query($connection_server, "SELECT 
+              COUNT(*) as total,
+              COALESCE(SUM(CASE WHEN status = 1 THEN 1 ELSE 0 END), 0) as active,
+              COALESCE(SUM(CASE WHEN status = 2 THEN 1 ELSE 0 END), 0) as blocked,
+              COALESCE(SUM(CASE WHEN status = 3 THEN 1 ELSE 0 END), 0) as deleted
+              FROM sas_users $stats_vendor_stmt");
+          $initial_stats = mysqli_fetch_assoc($stats_q);
+      ?>
       <div class="row">
         <!-- Stats Summary Cards -->
         <div class="col-xxl-3 col-md-6 mb-4">
@@ -130,7 +141,7 @@
                 <div class="card-icon rounded-circle d-flex align-items-center justify-content-center bg-primary bg-opacity-10 text-primary">
                   <i class="bi bi-people"></i>
                 </div>
-                <div class="ps-3"><h6 id="stat-total-users">0</h6><span class="text-muted small pt-2">Registered</span></div>
+                <div class="ps-3"><h6 id="stat-total-users"><?php echo number_format($initial_stats['total'] ?? 0); ?></h6><span class="text-muted small pt-2">Registered</span></div>
               </div>
             </div>
           </div>
@@ -144,7 +155,7 @@
                 <div class="card-icon rounded-circle d-flex align-items-center justify-content-center bg-success bg-opacity-10 text-success">
                   <i class="bi bi-check-circle"></i>
                 </div>
-                <div class="ps-3"><h6 id="stat-active-users">0</h6><span class="text-muted small pt-2">Enabled</span></div>
+                <div class="ps-3"><h6 id="stat-active-users"><?php echo number_format($initial_stats['active'] ?? 0); ?></h6><span class="text-muted small pt-2">Enabled</span></div>
               </div>
             </div>
           </div>
@@ -158,7 +169,7 @@
                 <div class="card-icon rounded-circle d-flex align-items-center justify-content-center bg-warning bg-opacity-10 text-warning">
                   <i class="bi bi-exclamation-triangle"></i>
                 </div>
-                <div class="ps-3"><h6 id="stat-blocked-users">0</h6><span class="text-muted small pt-2">Suspended</span></div>
+                <div class="ps-3"><h6 id="stat-blocked-users"><?php echo number_format($initial_stats['blocked'] ?? 0); ?></h6><span class="text-muted small pt-2">Suspended</span></div>
               </div>
             </div>
           </div>
@@ -172,7 +183,7 @@
                 <div class="card-icon rounded-circle d-flex align-items-center justify-content-center bg-danger bg-opacity-10 text-danger">
                   <i class="bi bi-trash"></i>
                 </div>
-                <div class="ps-3"><h6 id="stat-deleted-users">0</h6><span class="text-muted small pt-2">Removed</span></div>
+                <div class="ps-3"><h6 id="stat-deleted-users"><?php echo number_format($initial_stats['deleted'] ?? 0); ?></h6><span class="text-muted small pt-2">Removed</span></div>
               </div>
             </div>
           </div>

@@ -59,6 +59,12 @@ $stats_q = mysqli_query($connection_server, "SELECT
     COALESCE(SUM(CASE WHEN status = 2 THEN 1 ELSE 0 END), 0) as blocked,
     COALESCE(SUM(CASE WHEN status = 3 THEN 1 ELSE 0 END), 0) as deleted
     FROM sas_users $stats_vendor_stmt");
+
+if (!$stats_q) {
+    echo json_encode(["status" => "error", "message" => "Stats query failed: " . mysqli_error($connection_server)]);
+    exit;
+}
+
 $stats = mysqli_fetch_assoc($stats_q);
 
 echo json_encode([
