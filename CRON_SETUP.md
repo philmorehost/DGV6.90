@@ -1,95 +1,96 @@
 # DGV6.90 — Cloud AI & WhatsApp Bridge Deployment Guide
 
-## Quick Reference: All Cron Jobs
+This guide provides the complete technical steps to activate the platform's intelligence layer and automated WhatsApp notification system.
 
-| Cron Expression | File | Purpose |
+---
+
+## 🚀 Quick Reference: All Cron Jobs
+
+Copy these into your cPanel or VPS crontab. Replace `YOUR_USERNAME` with your actual server username.
+
+| Frequency | File | Purpose |
 |---|---|---|
 | `*/5 * * * *` | `cron/aggregator_monitor.php` | Monitor API provider success rates |
-| `0 7 * * *` | `cron/ai_daily_briefing.php` | AI-generated daily WhatsApp briefing to vendors |
+| `0 7 * * *` | `cron/ai_daily_briefing.php` | AI Daily WhatsApp briefing to vendors |
 | `0 10 * * *` | `cron/dormant_user_alert.php` | Re-engage inactive users via WhatsApp |
-| `0 8 1 * *` | `cron/ai_monthly_blueprint.php` | Monthly full platform AI Blueprint audit via email |
+| `0 8 1 * *` | `cron/ai_monthly_blueprint.php` | Monthly full platform AI Audit |
 
 ---
 
-## Step 1: Set Up Cron Jobs in cPanel
+## 🛠 Step 1: Automated Tasks (Cron Jobs)
 
-1. Log into **cPanel** → scroll to **Advanced** → click **Cron Jobs**
-2. Add each job below by selecting the frequency and pasting the command:
+1. Log into your **cPanel** → **Advanced** → **Cron Jobs**.
+2. For each job, select the frequency and paste the command below:
 
-### API Aggregator Monitor (Every 5 minutes)
-```
-*/5 * * * * /usr/bin/php /home/YOUR_USERNAME/public_html/cron/aggregator_monitor.php >> /home/YOUR_USERNAME/logs/aggregator_monitor.log 2>&1
-```
-
-### AI Daily Briefing (7:00 AM daily)
-```
-0 7 * * * /usr/bin/php /home/YOUR_USERNAME/public_html/cron/ai_daily_briefing.php >> /home/YOUR_USERNAME/logs/daily_briefing.log 2>&1
+### API Monitoring (Every 5 minutes)
+```bash
+*/5 * * * * /usr/bin/php /home/YOUR_USERNAME/public_html/cron/aggregator_monitor.php >> /home/YOUR_USERNAME/logs/agg_mon.log 2>&1
 ```
 
-### Dormant User Alerts (10:00 AM daily)
-```
-0 10 * * * /usr/bin/php /home/YOUR_USERNAME/public_html/cron/dormant_user_alert.php >> /home/YOUR_USERNAME/logs/dormant_alert.log 2>&1
+### AI Daily Briefing (7:00 AM)
+```bash
+0 7 * * * /usr/bin/php /home/YOUR_USERNAME/public_html/cron/ai_daily_briefing.php >> /home/YOUR_USERNAME/logs/daily.log 2>&1
 ```
 
-### AI Monthly Blueprint Audit (8:00 AM on the 1st of every month)
+### Dormant User Re-engagement (10:00 AM)
+```bash
+0 10 * * * /usr/bin/php /home/YOUR_USERNAME/public_html/cron/dormant_user_alert.php >> /home/YOUR_USERNAME/logs/dormant.log 2>&1
 ```
-0 8 1 * * /usr/bin/php /home/YOUR_USERNAME/public_html/cron/ai_monthly_blueprint.php >> /home/YOUR_USERNAME/logs/blueprint.log 2>&1
+
+### AI Monthly Audit (1st of month)
+```bash
+0 8 1 * * /usr/bin/php /home/YOUR_USERNAME/public_html/cron/ai_monthly_blueprint.php >> /home/YOUR_USERNAME/logs/audit.log 2>&1
 ```
 
 ---
 
-## Step 2: Deploy WhatsApp Bridge (Node.js)
+## 💬 Step 2: WhatsApp Node.js Bridge
 
-The WhatsApp bridge is a Node.js process that must run continuously on your server.
+The WhatsApp bridge allows the platform to send automated messages via your own WhatsApp account.
 
 ### Prerequisites
-- Node.js 18+ installed on VPS (not shared hosting)
-- PM2 installed globally: `npm install -g pm2`
+- **Server**: VPS recommended (Shared hosting usually blocks Node.js ports).
+- **Node.js**: Version 18 or higher.
+- **PM2**: `npm install -g pm2` (Process manager).
 
-### Installation
-
+### Deployment
 ```bash
-# 1. Navigate to the bridge directory
+# 1. Enter the bridge folder
 cd /home/YOUR_USERNAME/public_html/vtu_whatsapp_ai
 
-# 2. Install dependencies
+# 2. Install library dependencies
 npm install
 
-# 3. Start with PM2
-pm2 start index.js --name vtu-whatsapp
+# 3. Start the process with persistence
+pm2 start index.js --name vtu-wa
 pm2 save
 pm2 startup
 ```
 
 ---
 
-## Step 3: Configure Cloud AI API Keys
+## 🧠 Step 3: Cloud AI Activation
 
-This platform uses pure Cloud AI (Gemini, DeepSeek, or Groq). No local binaries are required.
+The platform uses high-performance Cloud AI. No local software installation is required.
 
-1. Go to **Super Admin → AI Management** (`/bc-spadmin/AIManagement.php`)
-2. Select your preferred provider (Google Gemini is recommended)
-3. Paste your API Key and click **Update Cloud Connection**
-4. Click the **Test Connection** button to verify reachability.
+1. **Get API Key**: Obtain a key from [Google AI Studio](https://aistudio.google.com/).
+2. **Configure Provider**: 
+   - Login as Super Admin.
+   - Go to **AI Manager**.
+   - Select **Gemini** as the provider and paste your key.
+3. **Verify**: Click **Test Connection** to ensure the platform can reach the cloud engine.
 
 ---
 
-## Step 4: Run Integration Tests
+## 🧪 Step 4: System Validation
 
-After deploying everything, run the test suite from SSH:
+Once setup is complete, run the integration test via SSH to verify all connections:
 
 ```bash
-cd /home/YOUR_USERNAME/public_html
-php tests/ai_integration_test.php
+php /home/YOUR_USERNAME/public_html/tests/ai_integration_test.php
 ```
 
 ---
 
-## Troubleshooting
-
-| Problem | Solution |
-|---|---|
-| AI engine offline | Check your API Key in Super Admin panel and ensure the server has outbound internet access. |
-| WhatsApp bridge offline | Run `pm2 status` via SSH — restart if stopped |
-| QR code not appearing | Bridge is starting — wait 10 seconds and refresh |
-| AI tokens not deducting | Check `sas_ai_transactions` table in DB. |
+## 📖 Live Guide
+You can also access the **Integration Guide** directly from the Super Admin sidebar for one-click copyable commands tailored to your server path.

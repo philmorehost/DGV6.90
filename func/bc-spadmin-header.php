@@ -410,6 +410,13 @@ function hex2rgb($hex) {
       </li>
 
       <li class="nav-item">
+        <a class="nav-link <?php echo ($current_page == 'BridgeGuide.php') ? 'active_item' : 'collapsed'; ?>" href="<?php echo $web_http_host; ?>/bc-spadmin/BridgeGuide.php">
+          <i class="bi bi-journal-check"></i>
+          <span>Integration Guide</span> 
+        </a>
+      </li>
+
+      <li class="nav-item">
         <a class="nav-link <?php echo ($current_page == 'AccountSettings.php') ? 'active_item' : 'collapsed'; ?>" href="<?php echo $web_http_host; ?>/bc-spadmin/AccountSettings.php">
           <i class="bi bi-gear"></i>
           <span>Account Settings</span> 
