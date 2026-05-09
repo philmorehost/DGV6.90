@@ -184,8 +184,8 @@ if ($ai_provider === 'gemini') {
 $ai_rev_q = mysqli_query($connection_server, "SELECT SUM(cost_naira) as revenue, COUNT(*) as calls FROM sas_ai_transactions WHERE MONTH(created_at)=MONTH(NOW()) AND status='success'");
 $ai_rev = $ai_rev_q ? mysqli_fetch_assoc($ai_rev_q) : ['revenue' => 0, 'calls' => 0];
 
-// Intelligence Hub Data
-$top_consumers_q = mysqli_query($connection_server, "SELECT v.company_name, v.website_url, SUM(t.tokens_burned) as total FROM sas_ai_transactions t JOIN sas_vendors v ON v.id=t.vendor_id WHERE MONTH(t.created_at)=MONTH(NOW()) GROUP BY t.vendor_id ORDER BY total DESC LIMIT 3");
+// Intelligence Hub Data (Month-to-Date)
+$top_consumers_q = mysqli_query($connection_server, "SELECT v.company_name, v.website_url, SUM(t.tokens_burned) as total FROM sas_ai_transactions t JOIN sas_vendors v ON v.id=t.vendor_id WHERE t.created_at >= DATE_FORMAT(NOW() ,'%Y-%m-01') GROUP BY t.vendor_id ORDER BY total DESC LIMIT 3");
 $recent_logs_q = mysqli_query($connection_server, "SELECT t.*, v.company_name, v.website_url FROM sas_ai_transactions t JOIN sas_vendors v ON v.id=t.vendor_id ORDER BY t.id DESC LIMIT 5");
 
 // Live Health Metrics

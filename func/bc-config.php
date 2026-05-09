@@ -28,7 +28,7 @@ if (!$connection_server) {
 if ($connection_server) {
     // Branch DG6.7 Optimization: Only run migrations if not already done globally or in current session
     // This significantly improves site-wide page load speeds by skipping redundant DB structural checks.
-    define('SYSTEM_VERSION', '6.9.3-ai'); // DGV6.90 AI Edition — triggers AI schema migrations
+    define('SYSTEM_VERSION', '6.9.5-ai'); // DGV6.90 AI Edition — triggers AI schema migrations
     $current_mig_v = $_SESSION['migrations_completed_version'] ?? '0';
 
     // Global Migration Check to avoid redundant checks for new visitors
@@ -109,10 +109,26 @@ if ($connection_server) {
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         )");
         
-        // Migration: AI Transaction Logs Performance Column
-        $check_ai_perf = mysqli_query($connection_server, "SHOW COLUMNS FROM `sas_ai_transactions` LIKE 'duration_ms'");
-        if (mysqli_num_rows($check_ai_perf) == 0) {
-            mysqli_query($connection_server, "ALTER TABLE `sas_ai_transactions` ADD COLUMN `duration_ms` INT DEFAULT 0 AFTER tokens_burned");
+        // Migration: AI Transaction Logs Schema Evolution
+        $ai_log_cols = [
+            'duration_ms' => "INT DEFAULT 0 AFTER tokens_burned",
+            'action_type' => "VARCHAR(50) AFTER username",
+            'model_used'  => "VARCHAR(50) AFTER action_type",
+            'prompt_hash' => "VARCHAR(64) AFTER model_used",
+            'prompt'      => "TEXT AFTER prompt_hash",
+            'response'    => "TEXT AFTER prompt"
+        ];
+        foreach ($ai_log_cols as $col => $def) {
+            $check = mysqli_query($connection_server, "SHOW COLUMNS FROM `sas_ai_transactions` LIKE '$col'");
+            if ($check && mysqli_num_rows($check) == 0) {
+                mysqli_query($connection_server, "ALTER TABLE `sas_ai_transactions` ADD COLUMN `$col` $def");
+            }
+        }
+        
+        // Fix for service_type vs action_type transition
+        $check_st = mysqli_query($connection_server, "SHOW COLUMNS FROM `sas_ai_transactions` LIKE 'service_type'");
+        if ($check_st && mysqli_num_rows($check_st) > 0) {
+             mysqli_query($connection_server, "ALTER TABLE `sas_ai_transactions` CHANGE `service_type` `action_type` VARCHAR(50)");
         }
 
         // Migration: Crypto Wallet Table Schema Fix (Index limit)
