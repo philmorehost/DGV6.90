@@ -99,16 +99,36 @@ $ai_up      = $ai->isAiOnline();
 $models     = $ai->listModels();
 $queue_q    = mysqli_query($connection_server, "SELECT * FROM sas_ai_install_queue ORDER BY started_at DESC LIMIT 10");
 
-// Available model catalog
-$model_catalog = [
-    ['name' => 'phi4-mini',         'size' => '~2.5GB', 'desc' => 'Ultra-fast, ideal for page guides & quick answers.    Recommended for all vendors.', 'tier' => 'Free'],
-    ['name' => 'gemma4:e2b',        'size' => '~5GB',   'desc' => 'Google\'s efficient 2B model. Good for marketing copy.', 'tier' => 'Standard'],
-    ['name' => 'gemma4:12b',        'size' => '~8GB',   'desc' => 'High quality responses for premium AI features.',        'tier' => 'Premium'],
-    ['name' => 'llama4-scout',      'size' => '~6GB',   'desc' => 'Meta\'s Llama 4 Scout — fast & capable.',               'tier' => 'Standard'],
-    ['name' => 'qwen3:4b',          'size' => '~3GB',   'desc' => 'Alibaba\'s Qwen 3 4B — excellent for structured tasks.', 'tier' => 'Standard'],
-    ['name' => 'deepseek-r1:1.5b',  'size' => '~1.5GB', 'desc' => 'Tiny reasoning model — great for intent parsing.',       'tier' => 'Free'],
-    ['name' => 'llava',             'size' => '~4.5GB', 'desc' => 'Multimodal Vision Model — Required for Image-to-VTU.',  'tier' => 'Titanium'],
-];
+// Available model catalog based on provider
+$model_catalog = [];
+if ($ai_provider === 'gemini') {
+    $model_catalog = [
+        ['name' => 'gemini-1.5-flash', 'size' => 'Cloud', 'desc' => 'Default fast model. Excellent for most tasks.', 'tier' => 'Free'],
+        ['name' => 'gemini-1.5-pro',   'size' => 'Cloud', 'desc' => 'High intelligence for complex reasoning.',   'tier' => 'Premium'],
+        ['name' => 'gemini-1.0-pro',   'size' => 'Cloud', 'desc' => 'Stable production-grade model.',         'tier' => 'Standard'],
+    ];
+} elseif ($ai_provider === 'deepseek') {
+    $model_catalog = [
+        ['name' => 'deepseek-chat',    'size' => 'Cloud', 'desc' => 'Powerful reasoning & chat model.',        'tier' => 'Premium'],
+        ['name' => 'deepseek-coder',   'size' => 'Cloud', 'desc' => 'Specialized for technical & logic tasks.', 'tier' => 'Standard'],
+    ];
+} elseif ($ai_provider === 'groq') {
+    $model_catalog = [
+        ['name' => 'llama3-70b-8192',  'size' => 'Cloud', 'desc' => 'Llama 3 70B — extremely capable.',        'tier' => 'Premium'],
+        ['name' => 'llama3-8b-8192',   'size' => 'Cloud', 'desc' => 'Llama 3 8B — ultra fast performance.',     'tier' => 'Standard'],
+        ['name' => 'mixtral-8x7b-32768','size' => 'Cloud','desc' => 'Mixtral 8x7B — great for long contexts.',  'tier' => 'Premium'],
+    ];
+} else {
+    $model_catalog = [
+        ['name' => 'phi4-mini',         'size' => '~2.5GB', 'desc' => 'Ultra-fast, ideal for page guides & quick answers. Recommended for all vendors.', 'tier' => 'Free'],
+        ['name' => 'gemma4:e2b',        'size' => '~5GB',   'desc' => 'Google\'s efficient 2B model. Good for marketing copy.', 'tier' => 'Standard'],
+        ['name' => 'gemma4:12b',        'size' => '~8GB',   'desc' => 'High quality responses for premium AI features.',        'tier' => 'Premium'],
+        ['name' => 'llama4-scout',      'size' => '~6GB',   'desc' => 'Meta\'s Llama 4 Scout — fast & capable.',               'tier' => 'Standard'],
+        ['name' => 'qwen3:4b',          'size' => '~3GB',   'desc' => 'Alibaba\'s Qwen 3 4B — excellent for structured tasks.', 'tier' => 'Standard'],
+        ['name' => 'deepseek-r1:1.5b',  'size' => '~1.5GB', 'desc' => 'Tiny reasoning model — great for intent parsing.',       'tier' => 'Free'],
+        ['name' => 'llava',             'size' => '~4.5GB', 'desc' => 'Multimodal Vision Model — Required for Image-to-VTU.',  'tier' => 'Titanium'],
+    ];
+}
 
 // Revenue from AI this month
 $ai_rev_q = mysqli_query($connection_server,
@@ -410,7 +430,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 <?php endwhile; else: ?>
                 <div class="text-muted small text-center py-4"><i class="bi bi-inbox me-2"></i>No models in queue.</div>
                 <?php endif; ?>
-                <?php if ($ollama_up && !empty($models)): ?>
+                <?php if ($ai_up && !empty($models)): ?>
                 <div class="mt-3">
                     <div class="small fw-bold text-muted text-uppercase mb-2">Installed Models</div>
                     <?php foreach ($models as $m): ?>
@@ -427,8 +447,10 @@ document.addEventListener('DOMContentLoaded', function() {
         <div class="card border-0 rounded-4 shadow-sm">
             <div class="card-header bg-white border-0 py-3 d-flex justify-content-between align-items-center">
                 <h5 class="fw-bold mb-0"><i class="bi bi-grid me-2 text-primary"></i>AI Model Marketplace</h5>
-                <?php if (!$ollama_up): ?>
+                <?php if ($ai_provider === 'ollama' && !$ai_up): ?>
                 <span class="badge bg-danger rounded-pill">Ollama Offline — Start Ollama first</span>
+                <?php elseif (!$ai_up): ?>
+                <span class="badge bg-danger rounded-pill"><?php echo ucfirst($ai_provider); ?> API Unreachable</span>
                 <?php endif; ?>
             </div>
             <div class="card-body p-4">
@@ -446,9 +468,9 @@ document.addEventListener('DOMContentLoaded', function() {
                         <p class="text-muted small mb-2"><?php echo htmlspecialchars($mc['desc']); ?></p>
                         <div class="d-flex justify-content-between align-items-center">
                             <span class="small text-muted"><i class="bi bi-hdd me-1"></i><?php echo $mc['size']; ?></span>
-                            <?php if ($is_installed): ?>
-                            <span class="badge bg-success rounded-pill"><i class="bi bi-check-circle me-1"></i>Installed</span>
-                            <?php elseif ($ollama_up): ?>
+                            <?php if ($is_installed || $ai_provider !== 'ollama'): ?>
+                            <span class="badge bg-success rounded-pill"><i class="bi bi-check-circle me-1"></i>Available</span>
+                            <?php elseif ($ai_up): ?>
                             <form method="post">
                                 <input type="hidden" name="model_name" value="<?php echo htmlspecialchars($mc['name']); ?>">
                                 <button type="submit" name="install-model" class="btn btn-primary btn-sm rounded-pill px-3">
