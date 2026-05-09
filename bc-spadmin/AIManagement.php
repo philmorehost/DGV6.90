@@ -23,7 +23,8 @@ if (isset($_POST["toggle-global-ai"])) {
         "INSERT INTO sas_super_admin_options (option_name, option_value) VALUES ('ai_global_enabled', '$val')
          ON DUPLICATE KEY UPDATE option_value='$val'"
     );
-    $_SESSION["response"] = "Global AI " . ($val ? "enabled" : "disabled") . ".";
+    $_SESSION["response"] = "✅ Global AI " . ($val ? "Enabled" : "Disabled") . ".";
+    unset($_SESSION['super_admin_options_cache']); // Clear platform cache
     header("Location: AIManagement.php"); exit();
 }
 
@@ -62,6 +63,7 @@ if (isset($_POST["update-ai-pricing"])) {
     // Update all vendors' price
     mysqli_query($connection_server, "UPDATE sas_vendors SET ai_price_per_1k_tokens='$price_1k', ai_per_tx_cost='$per_tx', voice_tx_threshold='$voice_thr'");
     $_SESSION["response"] = "✅ AI pricing updated for all vendors.";
+    unset($_SESSION['super_admin_options_cache']); // Clear platform cache
     header("Location: AIManagement.php"); exit();
 }
 
@@ -79,12 +81,16 @@ if (isset($_POST["update-ai-connection"])) {
     foreach ($opts as $k => $v) {
         $esc_k = mysqli_real_escape_string($connection_server, $k);
         $esc_v = mysqli_real_escape_string($connection_server, $v);
-        mysqli_query($connection_server,
-            "INSERT INTO sas_super_admin_options (option_name, option_value) VALUES ('$esc_k','$esc_v')
-             ON DUPLICATE KEY UPDATE option_value='$esc_v'"
-        );
+        // Check if exists
+        $check = mysqli_query($connection_server, "SELECT id FROM sas_super_admin_options WHERE option_name='$esc_k' LIMIT 1");
+        if ($check && mysqli_num_rows($check) > 0) {
+            mysqli_query($connection_server, "UPDATE sas_super_admin_options SET option_value='$esc_v' WHERE option_name='$esc_k'");
+        } else {
+            mysqli_query($connection_server, "INSERT INTO sas_super_admin_options (option_name, option_value) VALUES ('$esc_k', '$esc_v')");
+        }
     }
     $_SESSION["response"] = "✅ AI connection settings updated.";
+    unset($_SESSION['super_admin_options_cache']); // Clear platform cache
     header("Location: AIManagement.php"); exit();
 }
 
