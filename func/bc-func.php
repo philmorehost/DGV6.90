@@ -64,6 +64,8 @@ function bc_get_ai_user_context($user_details) {
     $immediate_error = $_SESSION['product_purchase_response'] ?? '';
     
     return [
+        'username' => $user_details['username'],
+        'vendor_id' => $vendor_id,
         'wallet_balance' => $balance,
         'wallet_status' => $status_label,
         'last_fail_reason' => $last_fail ? $last_fail['status_description'] : '',

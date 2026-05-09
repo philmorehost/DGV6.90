@@ -1,7 +1,7 @@
 (function() {
     /**
      * ai-assistant.js — DGV6.90 AI Edition
-     * Lightweight Floating AI Assistant Widget
+     * Lightweight Floating AI Assistant Widget with Persistent History
      */
 
     const HANDLER_URL = window.__ai_handler_url || '/web/ai-handler.php';
@@ -74,7 +74,14 @@
         panel.classList.add('open');
         fab.setAttribute('aria-expanded', 'true');
         fab.textContent = '✕';
-        if (initialMsg && document.getElementById('ai-messages').children.length === 0) appendMsg('bot', initialMsg);
+        
+        // Only load history if messages are empty
+        const msgs = document.getElementById('ai-messages');
+        if (msgs.children.length === 0) {
+            loadHistory();
+            if (msgs.children.length === 0 && initialMsg) appendMsg('bot', initialMsg);
+        }
+        
         document.getElementById('ai-input').focus();
     }
 
@@ -94,7 +101,7 @@
             .replace(/^- (.*)/gm, '• $1');
     }
 
-    function appendMsg(role, text) {
+    function appendMsg(role, text, skipSave = false) {
         const msgs = document.getElementById('ai-messages');
         const div  = document.createElement('div');
         div.className = `ai-msg ${role}`;
@@ -107,7 +114,66 @@
         
         msgs.appendChild(div);
         msgs.scrollTop = msgs.scrollHeight;
+
+        if (!skipSave && (role === 'user' || role === 'bot')) {
+            saveHistory();
+        }
         return div;
+    }
+
+    // ─── 4. History Management ────────────────────────────────
+    function getHistoryKey() {
+        const ctx = window.__ai_context || {};
+        const user = ctx.username || 'anon';
+        const vid  = ctx.vendor_id || '0';
+        return `ai_hist_${vid}_${user}`;
+    }
+
+    function saveHistory() {
+        const msgs = document.getElementById('ai-messages');
+        const history = [];
+        const msgEls = msgs.querySelectorAll('.ai-msg.user, .ai-msg.bot');
+        
+        // Take only last 20 messages for performance
+        const start = Math.max(0, msgEls.length - 20);
+        for (let i = start; i < msgEls.length; i++) {
+            const el = msgEls[i];
+            history.push({
+                role: el.classList.contains('user') ? 'user' : 'bot',
+                text: el.innerText || el.textContent
+            });
+        }
+
+        if (history.length > 0) {
+            localStorage.setItem(getHistoryKey(), JSON.stringify({
+                ts: Date.now(),
+                msgs: history
+            }));
+        }
+    }
+
+    function loadHistory() {
+        const key = getHistoryKey();
+        const raw = localStorage.getItem(key);
+        if (!raw) return;
+
+        try {
+            const data = JSON.parse(raw);
+            const now = Date.now();
+            const ageHours = (now - data.ts) / (1000 * 60 * 60);
+            
+            // Expiry: 12 hours
+            if (ageHours > 12) {
+                localStorage.removeItem(key);
+                return;
+            }
+
+            data.msgs.forEach(m => {
+                appendMsg(m.role, m.text, true);
+            });
+        } catch (e) {
+            console.error('AI History load failed', e);
+        }
     }
 
     // ─── 5. Send Message ──────────────────────────────────────
@@ -120,7 +186,6 @@
         let action = forceAction || 'chat';
         let payloadExtra = {};
 
-        // ─── Confirmation Detection ──────────────────────────
         const isConfirmation = /^(yes|confirm|proceed|go ahead|yep|sure|ok|do it|okay)$/i.test(prompt);
         const pendingVtu = sessionStorage.getItem('pending_vtu');
 
@@ -158,7 +223,7 @@
                 }),
             });
             const data = await resp.json();
-            typing.remove();
+            if (typing && typing.parentNode) typing.remove();
 
             if (data.status === 'success') {
                 appendMsg('bot', data.response);
