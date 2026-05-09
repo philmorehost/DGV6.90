@@ -64,6 +64,16 @@
                 }
 
                 $get_user_transaction_details = mysqli_query($connection_server, "SELECT * FROM sas_transactions WHERE 1=1 $search_statement ORDER BY date DESC LIMIT $limit OFFSET $offset");
+                
+                if (!$get_user_transaction_details) {
+                    // Critical fallback: Check if vendor_id column exists
+                    $check_col = mysqli_query($connection_server, "SHOW COLUMNS FROM sas_transactions LIKE 'vendor_id'");
+                    if (mysqli_num_rows($check_col) == 0) {
+                        mysqli_query($connection_server, "ALTER TABLE sas_transactions ADD COLUMN vendor_id INT UNSIGNED NOT NULL AFTER id");
+                        // Retry query
+                        $get_user_transaction_details = mysqli_query($connection_server, "SELECT * FROM sas_transactions WHERE 1=1 $search_statement ORDER BY date DESC LIMIT $limit OFFSET $offset");
+                    }
+                }
             ?>
 
             <div class="card shadow-sm border-0 rounded-4 overflow-hidden mb-4">
@@ -74,16 +84,19 @@
                             <select name="vid" class="form-select">
                                 <option value="0">All Vendors</option>
                                 <?php
-                                    $vs = mysqli_query($connection_server, "SELECT id, site_url FROM sas_vendors WHERE status=1 ORDER BY site_url ASC");
-                                    while($vrow = mysqli_fetch_assoc($vs)){
-                                        echo '<option value="'.$vrow['id'].'" '.($vid == $vrow['id'] ? 'selected' : '').'>'.$vrow['site_url'].'</option>';
+                                    $vs = mysqli_query($connection_server, "SELECT id, website_url FROM sas_vendors WHERE status=1 ORDER BY website_url ASC");
+                                    if ($vs) {
+                                        while($vrow = mysqli_fetch_assoc($vs)){
+                                            $is_sel = ($vid == $vrow['id']) ? 'selected' : '';
+                                            echo '<option value="'.$vrow['id'].'" '.$is_sel.'>'.$vrow['website_url'].'</option>';
+                                        }
                                     }
                                 ?>
                             </select>
                         </div>
                         <div class="col-md-3">
                             <label class="form-label small fw-bold">Search User / Ref</label>
-                            <input name="searchq" type="text" value="<?php echo $searchq; ?>" placeholder="e.g. smartuser1" class="form-control" />
+                            <input name="searchq" type="text" value="<?php echo htmlspecialchars($searchq); ?>" placeholder="e.g. smartuser1" class="form-control" />
                         </div>
                         <div class="col-md-3">
                             <label class="form-label small fw-bold">Category</label>

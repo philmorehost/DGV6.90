@@ -445,7 +445,11 @@ foreach ($pricing_tables as $table) {
 $create_user_transaction_table = mysqli_query($connection_server, "CREATE TABLE IF NOT EXISTS sas_transactions (vendor_id INT UNSIGNED NOT NULL, api_id INT UNSIGNED, product_id INT UNSIGNED, product_unique_id VARCHAR(225) NOT NULL, type_alternative VARCHAR(225), reference VARCHAR(225) NOT NULL, api_reference VARCHAR(225), username VARCHAR(225) NOT NULL, amount DECIMAL(65,30) UNSIGNED NOT NULL, discounted_amount DECIMAL(65,30) UNSIGNED NOT NULL, balance_before DECIMAL(65,30) UNSIGNED NOT NULL, balance_after DECIMAL(65,30) UNSIGNED NOT NULL, description LONGTEXT NOT NULL, mode VARCHAR(225) NOT NULL, api_website VARCHAR(225) NOT NULL, status INT UNSIGNED NOT NULL, date TIMESTAMP DEFAULT CURRENT_TIMESTAMP)");
 
 if ($create_user_transaction_table) {
-    //Alter User Transaction Table
+    $check_col_trans = mysqli_query($connection_server, "SHOW COLUMNS FROM `sas_transactions` LIKE 'vendor_id'");
+    if (mysqli_num_rows($check_col_trans) == 0) {
+        mysqli_query($connection_server, "ALTER TABLE `sas_transactions` ADD COLUMN vendor_id INT UNSIGNED NOT NULL AFTER id");
+    }
+
     $check_col_trans = mysqli_query($connection_server, "SHOW COLUMNS FROM `sas_transactions` LIKE 'batch_number'");
     if (mysqli_num_rows($check_col_trans) == 0) {
         mysqli_query($connection_server, "ALTER TABLE `sas_transactions` ADD COLUMN batch_number INT UNSIGNED AFTER reference");
