@@ -228,8 +228,9 @@
         $tokens = (int)$_POST["ai_token_balance"];
         $price_1k = (float)$_POST["ai_price_per_1k"];
         $model = mysqli_real_escape_string($connection_server, trim(strip_tags($_POST["ai_model"])));
+        $req_status = mysqli_real_escape_string($connection_server, trim(strip_tags($_POST["ai_request_status"])));
 
-        mysqli_query($connection_server, "UPDATE sas_vendors SET ai_status='$ai_status', ai_token_balance='$tokens', ai_price_per_1k_tokens='$price_1k', ai_model_assigned='$model' WHERE id='$vendor_id_number'");
+        mysqli_query($connection_server, "UPDATE sas_vendors SET ai_status='$ai_status', ai_token_balance='$tokens', ai_price_per_1k_tokens='$price_1k', ai_model_assigned='$model', ai_request_status='$req_status' WHERE id='$vendor_id_number'");
         $_SESSION["product_purchase_response"] = "AI settings updated for this vendor";
         header("Location: ".$_SERVER["REQUEST_URI"]);
         exit();
@@ -578,12 +579,21 @@
                             <label class="form-label small fw-bold">PRICE PER 1K TOKENS (₦)</label>
                             <input name="ai_price_per_1k" type="number" step="0.01" value="<?php echo $get_vendor_details['ai_price_per_1k_tokens'] ?? 100.00; ?>" class="form-control rounded-3" required />
                         </div>
-                        <div class="col-md-12">
+                        <div class="col-md-6">
                             <label class="form-label small fw-bold">ASSIGNED AI MODEL</label>
                             <select name="ai_model" class="form-select rounded-3">
                                 <option value="phi4-mini" <?php echo ($get_vendor_details['ai_model_assigned'] ?? '') == 'phi4-mini' ? 'selected' : ''; ?>>Phi-4 Mini (Fastest)</option>
                                 <option value="gemma4:e2b" <?php echo ($get_vendor_details['ai_model_assigned'] ?? '') == 'gemma4:e2b' ? 'selected' : ''; ?>>Gemma-4 E2B (Balanced)</option>
                                 <option value="llama4-scout" <?php echo ($get_vendor_details['ai_model_assigned'] ?? '') == 'llama4-scout' ? 'selected' : ''; ?>>Llama-4 Scout (Intelligent)</option>
+                            </select>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label small fw-bold">ACTIVATION REQUEST STATUS</label>
+                            <select name="ai_request_status" class="form-select rounded-3">
+                                <option value="" <?php echo empty($get_vendor_details['ai_request_status']) ? 'selected' : ''; ?>>None (No Request)</option>
+                                <option value="pending" <?php echo ($get_vendor_details['ai_request_status'] ?? '') == 'pending' ? 'selected' : ''; ?>>Pending Approval</option>
+                                <option value="approved" <?php echo ($get_vendor_details['ai_request_status'] ?? '') == 'approved' ? 'selected' : ''; ?>>Approved</option>
+                                <option value="rejected" <?php echo ($get_vendor_details['ai_request_status'] ?? '') == 'rejected' ? 'selected' : ''; ?>>Rejected</option>
                             </select>
                         </div>
                     </div>

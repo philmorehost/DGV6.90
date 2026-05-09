@@ -1716,6 +1716,7 @@ $ai_vendor_new_cols = [
     'voice_tx_threshold'      => "INT DEFAULT 100 COMMENT 'Successful txns required to unlock voice'",
     'ai_price_per_1k_tokens'  => "DECIMAL(10,2) DEFAULT 100.00 COMMENT 'NGN price for 1000 AI tokens'",
     'ai_model_assigned'       => "VARCHAR(50) DEFAULT 'phi4-mini' COMMENT 'Ollama model assigned to vendor tier'",
+    'ai_request_status'       => "VARCHAR(20) DEFAULT NULL COMMENT 'NULL=none, pending=requested, approved=active, rejected=denied'",
 ];
 foreach ($ai_vendor_new_cols as $col => $def) {
     if (!in_array($col, $ai_vendor_existing)) {
@@ -1732,6 +1733,8 @@ $ai_global_options = [
     'ai_whatsapp_number'        => '',
     'ai_voice_unlock_threshold' => '100',
     'ai_ollama_host'            => 'http://127.0.0.1:11434',
+    'ai_token_purchase_price_1k'=> '100.00', // How much super admin charges vendor per 1k tokens
+    'ai_default_token_bonus'    => '1000',   // Bonus tokens on first approval
 ];
 // Only attempt if the options table exists
 $check_options_table = mysqli_query($connection_server, "SHOW TABLES LIKE 'sas_super_admin_options'");

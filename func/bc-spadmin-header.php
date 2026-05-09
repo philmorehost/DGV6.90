@@ -396,6 +396,13 @@ function hex2rgb($hex) {
       </li>
 
       <li class="nav-item">
+        <a class="nav-link <?php echo ($current_page == 'AIManagement.php') ? 'active_item' : 'collapsed'; ?>" href="<?php echo $web_http_host; ?>/bc-spadmin/AIManagement.php">
+          <i class="bi bi-cpu-fill"></i>
+          <span>AI Manager</span> 
+        </a>
+      </li>
+
+      <li class="nav-item">
         <a class="nav-link <?php echo ($current_page == 'AccountSettings.php') ? 'active_item' : 'collapsed'; ?>" href="<?php echo $web_http_host; ?>/bc-spadmin/AccountSettings.php">
           <i class="bi bi-gear"></i>
           <span>Account Settings</span> 

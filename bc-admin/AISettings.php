@@ -15,6 +15,49 @@ if (mysqli_num_rows($check_col2) == 0) {
     mysqli_query($connection_server, "ALTER TABLE sas_users ADD COLUMN ai_voice_status TINYINT DEFAULT 0");
 }
 
+
+// Handle AI Activation Request
+if (isset($_POST['request-ai-activation'])) {
+    bc_validate_csrf();
+    $package = $_POST['token_package'] ?? 'starter';
+    $packages = [
+        'starter' => ['tokens' => 5000, 'price' => 500],
+        'business' => ['tokens' => 20000, 'price' => 1800],
+        'scale' => ['tokens' => 100000, 'price' => 7500]
+    ];
+    
+    $p = $packages[$package] ?? $packages['starter'];
+    $tokens = $p['tokens'];
+    $cost = $p['price'];
+    
+    if ($get_logged_admin_details['balance'] >= $cost) {
+        $ref = "AIREQ_" . time();
+        $desc = "AI Activation Request ($tokens tokens)";
+        $charge = chargeVendor("debit", "ai_activation", "AI Suite", $ref, $cost, $cost, $desc, $_SERVER["HTTP_HOST"], 1);
+        
+        if ($charge === 'success') {
+            mysqli_query($connection_server, "UPDATE sas_vendors SET ai_request_status='pending', ai_token_balance = ai_token_balance + $tokens WHERE id='$esc_vid'");
+            
+            // Notify Super Admin
+            $sa_email = "admin@" . explode(':', $_SERVER['HTTP_HOST'])[0]; // Fallback
+            $site_name = $get_all_super_admin_site_details['site_title'];
+            $msg = "New AI Feature activation request from: " . $get_logged_admin_details['company_name'] . "\nPackage: " . number_format($tokens) . " tokens\nAmount: ₦" . number_format($cost, 2);
+            
+            // WhatsApp Alert
+            $sa_wa = getSuperAdminOption('ai_whatsapp_number', '');
+            if(!empty($sa_wa)) sendWhatsAppAlert($sa_wa, "🤖 *AI Activation Request*\n\n" . $msg, 'admin_alert');
+            
+            $_SESSION['product_purchase_response'] = "✅ Request submitted! Super Admin has been notified for approval.";
+        } else {
+            $_SESSION['product_purchase_response'] = "❌ Transaction failed. Please try again.";
+        }
+    } else {
+        $_SESSION['product_purchase_response'] = "❌ Insufficient balance to process AI activation. Please fund your wallet first.";
+    }
+    header("Location: AISettings.php");
+    exit();
+}
+
 // ── Handle: Buy AI Tokens ───────────────────────────────────
 if (isset($_POST["buy-ai-tokens"])) {
     bc_validate_csrf();
@@ -233,12 +276,75 @@ $voice_apps_q = mysqli_query($connection_server, "SELECT id, username, email, ph
     </div>
 </div>
 
+<!-- AI Activation Request / Approval UI -->
+<?php 
+$req_status = $get_logged_admin_details['ai_request_status'] ?? NULL;
+if ($ai_status == 0 && ($req_status === NULL || $req_status === 'rejected')): 
+?>
+<div class="card ai-card shadow-lg mb-4 border-0 pulse-ring">
+    <div class="card-body p-4 p-lg-5 text-center">
+        <div class="stat-icon bg-purple-light mx-auto mb-4" style="width:80px; height:80px; font-size:2.5rem;"><i class="bi bi-cpu-fill"></i></div>
+        <h2 class="fw-bold">Unlock the AI Intelligence Suite</h2>
+        <p class="text-muted mx-auto" style="max-width: 600px;">Empower your platform with automated transaction monitoring, voice commands, and AI marketing tools. Choose a starting package to request activation.</p>
+        
+        <form method="POST" class="mt-4">
+            <?php echo bc_csrf_field(); ?>
+            <div class="row justify-content-center g-3 mb-4">
+                <div class="col-md-4">
+                    <label class="card p-3 h-100 cursor-pointer border">
+                        <input type="radio" name="token_package" value="starter" class="form-check-input mb-2" checked>
+                        <div class="fw-bold">Starter</div>
+                        <div class="small text-muted">5,000 Tokens</div>
+                        <div class="fs-4 fw-bold mt-2 text-primary">₦500</div>
+                    </label>
+                </div>
+                <div class="col-md-4">
+                    <label class="card p-3 h-100 cursor-pointer border">
+                        <input type="radio" name="token_package" value="business" class="form-check-input mb-2">
+                        <div class="fw-bold">Business</div>
+                        <div class="small text-muted">20,000 Tokens</div>
+                        <div class="fs-4 fw-bold mt-2 text-primary">₦1,800</div>
+                    </label>
+                </div>
+                <div class="col-md-4">
+                    <label class="card p-3 h-100 cursor-pointer border">
+                        <input type="radio" name="token_package" value="scale" class="form-check-input mb-2">
+                        <div class="fw-bold">Scale</div>
+                        <div class="small text-muted">100,000 Tokens</div>
+                        <div class="fs-4 fw-bold mt-2 text-primary">₦7,500</div>
+                    </label>
+                </div>
+            </div>
+            
+            <div class="d-flex justify-content-center gap-3">
+                <button type="submit" name="request-ai-activation" class="btn ai-pill-btn px-5 py-3">
+                    <i class="bi bi-lightning-charge-fill me-1"></i> Request Activation
+                </button>
+                <a href="Fund.php" class="btn btn-outline-primary rounded-pill px-4 py-3 fw-bold">
+                    <i class="bi bi-plus-circle me-1"></i> Add Funds
+                </a>
+            </div>
+            <p class="small text-muted mt-3"><i class="bi bi-info-circle me-1"></i> Payment will be deducted from your main wallet balance.</p>
+        </form>
+    </div>
+</div>
+<?php elseif ($req_status === 'pending'): ?>
+<div class="card ai-card shadow-sm mb-4 border-0 bg-light">
+    <div class="card-body p-5 text-center">
+        <div class="spinner-border text-primary mb-4" role="status" style="width: 3rem; height: 3rem;"></div>
+        <h3 class="fw-bold">Request Pending Approval</h3>
+        <p class="text-muted">Your AI Suite activation request is currently being reviewed by the Super Admin. You will be notified once it is approved.</p>
+        <div class="badge bg-warning text-dark px-3 py-2 rounded-pill">Status: Awaiting Approval</div>
+    </div>
+</div>
+<?php endif; ?>
+
 <!-- AI Disabled Warning -->
-<?php if (!$ai_status): ?>
+<?php if (!$ai_status && $req_status === 'approved'): ?>
 <div class="alert alert-warning border-0 rounded-4 d-flex align-items-center shadow-sm mb-4">
     <i class="bi bi-info-circle-fill me-3 fs-4 text-warning"></i>
     <div>
-        <strong>AI features are currently OFF.</strong> Enable them above to access smart transaction security, business guides, and voice commands. <strong>All features are opt-in — you will only be charged when you use them.</strong>
+        <strong>AI Suite is Approved but Disabled.</strong> Enable it above to start using the features.
     </div>
 </div>
 <?php endif; ?>
