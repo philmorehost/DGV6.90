@@ -6,16 +6,9 @@ Options -Indexes
     RewriteEngine On
     RewriteBase /bc-spadmin/
 
-    # ── RULE 1: Redirect *.php → clean URL (301) ──────────────────────────────
-    RewriteCond %{REQUEST_FILENAME} -f
-    RewriteCond %{THE_REQUEST} /bc-spadmin/([^?#]+)\.php([?#\s]) [NC]
-    RewriteCond %{REQUEST_URI} !^/bc-spadmin/(ajax-|index\.php) [NC]
-    RewriteRule ^(.+)\.php$ /bc-spadmin/$1 [L,R=301,QSA,NC]
-
-    # ── RULE 2: Serve clean URL → actual .php file ─────────────────────────────
+    # Serve clean URL → actual .php file
     RewriteCond %{REQUEST_FILENAME} !-f
     RewriteCond %{REQUEST_FILENAME} !-d
     RewriteCond %{REQUEST_FILENAME}.php -f
-    RewriteRule ^([^.]+)$ $1.php [L,QSA,NC]
-
+    RewriteRule ^([^/]+)$ $1.php [L,QSA]
 </IfModule>
