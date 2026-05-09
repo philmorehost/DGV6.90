@@ -319,14 +319,6 @@ class AIEngine
         return false;
     }
 
-    /**
-     * Is Ollama running and reachable?
-     */
-    public function isOllamaOnline(): bool
-    {
-        $raw = $this->curlGet(str_replace('/api', '', $this->base_url), $this->timeout_list);
-        return $raw !== false && strpos($raw, 'Ollama') !== false;
-    }
 
     /**
      * Initiates a model pull in the background (non-blocking).
