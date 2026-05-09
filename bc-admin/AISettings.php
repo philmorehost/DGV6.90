@@ -89,6 +89,18 @@ if (isset($_POST["buy-ai-tokens"])) {
     exit();
 }
 
+// ── Handle: Update AI Pricing for Users ──────────────────────
+if (isset($_POST["update-ai-pricing"])) {
+    bc_validate_csrf();
+    $price = (float)($_POST["ai_user_token_price"] ?? 150.00);
+    $mode  = (int)($_POST["ai_paid_usage"] ?? 1);
+    
+    mysqli_query($connection_server, "UPDATE sas_vendors SET ai_user_token_price='$price', ai_paid_usage='$mode' WHERE id='$esc_vid'");
+    $_SESSION["product_purchase_response"] = "AI Commercialization settings updated!";
+    header("Location: AISettings.php");
+    exit();
+}
+
 // ── Handle: Toggle AI On/Off ─────────────────────────────────
 if (isset($_POST["toggle-ai"])) {
     bc_validate_csrf();
@@ -577,13 +589,41 @@ if ($ai_status == 0 && ($req_status === NULL || $req_status === 'rejected')):
                             </div>
                             <div class="col-6">
                                 <label class="small fw-bold">Fee (AI Tokens)</label>
-                                <input type="number" name="ai_voice_fee_tokens" class="form-control fw-bold" value="<?php echo $voice_fee_tokens; ?>" min="0">
+                                <input type="number" name="ai_voice_fee_tokens" class="form-control fw-bold" value="<?php echo $get_logged_admin_details['ai_voice_fee_tokens'] ?? 50; ?>" min="0">
                             </div>
                             <div class="col-12">
                                 <button type="submit" name="set-voice-limit" class="btn btn-primary w-100 rounded-3">Save Voice Settings</button>
                             </div>
                         </form>
                     </div>
+
+                    <!-- NEW: AI Commercialization Card -->
+                    <div class="card border-0 shadow-sm mt-3 bg-primary bg-opacity-10 rounded-4">
+                        <div class="card-body p-4">
+                            <h6 class="fw-bold mb-2 text-primary"><i class="bi bi-currency-exchange me-2"></i>Commercialize AI Usage</h6>
+                            <p class="x-small text-muted mb-3">Earn money by charging your users for AI tokens. Set your markup price below.</p>
+                            <form method="post">
+                                <?php echo bc_csrf_field(); ?>
+                                <div class="row g-3">
+                                    <div class="col-6">
+                                        <label class="x-small fw-bold">Your Price/1k (₦)</label>
+                                        <input type="number" name="ai_user_token_price" class="form-control form-control-sm" value="<?php echo $get_logged_admin_details['ai_user_token_price'] ?? 150.00; ?>" step="0.01">
+                                    </div>
+                                    <div class="col-6">
+                                        <label class="x-small fw-bold">Token Mode</label>
+                                        <select name="ai_paid_usage" class="form-select form-select-sm">
+                                            <option value="1" <?php echo ($get_logged_admin_details['ai_paid_usage'] ?? 1) == 1 ? 'selected' : ''; ?>>Paid Only</option>
+                                            <option value="0" <?php echo ($get_logged_admin_details['ai_paid_usage'] ?? 1) == 0 ? 'selected' : ''; ?>>Free (Capped)</option>
+                                        </select>
+                                    </div>
+                                    <div class="col-12">
+                                        <button name="update-ai-pricing" type="submit" class="btn btn-primary btn-sm w-100 rounded-pill">Update AI Pricing</button>
+                                    </div>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+                </div>
                 </div>
                 <div class="col-md-7">
                     <h6 class="fw-bold mb-3">Pending & Approved Applications</h6>

@@ -221,6 +221,33 @@ if (isset($_POST["apply-ai-voice"])) {
     } else {
         $_SESSION["product_purchase_response"] = "You have not met the transaction requirement to apply.";
     }
+if (isset($_POST["buy-user-ai-tokens"])) {
+    $uid = $get_logged_user_details['id'];
+    $vid = $get_logged_user_details['vendor_id'];
+    $token_amount = (int)($_POST["token_amount"] ?? 0);
+    
+    // Get vendor's token price for users
+    $v_q = mysqli_query($connection_server, "SELECT ai_user_token_price, ai_status FROM sas_vendors WHERE id='$vid'");
+    $v_data = mysqli_fetch_assoc($v_q);
+    $price_per_1k = (float)($v_data['ai_user_token_price'] ?? 150.00);
+    $cost = ($token_amount / 1000) * $price_per_1k;
+
+    if ($token_amount >= 100 && $get_logged_user_details['balance'] >= $cost) {
+        $ref = "AI_TKN_" . time() . rand(10, 99);
+        $desc = "Purchase of $token_amount AI Tokens";
+        
+        // Use the platform's chargeUser logic or manual query
+        $new_bal = $get_logged_user_details['balance'] - $cost;
+        $new_token_bal = $get_logged_user_details['ai_token_balance'] + $token_amount;
+        
+        $upd = mysqli_query($connection_server, "UPDATE sas_users SET balance='$new_bal', ai_token_balance='$new_token_bal' WHERE id='$uid'");
+        if ($upd) {
+            mysqli_query($connection_server, "INSERT INTO sas_transactions (vendor_id, username, type, amount, old_balance, new_balance, ref, description, status, date) VALUES ('$vid', '".$get_logged_user_details['username']."', 'debit', '$cost', '".$get_logged_user_details['balance']."', '$new_bal', '$ref', '$desc', 1, NOW())");
+            $_SESSION["product_purchase_response"] = "✅ $token_amount AI Tokens purchased successfully!";
+        }
+    } else {
+        $_SESSION["product_purchase_response"] = "❌ Insufficient balance or invalid amount.";
+    }
     header("Location: " . $_SERVER["REQUEST_URI"]);
     exit();
 }
@@ -243,12 +270,18 @@ if (isset($_POST["apply-ai-voice"])) {
 <?php
     $tx_count_q = mysqli_query($connection_server, "SELECT COUNT(id) as c FROM sas_transactions WHERE username='".$get_logged_user_details["username"]."' AND status=1");
     $tx_count = ($tx_count_q && $row_c = mysqli_fetch_assoc($tx_count_q)) ? $row_c['c'] : 0;
-    $v_limit_q = mysqli_query($connection_server, "SELECT ai_voice_min_tx FROM sas_vendors WHERE id='".$get_logged_user_details["vendor_id"]."'");
-    $v_limit_row = ($v_limit_q) ? mysqli_fetch_assoc($v_limit_q) : null;
-    $v_limit = $v_limit_row['ai_voice_min_tx'] ?? 50;
-    $v_limit = max(1, (int)$v_limit); // Prevent division by zero
+    
+    $v_q = mysqli_query($connection_server, "SELECT ai_voice_min_tx, ai_user_token_price, ai_status FROM sas_vendors WHERE id='".$get_logged_user_details["vendor_id"]."'");
+    $v_data = mysqli_fetch_assoc($v_q);
+    
+    $v_limit = $v_data['ai_voice_min_tx'] ?? 50;
+    $v_limit = max(1, (int)$v_limit);
+    $user_token_price = (float)($v_data['ai_user_token_price'] ?? 150.00);
+    $ai_system_on = (int)($v_data['ai_status'] ?? 0);
+    
     $ai_voice_status = (int)$get_logged_user_details['ai_voice_status'];
     $progress = min(100, ($tx_count / $v_limit) * 100);
+    $user_tokens = (int)$get_logged_user_details['ai_token_balance'];
 ?>
   <link href="https://fonts.gstatic.com" rel="preconnect">
   <link

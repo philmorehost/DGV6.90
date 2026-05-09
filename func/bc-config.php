@@ -28,7 +28,7 @@ if (!$connection_server) {
 if ($connection_server) {
     // Branch DG6.7 Optimization: Only run migrations if not already done globally or in current session
     // This significantly improves site-wide page load speeds by skipping redundant DB structural checks.
-    define('SYSTEM_VERSION', '6.9.5-ai'); // DGV6.90 AI Edition — triggers AI schema migrations
+    define('SYSTEM_VERSION', '6.9.6-ai'); // DGV6.90 AI Edition — triggers AI schema migrations
     $current_mig_v = $_SESSION['migrations_completed_version'] ?? '0';
 
     // Global Migration Check to avoid redundant checks for new visitors
@@ -109,6 +109,18 @@ if ($connection_server) {
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         )");
         
+        // Migration: AI Commercialization & Token Economy
+        $ai_vendor_cols = [
+            'ai_user_token_price' => "DECIMAL(10,2) DEFAULT 150.00 AFTER ai_price_per_1k_tokens",
+            'ai_paid_usage'       => "TINYINT DEFAULT 1 AFTER ai_status"
+        ];
+        foreach ($ai_vendor_cols as $col => $def) {
+            $check = mysqli_query($connection_server, "SHOW COLUMNS FROM `sas_vendors` LIKE '$col'");
+            if ($check && mysqli_num_rows($check) == 0) {
+                mysqli_query($connection_server, "ALTER TABLE `sas_vendors` ADD COLUMN `$col` $def");
+            }
+        }
+
         // Migration: AI Transaction Logs Schema Evolution
         $ai_log_cols = [
             'duration_ms' => "INT DEFAULT 0 AFTER tokens_burned",
