@@ -636,10 +636,15 @@ $create_super_admin_site_detail_table = mysqli_query($connection_server, "CREATE
 $create_email_template_table = mysqli_query($connection_server, "CREATE TABLE IF NOT EXISTS sas_email_templates (id INT NOT NULL AUTO_INCREMENT, vendor_id INT UNSIGNED NOT NULL, email_type VARCHAR(225) NOT NULL, subject VARCHAR(225) NOT NULL, body LONGTEXT NOT NULL, body_json LONGTEXT, PRIMARY KEY (id))");
 
 if ($create_email_template_table) {
-    // Add unique constraint for vendor isolation
-    $check_idx = mysqli_query($connection_server, "SHOW INDEX FROM sas_email_templates WHERE Key_name = 'idx_vendor_email_type'");
-    if (mysqli_num_rows($check_idx) == 0) {
-        mysqli_query($connection_server, "ALTER TABLE sas_email_templates ADD UNIQUE INDEX idx_vendor_email_type (vendor_id, email_type)");
+    // Add unique constraint for vendor isolation (Wrapped in try-catch to ignore existing duplicate entries error on PHP 8.1+)
+    try {
+        $check_idx = mysqli_query($connection_server, "SHOW INDEX FROM sas_email_templates WHERE Key_name = 'idx_vendor_email_type'");
+        if (mysqli_num_rows($check_idx) == 0) {
+            mysqli_query($connection_server, "ALTER TABLE sas_email_templates ADD UNIQUE INDEX idx_vendor_email_type (vendor_id, email_type)");
+        }
+    } catch (mysqli_sql_exception $e) {
+        // Log quietly, do not crash script
+        error_log("[DGV DB] Non-fatal error creating idx_vendor_email_type: " . $e->getMessage());
     }
 
     $check_json_col = mysqli_query($connection_server, "SHOW COLUMNS FROM sas_email_templates LIKE 'body_json'");
@@ -679,6 +684,20 @@ mysqli_query($connection_server, "CREATE TABLE IF NOT EXISTS sas_mail_drafts (
 
 //Create Vendor Style Template Table
 $create_vendor_style_templates_table = mysqli_query($connection_server, "CREATE TABLE IF NOT EXISTS sas_vendor_style_templates (vendor_id INT UNSIGNED NOT NULL, template_name VARCHAR(225) NOT NULL, date TIMESTAMP DEFAULT CURRENT_TIMESTAMP)");
+
+if ($create_vendor_style_templates_table) {
+    $cols = ["primary_color" => "VARCHAR(20) DEFAULT '#287bff'", "header_image" => "VARCHAR(255) DEFAULT ''"];
+    $res = mysqli_query($connection_server, "SHOW COLUMNS FROM sas_vendor_style_templates");
+    $existing = []; 
+    if ($res) {
+        while($r = mysqli_fetch_assoc($res)) $existing[] = $r['Field'];
+    }
+    foreach($cols as $col => $def) {
+        if(!in_array($col, $existing)) {
+            mysqli_query($connection_server, "ALTER TABLE sas_vendor_style_templates ADD COLUMN $col $def");
+        }
+    }
+}
 
 //Create Super Admin Style Template Table
 $create_spadmin_style_templates_table = mysqli_query($connection_server, "CREATE TABLE IF NOT EXISTS sas_spadmin_style_templates (template_name VARCHAR(225) NOT NULL, date TIMESTAMP DEFAULT CURRENT_TIMESTAMP)");
