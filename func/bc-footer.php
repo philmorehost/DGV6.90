@@ -4,19 +4,37 @@
   <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js" defer></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js" defer></script>
 
-<?php if (isset($_SESSION["product_purchase_response"])) { ?>
+<?php if (isset($_SESSION["product_purchase_response"])): ?>
 <script>
-  <?php
-    $msg = $_SESSION["product_purchase_response"];
-    $type = "success";
-    if(stripos($msg, 'Error') !== false || stripos($msg, 'reached the maximum') !== false || stripos($msg, 'Limit Reached') !== false || stripos($msg, 'failed') !== false) {
-        $type = "error";
+  (function() {
+    <?php
+      $msg = $_SESSION["product_purchase_response"];
+      $type = "success";
+      if(stripos($msg, 'Error') !== false || stripos($msg, 'reached the maximum') !== false || stripos($msg, 'Limit Reached') !== false || stripos($msg, 'failed') !== false) {
+          $type = "error";
+      }
+    ?>
+    const msg = <?php echo json_encode($msg); ?>;
+    const type = <?php echo json_encode($type); ?>;
+    const msgHash = btoa(msg).substring(0, 32);
+    const lastMsg = localStorage.getItem('last_swal_msg');
+    const lastTime = localStorage.getItem('last_swal_time');
+    const now = Date.now();
+
+    if (lastMsg !== msgHash || (now - lastTime > 5000)) {
+        Swal.fire({
+            title: (type === "error" ? "Alert!" : "Message!"),
+            text: msg,
+            icon: type,
+            confirmButtonColor: 'var(--primary-color)'
+        });
+        localStorage.setItem('last_swal_msg', msgHash);
+        localStorage.setItem('last_swal_time', now);
     }
-  ?>
-  Swal.fire ('<?php echo ($type == "error" ? "Alert!" : "Message!"); ?>', '<?php echo addslashes($msg); ?>', '<?php echo $type; ?>') ;
+  })();
 </script>
 <?php unset($_SESSION["product_purchase_response"]); ?>
-<?php } ?>
+<?php endif; ?>
 
 
 	<!-- <div style="text-align: center; max-height: 40%;" id="customAlertDiv"

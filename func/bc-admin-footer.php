@@ -41,12 +41,29 @@
   <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js" defer></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js" defer></script>
 
-<?php if(isset($_SESSION["product_purchase_response"])){ ?>
+<?php if(isset($_SESSION["product_purchase_response"])): ?>
 <script>
-  Swal.fire('Message!', '<?php echo addslashes($_SESSION["product_purchase_response"]); ?>', 'success');
+  (function() {
+    const msg = <?php echo json_encode($_SESSION["product_purchase_response"]); ?>;
+    const msgHash = btoa(msg).substring(0, 32);
+    const lastMsg = localStorage.getItem('last_swal_msg');
+    const lastTime = localStorage.getItem('last_swal_time');
+    const now = Date.now();
+
+    if (lastMsg !== msgHash || (now - lastTime > 5000)) {
+        Swal.fire({
+            title: 'Message!',
+            text: msg,
+            icon: 'success',
+            confirmButtonColor: 'var(--primary-color)'
+        });
+        localStorage.setItem('last_swal_msg', msgHash);
+        localStorage.setItem('last_swal_time', now);
+    }
+  })();
 </script>
 <?php unset($_SESSION["product_purchase_response"]); ?>
-<?php } ?>
+<?php endif; ?>
 
 
 	<!-- <div style="text-align: center; max-height: 40%;" id="customAlertDiv" class="bg-2 box-shadow m-z-index-2 s-z-index-2 m-scroll-auto s-scroll-auto m-block-dp s-block-dp m-position-fix s-position-fix m-top-20 s-top-30 br-radius-5px m-width-60 s-width-26 m-height-auto s-height-auto m-padding-lt-1 s-padding-lt-1 m-padding-rt-1 s-padding-rt-1 m-padding-tp-5 s-padding-tp-1 m-padding-bm-5 s-padding-bm-1 m-margin-lt-19 s-margin-lt-26 m-margin-bm-2 s-margin-bm-2">
