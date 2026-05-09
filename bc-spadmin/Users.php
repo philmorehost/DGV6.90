@@ -203,7 +203,7 @@
                     </div>
                     <div class="col-md-3">
                         <label class="small fw-bold text-muted">SELECT VENDOR</label>
-                        <select id="user-vendor-filter" class="form-select">
+                        <select id="user-vendor-filter" class="form-select" onchange="fetchUsers(1)">
                             <option value="0">All Vendors</option>
                             <?php
                                 $vs = mysqli_query($connection_server, "SELECT id, site_url FROM sas_vendors WHERE status=1 ORDER BY site_url ASC");
@@ -216,7 +216,7 @@
                     </div>
                     <div class="col-md-3">
                         <label class="small fw-bold text-muted">ACCOUNT STATUS</label>
-                        <select id="user-status-filter" class="form-select">
+                        <select id="user-status-filter" class="form-select" onchange="fetchUsers(1)">
                             <option value="all">All Status</option>
                             <option value="1">Active Only</option>
                             <option value="2">Blocked Only</option>
