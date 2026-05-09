@@ -1717,6 +1717,8 @@ $ai_vendor_new_cols = [
     'ai_price_per_1k_tokens'  => "DECIMAL(10,2) DEFAULT 100.00 COMMENT 'NGN price for 1000 AI tokens'",
     'ai_model_assigned'       => "VARCHAR(50) DEFAULT 'phi4-mini' COMMENT 'Ollama model assigned to vendor tier'",
     'ai_request_status'       => "VARCHAR(20) DEFAULT NULL COMMENT 'NULL=none, pending=requested, approved=active, rejected=denied'",
+    'ai_status'               => "TINYINT(1) DEFAULT 0",
+    'ai_token_balance'        => "INT DEFAULT 0",
 ];
 foreach ($ai_vendor_new_cols as $col => $def) {
     if (!in_array($col, $ai_vendor_existing)) {
