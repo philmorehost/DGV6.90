@@ -184,7 +184,7 @@
         if (!prompt) return;
 
         // Detect if this is a transaction command (Typed or Voice)
-        const isTx = /send|buy|recharge|topup|data|airtime|pay/i.test(prompt);
+        const isTx = /send|buy|recharge|topup|data|airtime|pay|pin|exam/i.test(prompt);
         let action = forceAction || (isTx ? 'voice_vtu' : 'chat');
         let payloadExtra = {};
 

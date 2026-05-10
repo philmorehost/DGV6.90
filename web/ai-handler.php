@@ -267,7 +267,8 @@ switch ($action_type) {
             'data'        => 'func/data.php',
             'electricity' => 'func/electric.php',
             'cable'       => 'func/cable.php',
-            'betting'     => 'func/betting.php'
+            'betting'     => 'func/betting.php',
+            'exam'        => 'func/exam.php'
         ];
 
         $handler_rel = $service_map[strtolower($intent['service'])] ?? '';
@@ -310,7 +311,7 @@ switch ($action_type) {
     default:
         $ai_result = $ai->chat($model_to_use, $safe_prompt);
         // Proactive Intent Detection for Confirmation Flow
-        if (preg_match('/buy|recharge|send|topup|data|airtime|pay/i', $prompt_raw)) {
+        if (preg_match('/buy|recharge|send|topup|data|airtime|pay|pin|exam/i', $prompt_raw)) {
             $intent = $ai->parseVtuIntent($prompt_raw, $model_to_use, $context_data);
             if ($intent && $intent['confidence'] >= 50) {
                 $ai_result['pending_vtu'] = $intent;
