@@ -89,12 +89,12 @@ if ($is_admin_actor) {
     }
 } else {
     // Fetch from sas_users
-    $q = mysqli_query($connection_server, "SELECT id, firstname, ai_status, ai_token_balance FROM sas_users WHERE vendor_id='$safe_vid' AND username='$esc_name' AND status=1 LIMIT 1");
+    $q = mysqli_query($connection_server, "SELECT * FROM sas_users WHERE vendor_id='$safe_vid' AND username='$esc_name' AND status=1 LIMIT 1");
 }
 
-$actor = $q ? mysqli_fetch_assoc($q) : null;
+$get_logged_user_details = $q ? mysqli_fetch_assoc($q) : null;
 
-if (!$actor) {
+if (!$get_logged_user_details) {
     http_response_code(403);
     echo json_encode(['status' => 'error', 'code' => 'USER_NOT_FOUND', 'message' => 'Account not found.']);
     exit;
@@ -131,9 +131,9 @@ if ($action_type === 'apply' && !$is_admin_actor) {
 
     // Activate: Status=1 (Assistant), Voice=1 (Pending Review)
     // Grant 500 starter tokens if they have 0
-    $tokens = (int)$actor['ai_token_balance'] > 0 ? (int)$actor['ai_token_balance'] : 500;
+    $tokens = (int)($get_logged_user_details['ai_token_balance'] ?? 0) > 0 ? (int)$get_logged_user_details['ai_token_balance'] : 500;
     
-    mysqli_query($connection_server, "UPDATE sas_users SET ai_status=1, ai_voice_status=1, ai_token_balance='$tokens' WHERE id='{$actor['id']}'");
+    mysqli_query($connection_server, "UPDATE sas_users SET ai_status=1, ai_voice_status=1, ai_token_balance='$tokens' WHERE id='{$get_logged_user_details['id']}'");
     
     $success_msg = "🎉 AI Assistant Activated! You now have access to Voice-to-VTU and Smart Chat. $tokens tokens granted.";
     if ($_SERVER['REQUEST_METHOD'] === 'POST') {
@@ -160,7 +160,7 @@ if (($v_status['ai_status'] ?? 0) != 1 && $context !== 'spadmin') {
 }
 
 // User Activation Check
-$user_ai_status = (int)($actor['ai_status'] ?? 0);
+$user_ai_status = (int)($get_logged_user_details['ai_status'] ?? 0);
 if ($user_ai_status < 1 && $action_type !== 'chat') {
     http_response_code(403);
     echo json_encode([
@@ -183,7 +183,7 @@ $assigned_model  = $vendor_ai['ai_model_assigned'] ?? 'gemini-1.5-flash';
 $model_to_use = $assigned_model;
 
 // ─── GATE 4: Token Balance Check ─────────────────────────────
-$current_tokens = (int)($actor['ai_token_balance'] ?? 0);
+$current_tokens = (int)($get_logged_user_details['ai_token_balance'] ?? 0);
 if ($current_tokens < $tokens_per_call) {
     http_response_code(402);
     echo json_encode([
@@ -243,7 +243,7 @@ switch ($action_type) {
         }
 
         // 2. Check Authorization for Autonomous Action
-        if (($actor['ai_voice_status'] ?? 0) != 2 && $action_type === 'voice_vtu') {
+        if (($get_logged_user_details['ai_voice_status'] ?? 0) != 2 && $action_type === 'voice_vtu') {
              // Fallback: If not approved for zero-click, treat as a chat request but keep the intent
              $ai_result = $ai->chat($model_to_use, $safe_prompt);
              $ai_result['pending_vtu'] = $intent;
@@ -325,7 +325,7 @@ $ai_duration = $ai_result['duration_ms'] ?? 0;
 if ($ai_result['status'] === 'success') {
     // Deduct tokens ONLY on success (pay-per-success billing)
     $new_tokens = max(0, $current_tokens - $tokens_per_call);
-    $actor_id   = (int)$actor['id'];
+    $actor_id   = (int)$get_logged_user_details['id'];
 
     if ($context === 'spadmin') {
         // Super admin doesn't get debited
