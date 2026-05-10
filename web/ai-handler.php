@@ -286,10 +286,15 @@ switch ($action_type) {
         
         $res = json_decode($json_response_encode ?? '{}', true);
         
-        if (($res['status'] ?? '') === 'success') {
+        $res_status = $res['status'] ?? '';
+        if ($res_status === 'success' || $res_status === 'pending') {
+            $is_pending = ($res_status === 'pending');
+            $icon = $is_pending ? "⏳" : "✅";
+            $msg = $is_pending ? "Order Placed! (Processing...)" : "Order Placed Successfully!";
+            
             $ai_result = [
                 'status'   => 'success',
-                'response' => "✅ Order Placed Successfully!\nType: " . ucwords($intent['service']) . "\nDest: " . $intent['phone'] . "\nAmt: ₦" . number_format($intent['amount']) . "\nRef: " . ($res['ref'] ?? 'N/A'),
+                'response' => "$icon $msg\nType: " . ucwords($intent['service']) . "\nDest: " . $intent['phone'] . "\nAmt: ₦" . number_format($intent['amount']) . "\nRef: " . ($res['ref'] ?? 'N/A'),
                 'model'    => $model_to_use,
                 'duration_ms' => 0 
             ];
