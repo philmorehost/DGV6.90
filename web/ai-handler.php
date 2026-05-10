@@ -230,6 +230,7 @@ if (!$ai->isModelCompatible($model_to_use)) {
 switch ($action_type) {
     case 'voice_vtu':
     case 'execute_vtu':
+        execute_vtu_logic:
         // 1. Get Intent (either parsed now or passed from client)
         if ($action_type === 'execute_vtu') {
             $intent = $json_input['intent'] ?? $_POST['intent'] ?? null;
@@ -247,6 +248,7 @@ switch ($action_type) {
              // Fallback: If not approved for zero-click, treat as a chat request but keep the intent
              $ai_result = $ai->chat($model_to_use, $safe_prompt);
              $ai_result['pending_vtu'] = $intent;
+             $_SESSION['ai_pending_vtu'] = $intent; // Server-side persistence
              break; // Skip the direct execution below
         }
         
@@ -309,12 +311,24 @@ switch ($action_type) {
         $ai_result = $ai->chat($model_to_use, $safe_prompt, ['temperature' => 0.3]);
         break;
     default:
+        // Smart Detection: If user says 'yes' and we have a pending intent in SESSION,
+        // automatically switch to execute_vtu logic to prevent 'forgetting'.
+        $is_confirm = preg_match('/^(yes|confirm|proceed|go ahead|yep|sure|ok|do it|okay|process)$/i', trim($prompt_raw));
+        if ($is_confirm && !empty($_SESSION['ai_pending_vtu'])) {
+            $intent = $_SESSION['ai_pending_vtu'];
+            unset($_SESSION['ai_pending_vtu']);
+            // Jump to execution logic (we'll replicate it here or use a goto/function)
+            // For now, let's just use the same logic block below
+            goto execute_vtu_logic;
+        }
+
         $ai_result = $ai->chat($model_to_use, $safe_prompt);
         // Proactive Intent Detection for Confirmation Flow
         if (preg_match('/buy|recharge|send|topup|data|airtime|pay|pin|exam/i', $prompt_raw)) {
             $intent = $ai->parseVtuIntent($prompt_raw, $model_to_use, $context_data);
             if ($intent && $intent['confidence'] >= 50) {
                 $ai_result['pending_vtu'] = $intent;
+                $_SESSION['ai_pending_vtu'] = $intent; // Save for next turn
             }
         }
         break;
