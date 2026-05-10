@@ -231,9 +231,9 @@ switch ($action_type) {
     case 'voice_vtu':
     case 'execute_vtu':
         execute_vtu_logic:
-        // 1. Get Intent (either parsed now or passed from client)
+        // 1. Get Intent (either parsed now or passed from client or session)
         if ($action_type === 'execute_vtu') {
-            $intent = $json_input['intent'] ?? $_POST['intent'] ?? null;
+            $intent = $json_input['intent'] ?? $_POST['intent'] ?? $_SESSION['ai_pending_vtu'] ?? null;
         } else {
             $intent = $ai->parseVtuIntent($prompt_raw, $model_to_use, $context_data);
         }
@@ -313,12 +313,10 @@ switch ($action_type) {
     default:
         // Smart Detection: If user says 'yes' and we have a pending intent in SESSION,
         // automatically switch to execute_vtu logic to prevent 'forgetting'.
-        $is_confirm = preg_match('/^(yes|confirm|proceed|go ahead|yep|sure|ok|do it|okay|process)$/i', trim($prompt_raw));
+        $is_confirm = preg_match('/\b(yes|confirm|proceed|go ahead|yep|sure|ok|do it|okay|process)\b/i', trim($prompt_raw));
         if ($is_confirm && !empty($_SESSION['ai_pending_vtu'])) {
             $intent = $_SESSION['ai_pending_vtu'];
-            unset($_SESSION['ai_pending_vtu']);
-            // Jump to execution logic (we'll replicate it here or use a goto/function)
-            // For now, let's just use the same logic block below
+            $action_type = 'execute_vtu'; // CRITICAL: Update action type for the goto logic
             goto execute_vtu_logic;
         }
 
