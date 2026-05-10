@@ -188,14 +188,16 @@
         let action = forceAction || (isTx ? 'voice_vtu' : 'chat');
         let payloadExtra = {};
 
-        const isConfirmation = /^(yes|confirm|proceed|go ahead|yep|sure|ok|do it|okay)$/i.test(prompt);
+        // Robust Confirmation Detection
+        const isConfirmation = /\b(yes|confirm|proceed|go ahead|yep|sure|ok|do it|okay|process)\b/i.test(prompt);
         const pendingVtu = sessionStorage.getItem('pending_vtu');
 
         if (isConfirmation && pendingVtu) {
             action = 'execute_vtu';
             payloadExtra.intent = JSON.parse(pendingVtu);
             sessionStorage.removeItem('pending_vtu'); 
-        } else if (!isConfirmation) {
+        } else if (!isConfirmation && !isTx) {
+            // Only clear if it's definitely NOT a confirmation and NOT a new transaction request
             sessionStorage.removeItem('pending_vtu');
         }
 

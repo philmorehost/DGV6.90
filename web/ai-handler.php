@@ -248,11 +248,10 @@ switch ($action_type) {
              $ai_result = $ai->chat($model_to_use, $safe_prompt);
              $ai_result['pending_vtu'] = $intent;
              break; // Skip the direct execution below
-        } elseif (($actor['ai_voice_status'] ?? 0) != 2 && $action_type === 'execute_vtu') {
-             // If they are trying to CONFIRM but still not approved (shouldn't happen with UI logic but for safety)
-             echo json_encode(['status' => 'error', 'code' => 'NOT_APPROVED', 'message' => 'Autonomous transactions require activation. Please apply in AI Settings.']);
-             exit;
         }
+        
+        // Note: execute_vtu is ALWAYS allowed if the user has a pending intent, 
+        // as it is a conscious confirmation step.
 
         // 3. Prepare for Transaction Execution
         $purchase_method = "API"; 
@@ -271,15 +270,16 @@ switch ($action_type) {
             'betting'     => 'func/betting.php'
         ];
 
-        $handler_file = $service_map[strtolower($intent['service'])] ?? '';
-        // FIX: Path must be relative to web/
-        if (empty($handler_file) || !file_exists(__DIR__ . "/../" . $handler_file)) {
-             echo json_encode(['status' => 'error', 'message' => 'That service is not yet supported for voice commands.']);
+        $handler_rel = $service_map[strtolower($intent['service'])] ?? '';
+        $handler_path = __DIR__ . "/" . $handler_rel; // Since ai-handler.php is in web/
+        
+        if (empty($handler_rel) || !file_exists($handler_path)) {
+             echo json_encode(['status' => 'error', 'message' => 'That service (' . $intent['service'] . ') is not yet supported for voice commands. Path: ' . $handler_rel]);
              exit;
         }
 
         // Execute Transaction
-        include_once(__DIR__ . "/../" . $handler_file);
+        include_once($handler_path);
         
         $res = json_decode($json_response_encode ?? '{}', true);
         
