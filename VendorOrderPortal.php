@@ -7,7 +7,7 @@ if (empty($hash)) {
     die("Access denied. Invalid or missing secure key.");
 }
 
-$v_q = mysqli_query($connection_server, "SELECT v.*, bp.name as package_name FROM sas_vendors v JOIN sas_billing_packages bp ON v.current_billing_id = bp.id WHERE v.access_hash='$hash'");
+$v_q = mysqli_query($connection_server, "SELECT v.*, bp.name as package_name, bp.download_url as package_dl FROM sas_vendors v JOIN sas_billing_packages bp ON v.current_billing_id = bp.id WHERE v.access_hash='$hash'");
 $vendor = mysqli_fetch_assoc($v_q);
 
 if (!$vendor) {
@@ -16,6 +16,7 @@ if (!$vendor) {
 
 $addon_ids = $vendor['selected_addons'];
 $has_addons = !empty($addon_ids);
+$has_package_dl = !empty($vendor['package_dl']);
 $has_apps = ($vendor['apk_ordered'] || $vendor['ios_ordered'] || $vendor['playstore_ordered'] || $vendor['sms_bridge_ordered']);
 
 // Fetch active addons with download URLs
@@ -82,7 +83,7 @@ if ($has_addons) {
                     </div>
                 </div>
 
-                <?php if ($has_addons || $has_apps): ?>
+                <?php if ($has_addons || $has_apps || $has_package_dl): ?>
                 <!-- Downloads Section -->
                 <div class="card portal-card p-4">
                     <h5 class="fw-bold mb-4"><i class="bi bi-cloud-arrow-down-fill me-2 text-primary"></i>Digital Assets & Apps</h5>
@@ -92,7 +93,26 @@ if ($has_addons) {
                     </div>
 
                     <div class="row g-3">
-                        <?php if (empty($addons) && !$has_apps): ?>
+                        <?php if ($has_package_dl): ?>
+                        <div class="col-12 mb-2">
+                            <div class="download-card p-4 border-primary bg-primary bg-opacity-10 shadow-sm">
+                                <div class="d-flex align-items-center mb-3">
+                                    <div class="bg-primary p-3 rounded-4 me-3 text-white">
+                                        <i class="bi bi-code-square fs-3"></i>
+                                    </div>
+                                    <div>
+                                        <div class="fw-bold fs-5"><?php echo htmlspecialchars($vendor['package_name']); ?> Source Script</div>
+                                        <div class="small text-primary fw-bold">Primary Digital Asset</div>
+                                    </div>
+                                </div>
+                                <button class="btn btn-primary w-100 rounded-pill fw-bold py-2 generate-dl" data-pkg-id="<?php echo $vendor['current_billing_id']; ?>" data-hash="<?php echo $hash; ?>">
+                                    <i class="bi bi-shield-lock-fill me-1"></i> Generate Secure Script Link
+                                </button>
+                            </div>
+                        </div>
+                        <?php endif; ?>
+
+                        <?php if (empty($addons) && !$has_apps && !$has_package_dl): ?>
                             <div class="col-12 text-center py-4 text-muted small">
                                 <i class="bi bi-hourglass-split fs-2 d-block mb-2"></i>
                                 Your custom builds are being prepared. Check back shortly.
@@ -159,16 +179,21 @@ if ($has_addons) {
         document.querySelectorAll('.generate-dl').forEach(btn => {
             btn.addEventListener('click', function() {
                 const addonId = this.getAttribute('data-id');
+                const pkgId = this.getAttribute('data-pkg-id');
                 const vHash = this.getAttribute('data-hash');
                 const originalText = this.innerHTML;
                 
                 this.disabled = true;
                 this.innerHTML = '<span class="spinner-border spinner-border-sm"></span> Generating...';
 
+                let postBody = 'hash=' + vHash;
+                if(addonId) postBody += '&addon_id=' + addonId;
+                if(pkgId) postBody += '&package_id=' + pkgId;
+
                 fetch('func/bc-get-download-link.php', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-                    body: 'addon_id=' + addonId + '&hash=' + vHash
+                    body: postBody
                 })
                 .then(r => r.json())
                 .then(data => {

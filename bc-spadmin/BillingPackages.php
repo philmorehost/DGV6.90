@@ -37,19 +37,17 @@
 
     // Handle Add/Edit Request
     if(isset($_POST['save_package'])) {
-        $package_id = mysqli_real_escape_string($connection_server, $_POST['package_id']);
-        $name = mysqli_real_escape_string($connection_server, $_POST['name']);
-        $price = mysqli_real_escape_string($connection_server, $_POST['price']);
         $duration_days = mysqli_real_escape_string($connection_server, $_POST['duration_days']);
         $package_type = mysqli_real_escape_string($connection_server, $_POST['package_type']);
+        $download_url = mysqli_real_escape_string($connection_server, $_POST['download_url']);
 
         if(empty($package_id)) {
             // Add New Package
-            $sql = "INSERT INTO sas_billing_packages (name, package_type, price, duration_days) VALUES ('$name', '$package_type', '$price', '$duration_days')";
+            $sql = "INSERT INTO sas_billing_packages (name, package_type, price, duration_days, download_url) VALUES ('$name', '$package_type', '$price', '$duration_days', '$download_url')";
             $_SESSION['page_alert'] = "Package added successfully!";
         } else {
             // Update Existing Package
-            $sql = "UPDATE sas_billing_packages SET name='$name', package_type='$package_type', price='$price', duration_days='$duration_days' WHERE id='$package_id'";
+            $sql = "UPDATE sas_billing_packages SET name='$name', package_type='$package_type', price='$price', duration_days='$duration_days', download_url='$download_url' WHERE id='$package_id'";
             $_SESSION['page_alert'] = "Package updated successfully!";
         }
 
@@ -137,6 +135,10 @@
                             <div class="mb-4" id="duration_wrapper">
                                 <label for="duration_days" class="form-label small fw-bold text-muted text-uppercase">Duration (Days)</label>
                                 <input type="number" class="form-control rounded-3" id="duration_days" name="duration_days" value="<?php echo $edit_package['duration_days'] ?? ''; ?>" placeholder="30" required>
+                            </div>
+                            <div class="mb-4">
+                                <label for="download_url" class="form-label small fw-bold text-muted text-uppercase">Download URL (For One-Off Scripts)</label>
+                                <input type="text" class="form-control rounded-3" id="download_url" name="download_url" value="<?php echo $edit_package['download_url'] ?? ''; ?>" placeholder="https://cloud.com/script.zip">
                             </div>
 
                             <script>
@@ -316,6 +318,13 @@
                                                 <span class="badge bg-secondary bg-opacity-10 text-secondary rounded-pill px-3">Lifetime</span>
                                             <?php else: ?>
                                                 <span class="badge bg-info bg-opacity-10 text-info rounded-pill px-3"><?php echo htmlspecialchars($row['duration_days']); ?> Days</span>
+                                            <?php endif; ?>
+                                        </td>
+                                        <td>
+                                            <?php if(!empty($row['download_url'])): ?>
+                                                <span class="badge bg-primary rounded-pill px-2" title="<?php echo htmlspecialchars($row['download_url']); ?>"><i class="bi bi-link-45deg"></i> Link Set</span>
+                                            <?php else: ?>
+                                                <span class="text-muted small">None</span>
                                             <?php endif; ?>
                                         </td>
                                         <td class="text-end pe-4">

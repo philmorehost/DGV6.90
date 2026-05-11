@@ -8,9 +8,10 @@ if (empty($token)) {
 }
 
 // Fetch the tracking record
-$sql = "SELECT vd.*, a.download_url 
+$sql = "SELECT vd.*, a.download_url as addon_url, p.download_url as package_url
         FROM sas_vendor_downloads vd
-        JOIN sas_billing_addons a ON vd.addon_id = a.id
+        LEFT JOIN sas_billing_addons a ON vd.addon_id = a.id
+        LEFT JOIN sas_billing_packages p ON vd.package_id = p.id
         WHERE vd.token='$token' LIMIT 1";
 $res = mysqli_query($connection_server, $sql);
 $dl = mysqli_fetch_assoc($res);
@@ -49,7 +50,7 @@ $ip = $_SERVER['REMOTE_ADDR'] ?? 'Unknown';
 mysqli_query($connection_server, "UPDATE sas_vendor_downloads SET download_count = download_count + 1, ip_address='$ip' WHERE id='".$dl['id']."'");
 
 // Redirect to actual file
-$final_url = $dl['download_url'];
+$final_url = $dl['addon_url'] ?? $dl['package_url'];
 if (empty($final_url)) {
     die("Error: The file source has not been configured by the administrator yet.");
 }

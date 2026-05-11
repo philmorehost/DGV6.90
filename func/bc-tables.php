@@ -171,6 +171,10 @@ if (!in_array('selected_addons', $vendor_existing)) {
     mysqli_query($connection_server, "ALTER TABLE sas_vendors ADD COLUMN selected_addons TEXT DEFAULT NULL");
 }
 
+if (!in_array('total_order_amount', $vendor_existing)) {
+    mysqli_query($connection_server, "ALTER TABLE sas_vendors ADD COLUMN total_order_amount DECIMAL(10,2) DEFAULT 0.00");
+}
+
 if (!in_array('access_hash', $vendor_existing)) {
     mysqli_query($connection_server, "ALTER TABLE sas_vendors ADD COLUMN access_hash VARCHAR(100) UNIQUE DEFAULT NULL AFTER email");
 }
@@ -244,7 +248,15 @@ $create_billing_packages_table = mysqli_query($connection_server, "
     name VARCHAR(255) NOT NULL,
     price DECIMAL(10, 2) NOT NULL,
     duration_days INT NOT NULL,
+    download_url TEXT DEFAULT NULL,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP)");
+
+if ($create_billing_packages_table) {
+    $check_pkg_dl = mysqli_query($connection_server, "SHOW COLUMNS FROM sas_billing_packages LIKE 'download_url'");
+    if (mysqli_num_rows($check_pkg_dl) == 0) {
+        mysqli_query($connection_server, "ALTER TABLE sas_billing_packages ADD COLUMN download_url TEXT DEFAULT NULL AFTER duration_days");
+    }
+}
 
 if ($create_billing_packages_table) {
     $check_bp_type = mysqli_query($connection_server, "SHOW COLUMNS FROM sas_billing_packages LIKE 'package_type'");
@@ -267,7 +279,8 @@ if ($create_billing_addons_table) {
 mysqli_query($connection_server, "CREATE TABLE IF NOT EXISTS sas_vendor_downloads (
     id INT AUTO_INCREMENT PRIMARY KEY,
     vendor_id INT NOT NULL,
-    addon_id INT NOT NULL,
+    addon_id INT DEFAULT NULL,
+    package_id INT DEFAULT NULL,
     token VARCHAR(255) NOT NULL,
     expiry DATETIME NOT NULL,
     download_count INT DEFAULT 0,
