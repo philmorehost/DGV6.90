@@ -166,6 +166,63 @@
                 </div>
             </div>
         </div>
+
+        <!-- Quick Link Actions -->
+        <div class="row mb-4">
+            <div class="col-12">
+                <div class="card border-0 rounded-4 shadow-sm">
+                    <div class="card-header bg-white border-0 pt-4 px-4">
+                        <h5 class="card-title fw-bold m-0 text-dark-primary d-flex align-items-center">
+                            <i class="bi bi-lightning-fill text-warning me-2"></i> Quick Actions
+                        </h5>
+                    </div>
+                    <div class="card-body p-4">
+                        <div class="row g-3">
+                            <div class="col-6 col-md-4 col-lg-2">
+                                <a href="AIManagement.php" class="btn btn-outline-primary w-100 py-3 rounded-4 border-2 d-flex flex-column align-items-center gap-2 hover-lift">
+                                    <i class="bi bi-cpu-fill fs-3"></i>
+                                    <span class="small fw-bold">AI Manager</span>
+                                </a>
+                            </div>
+                            <div class="col-6 col-md-4 col-lg-2">
+                                <a href="Vendors.php" class="btn btn-outline-primary w-100 py-3 rounded-4 border-2 d-flex flex-column align-items-center gap-2 hover-lift">
+                                    <i class="bi bi-people-fill fs-3"></i>
+                                    <span class="small fw-bold">Vendors</span>
+                                </a>
+                            </div>
+                            <div class="col-6 col-md-4 col-lg-2">
+                                <a href="BillingPackages.php" class="btn btn-outline-primary w-100 py-3 rounded-4 border-2 d-flex flex-column align-items-center gap-2 hover-lift">
+                                    <i class="bi bi-box-seam-fill fs-3"></i>
+                                    <span class="small fw-bold">Billing</span>
+                                </a>
+                            </div>
+                            <div class="col-6 col-md-4 col-lg-2">
+                                <a href="Transactions.php" class="btn btn-outline-primary w-100 py-3 rounded-4 border-2 d-flex flex-column align-items-center gap-2 hover-lift">
+                                    <i class="bi bi-wallet2 fs-3"></i>
+                                    <span class="small fw-bold">Transactions</span>
+                                </a>
+                            </div>
+                            <div class="col-6 col-md-4 col-lg-2">
+                                <a href="AccountSettings.php" class="btn btn-outline-primary w-100 py-3 rounded-4 border-2 d-flex flex-column align-items-center gap-2 hover-lift">
+                                    <i class="bi bi-gear-fill fs-3"></i>
+                                    <span class="small fw-bold">Settings</span>
+                                </a>
+                            </div>
+                            <div class="col-6 col-md-4 col-lg-2">
+                                <a href="PaymentGateway.php" class="btn btn-outline-primary w-100 py-3 rounded-4 border-2 d-flex flex-column align-items-center gap-2 hover-lift">
+                                    <i class="bi bi-credit-card-fill fs-3"></i>
+                                    <span class="small fw-bold">Gateway</span>
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <style>
+            .hover-lift { transition: transform 0.2s ease, box-shadow 0.2s ease; }
+            .hover-lift:hover { transform: translateY(-3px); box-shadow: 0 10px 20px rgba(var(--bs-primary-rgb), 0.1); background-color: var(--primary-color); color: white !important; }
+        </style>
     </section>
 		
 		<?php include("../func/spadmin-short-trans.php"); ?>

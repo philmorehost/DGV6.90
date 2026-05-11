@@ -232,6 +232,22 @@ function hex2rgb($hex) {
       </li><!-- End SiteMap Nav -->
 
       <li class="nav-item">
+        <?php 
+          $q_ai_req = mysqli_query($connection_server, "SELECT COUNT(*) as count FROM sas_vendors WHERE ai_request_status='pending'");
+          $ai_req_count = ($q_ai_req && $r = mysqli_fetch_assoc($q_ai_req)) ? $r['count'] : 0;
+        ?>
+        <a class="nav-link <?php echo ($current_page == 'AIManagement.php') ? 'active_item' : 'collapsed'; ?>" href="<?php echo $web_http_host; ?>/bc-spadmin/AIManagement.php">
+          <i class="bi bi-cpu-fill"></i>
+          <span>AI Manager</span> 
+          <?php if($ai_req_count > 0): ?>
+          <span class="badge bg-danger rounded-pill ms-auto me-2"><?php echo $ai_req_count; ?></span>
+          <?php endif; ?>
+        </a>
+      </li><!-- End AI Manager Nav -->
+
+      <li class="nav-heading">Management</li>
+
+      <li class="nav-item">
         <?php $manage_vendor_active = in_array($current_page, ['VendorReg.php', 'Vendors.php', 'VendorRegistrations.php', 'DomainSettings.php', 'UnblockRequests.php']); ?>
         <a class="nav-link <?php echo $manage_vendor_active ? 'active_item' : 'collapsed'; ?>" data-bs-target="#manage-vendor-nav" data-bs-toggle="collapse" href="#">
           <i class="bi bi-menu-button-wide"></i><span>Manage Vendors</span><i class="bi bi-chevron-down ms-auto"></i>
@@ -395,19 +411,6 @@ function hex2rgb($hex) {
         </a>
       </li>
 
-      <li class="nav-item">
-        <?php 
-          $q_ai_req = mysqli_query($connection_server, "SELECT COUNT(*) as count FROM sas_vendors WHERE ai_request_status='pending'");
-          $ai_req_count = ($q_ai_req && $r = mysqli_fetch_assoc($q_ai_req)) ? $r['count'] : 0;
-        ?>
-        <a class="nav-link <?php echo ($current_page == 'AIManagement.php') ? 'active_item' : 'collapsed'; ?>" href="<?php echo $web_http_host; ?>/bc-spadmin/AIManagement.php">
-          <i class="bi bi-cpu-fill"></i>
-          <span>AI Manager</span> 
-          <?php if($ai_req_count > 0): ?>
-          <span class="badge bg-danger rounded-pill ms-auto me-2"><?php echo $ai_req_count; ?></span>
-          <?php endif; ?>
-        </a>
-      </li>
 
       <li class="nav-item">
         <a class="nav-link <?php echo ($current_page == 'BridgeGuide.php') ? 'active_item' : 'collapsed'; ?>" href="<?php echo $web_http_host; ?>/bc-spadmin/BridgeGuide.php">

@@ -88,6 +88,28 @@ if (mysqli_num_rows($select_user_vendor_status_message) == 1) {
     20%, 40% { transform: rotate(0deg) translateX(0); }
     60%, 80% { transform: rotate(0deg) translateX(15px); }
   }
+  .badge-new {
+    background: linear-gradient(135deg, #ff416c 0%, #ff4b2b 100%);
+    color: white;
+    font-size: 0.65rem;
+    padding: 2px 6px;
+    border-radius: 50px;
+    box-shadow: 0 0 10px rgba(255, 75, 43, 0.5);
+    animation: pulse-new 2s infinite;
+    font-weight: 800;
+  }
+  @keyframes pulse-new {
+    0% { transform: scale(1); box-shadow: 0 0 5px rgba(255, 75, 43, 0.4); }
+    50% { transform: scale(1.1); box-shadow: 0 0 15px rgba(255, 75, 43, 0.8); }
+    100% { transform: scale(1); box-shadow: 0 0 5px rgba(255, 75, 43, 0.4); }
+  }
+  .nav-heading {
+    padding: 15px 15px 5px 15px;
+    font-size: 11px;
+    text-transform: uppercase;
+    color: #899bbd;
+    font-weight: 700;
+  }
 </style>
 <script>
   window.siteTitle = "<?php echo $get_all_site_details['site_title'] ?? ''; ?>";
@@ -231,6 +253,18 @@ if (mysqli_num_rows($select_user_vendor_status_message) == 1) {
           <span>Dashboard</span>
         </a>
       </li><!-- End Dashboard Nav -->
+
+      <li class="nav-item">
+        <a class="nav-link <?php echo ($current_page == 'AISuite.php') ? 'active_item' : 'collapsed'; ?>" href="<?php echo $web_http_host; ?>/web/AISuite.php">
+          <i class="bi bi-cpu-fill"></i>
+          <div class="d-flex flex-column">
+            <span class="d-flex align-items-center">AI Suite <span class="badge-new ms-2">NEW</span></span>
+            <small class="text-muted" style="font-size:9px;line-height:1">Buy Airtime, Data & Bills with AI Chat</small>
+          </div>
+        </a>
+      </li><!-- End AI Suite Nav -->
+
+      <li class="nav-heading">Services</li>
 
       <li class="nav-item">
         <?php $payment_hub_active = in_array($current_page, ['Data.php', 'Airtime.php', 'BulkData.php', 'BulkAirtime.php', 'Cable.php', 'Electric.php', 'Betting.php', 'Card.php', 'Exam.php']); ?>
@@ -563,12 +597,6 @@ if (mysqli_num_rows($select_user_vendor_status_message) == 1) {
       <?php endif; ?>
 
 
-      <li class="nav-item">
-        <a class="nav-link <?php echo ($current_page == 'AISuite.php') ? 'active_item' : 'collapsed'; ?>" href="<?php echo $web_http_host; ?>/web/AISuite.php">
-          <i class="bi bi-cpu"></i>
-          <span>AI Suite</span>
-        </a>
-      </li>
 
       <li class="nav-item">
         <a class="nav-link <?php echo ($current_page == 'AccountSettings.php') ? 'active_item' : 'collapsed'; ?>" href="<?php echo $web_http_host; ?>/web/AccountSettings.php">

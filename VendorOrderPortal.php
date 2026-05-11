@@ -14,6 +14,50 @@ if (!$vendor) {
     die("Unauthorized access. This link may have been revoked.");
 }
 
+// Handle Renewal Actions
+$renewal_response = null;
+if (isset($_POST['renew_action'])) {
+    $action = $_POST['renew_action'];
+    $v_id = $vendor['id'];
+    $current_balance = (float)$vendor['balance'];
+    $pkg_id = $vendor['current_billing_id'];
+    
+    if ($action == 'renew_site') {
+        $price = (float)$vendor['package_price'];
+        $days = (int)$vendor['duration_days'];
+        if ($current_balance >= $price) {
+            $new_expiry = date('Y-m-d', strtotime($vendor['expiry_date'] . " + $days days"));
+            mysqli_query($connection_server, "UPDATE sas_vendors SET balance = balance - $price, expiry_date = '$new_expiry' WHERE id = '$v_id'");
+            mysqli_query($connection_server, "INSERT INTO sas_vendor_subscriptions (vendor_id, package_id, purchase_date, expiry_date, amount_paid) VALUES ('$v_id', '$pkg_id', NOW(), '$new_expiry', '$price')");
+            $renewal_response = ['status' => 'success', 'message' => "Site successfully renewed until " . date('M d, Y', strtotime($new_expiry))];
+            // Refresh vendor data
+            $v_q = mysqli_query($connection_server, "SELECT v.*, bp.name as package_name, bp.price as package_price, bp.duration_days, bp.download_url as package_dl FROM sas_vendors v JOIN sas_billing_packages bp ON v.current_billing_id = bp.id WHERE v.id='$v_id'");
+            $vendor = mysqli_fetch_assoc($v_q);
+        } else {
+            $renewal_response = ['status' => 'error', 'message' => "Insufficient wallet balance. Please fund your vendor account."];
+        }
+    } elseif ($action == 'renew_domain') {
+        // Find domain price
+        $ext = "." . pathinfo($vendor['app_base_url'], PATHINFO_EXTENSION);
+        $q_ext = mysqli_query($connection_server, "SELECT price FROM sas_domain_extensions WHERE extension='$ext' LIMIT 1");
+        $domain_price = ($r_ext = mysqli_fetch_assoc($q_ext)) ? (float)$r_ext['price'] : 0;
+        
+        if ($domain_price <= 0) $domain_price = 10000; // Fallback default
+
+        if ($current_balance >= $domain_price) {
+            $base_date = (!empty($vendor['domain_expiry_date']) && $vendor['domain_expiry_date'] != '0000-00-00') ? $vendor['domain_expiry_date'] : date('Y-m-d');
+            $new_domain_expiry = date('Y-m-d', strtotime($base_date . " + 365 days"));
+            mysqli_query($connection_server, "UPDATE sas_vendors SET balance = balance - $domain_price, domain_expiry_date = '$new_domain_expiry' WHERE id = '$v_id'");
+            $renewal_response = ['status' => 'success', 'message' => "Domain successfully renewed until " . date('M d, Y', strtotime($new_domain_expiry))];
+            // Refresh
+            $v_q = mysqli_query($connection_server, "SELECT v.*, bp.name as package_name, bp.price as package_price, bp.duration_days, bp.download_url as package_dl FROM sas_vendors v JOIN sas_billing_packages bp ON v.current_billing_id = bp.id WHERE v.id='$v_id'");
+            $vendor = mysqli_fetch_assoc($v_q);
+        } else {
+            $renewal_response = ['status' => 'error', 'message' => "Insufficient balance to renew domain (₦".number_format($domain_price, 2).")."];
+        }
+    }
+}
+
 $addon_ids = $vendor['selected_addons'];
 $has_addons = !empty($addon_ids);
 $has_package_dl = !empty($vendor['package_dl']);
@@ -22,7 +66,10 @@ $has_apps = ($vendor['apk_ordered'] || $vendor['ios_ordered'] || $vendor['playst
 // Fetch active addons with download URLs
 $addons = [];
 if ($has_addons) {
-    $ar = mysqli_query($connection_server, "SELECT * FROM sas_billing_addons WHERE id IN ($addon_ids)");
+    // Sanitize addon_ids (ensure it's a list of integers)
+    $ids_arr = array_map('intval', explode(',', $addon_ids));
+    $safe_ids = implode(',', $ids_arr);
+    $ar = mysqli_query($connection_server, "SELECT * FROM sas_billing_addons WHERE id IN ($safe_ids)");
     while ($row = mysqli_fetch_assoc($ar)) {
         if (!empty($row['download_url'])) $addons[] = $row;
     }
@@ -59,7 +106,18 @@ if ($has_addons) {
                 <div class="text-center mb-5">
                     <h2 class="fw-bold text-primary">Your Order Portal</h2>
                     <p class="text-muted">Hello, <?php echo htmlspecialchars($vendor['firstname']); ?>! Here is the summary of your activated services.</p>
+                    <div class="badge bg-white shadow-sm border p-3 rounded-pill">
+                        <span class="text-muted small text-uppercase fw-bold me-2">Wallet Balance:</span>
+                        <span class="fw-black text-primary fs-5">₦<?php echo number_format($vendor['balance'], 2); ?></span>
+                    </div>
                 </div>
+
+                <?php if ($renewal_response): ?>
+                <div class="alert alert-<?php echo $renewal_response['status'] == 'success' ? 'success' : 'danger'; ?> border-0 rounded-4 shadow-sm mb-4 animate__animated animate__fadeIn">
+                    <i class="bi <?php echo $renewal_response['status'] == 'success' ? 'bi-check-circle-fill' : 'bi-exclamation-triangle-fill'; ?> me-2"></i>
+                    <?php echo $renewal_response['message']; ?>
+                </div>
+                <?php endif; ?>
 
                 <!-- Order Summary Card -->
                 <div class="card portal-card p-4 mb-4">
@@ -78,8 +136,47 @@ if ($has_addons) {
                         </div>
                         <div class="col-md-6">
                             <label class="small text-muted text-uppercase fw-bold">Account Expiry</label>
-                            <div class="text-dark"><?php echo date('F d, Y', strtotime($vendor['expiry_date'])); ?></div>
+                            <div class="text-dark fw-bold"><?php echo date('F d, Y', strtotime($vendor['expiry_date'])); ?></div>
+                            <form method="post" onsubmit="return confirm('Renew your site for ₦<?php echo number_format($vendor['package_price'], 0); ?> using wallet balance?');">
+                                <input type="hidden" name="renew_action" value="renew_site">
+                                <button type="submit" class="btn btn-outline-success btn-sm rounded-pill px-3 mt-2 fw-bold">Renew Site (₦<?php echo number_format($vendor['package_price'], 0); ?>)</button>
+                            </form>
                         </div>
+                        <div class="col-md-6">
+                            <label class="small text-muted text-uppercase fw-bold">Domain Expiry</label>
+                            <div class="text-dark fw-bold">
+                                <?php echo (!empty($vendor['domain_expiry_date']) && $vendor['domain_expiry_date'] != '0000-00-00') ? date('F d, Y', strtotime($vendor['domain_expiry_date'])) : 'Pending Setup'; ?>
+                            </div>
+                            <?php if(!empty($vendor['app_base_url'])): ?>
+                            <form method="post" onsubmit="return confirm('Renew your domain for another year using wallet balance?');">
+                                <input type="hidden" name="renew_action" value="renew_domain">
+                                <button type="submit" class="btn btn-outline-primary btn-sm rounded-pill px-3 mt-2 fw-bold">Renew Domain</button>
+                            </form>
+                            <?php endif; ?>
+                        </div>
+
+                        <?php if($has_apps || $has_addons): ?>
+                        <div class="col-12 mt-4 pt-3 border-top">
+                            <label class="small text-muted text-uppercase fw-bold mb-2">Platform Configuration</label>
+                            <div class="d-flex flex-wrap gap-2">
+                                <?php if($vendor['apk_ordered']): ?><span class="badge bg-light text-dark border rounded-pill px-3"><i class="bi bi-android2 me-1"></i>Android App</span><?php endif; ?>
+                                <?php if($vendor['ios_ordered']): ?><span class="badge bg-light text-dark border rounded-pill px-3"><i class="bi bi-apple me-1"></i>iOS App</span><?php endif; ?>
+                                <?php if($vendor['playstore_ordered']): ?><span class="badge bg-light text-dark border rounded-pill px-3"><i class="bi bi-shop me-1"></i>Playstore</span><?php endif; ?>
+                                <?php if($vendor['sms_bridge_ordered']): ?><span class="badge bg-light text-dark border rounded-pill px-3"><i class="bi bi-sim me-1"></i>SMS Bridge</span><?php endif; ?>
+                                
+                                <?php 
+                                    if($has_addons) {
+                                        $ids_arr = array_map('intval', explode(',', $addon_ids));
+                                        $safe_ids = implode(',', $ids_arr);
+                                        $addons_res = mysqli_query($connection_server, "SELECT name FROM sas_billing_addons WHERE id IN ($safe_ids)");
+                                        while($arow = mysqli_fetch_assoc($addons_res)) {
+                                            echo '<span class="badge bg-primary bg-opacity-10 text-primary border border-primary border-opacity-10 rounded-pill px-3"><i class="bi bi-plus-circle me-1"></i>'.htmlspecialchars($arow['name']).'</span>';
+                                        }
+                                    }
+                                ?>
+                            </div>
+                        </div>
+                        <?php endif; ?>
                     </div>
                 </div>
 

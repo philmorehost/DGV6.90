@@ -156,6 +156,28 @@ $is_kyc_compliant = ($get_logged_user_details['kyc_status'] == 2);
 		</nav>
 	</div>
 	<section class="section dashboard">
+        <!-- AI Awareness Spotlight -->
+        <div class="row mb-4">
+            <div class="col-12">
+                <div class="card border-0 rounded-4 shadow-sm overflow-hidden" style="background: linear-gradient(135deg, #1e1b4b 0%, #312e81 100%);">
+                    <div class="card-body p-4 d-flex align-items-center justify-content-between position-relative">
+                        <div class="position-absolute end-0 top-0 opacity-10" style="font-size: 8rem; transform: translate(20%, -20%); pointer-events: none;">
+                            <i class="bi bi-cpu"></i>
+                        </div>
+                        <div class="d-flex align-items-center gap-3 position-relative z-1">
+                            <div class="bg-white bg-opacity-20 rounded-circle p-3 shadow-sm d-none d-md-block">
+                                <i class="bi bi-robot text-white fs-2"></i>
+                            </div>
+                            <div>
+                                <h5 class="fw-bold text-white mb-1">Meet Your AI Assistant! <span class="badge-new ms-2">NEW</span></h5>
+                                <p class="text-white opacity-75 small mb-0">Buy <b>Airtime, Data, Cable</b> & pay <b>Bills</b> just by chatting with our AI Engine.</p>
+                            </div>
+                        </div>
+                        <a href="AISuite.php" class="btn btn-light rounded-pill px-4 fw-bold text-primary shadow-sm position-relative z-1">Try AI Now</a>
+                    </div>
+                </div>
+            </div>
+        </div>
         <?php if(!$is_kyc_compliant && $get_logged_user_details["kyc_status"] != 1 && isKYCEnforced()): ?>
         <div class="alert alert-warning border-0 rounded-4 shadow-sm mb-4 d-flex align-items-center justify-content-between p-4" style="background: linear-gradient(45deg, #fff3cd, #fff8e1);">
             <div class="d-flex align-items-center">
@@ -296,6 +318,7 @@ $is_kyc_compliant = ($get_logged_user_details['kyc_status'] == 2);
                 </a>
             </div>
             <?php endif; ?>
+
         </div>
 
         <div class="row g-4">

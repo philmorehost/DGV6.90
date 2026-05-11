@@ -1413,6 +1413,12 @@ if ($check_markup_col && mysqli_num_rows($check_markup_col) == 0) {
     mysqli_query($connection_server, "ALTER TABLE `sas_vendors` ADD `default_giftcard_markup` DECIMAL(10,2) DEFAULT 0.00 ");
 }
 
+// 1c. Vendor Domain Expiry (Branch DG6.9)
+$check_domain_exp = mysqli_query($connection_server, "SHOW COLUMNS FROM `sas_vendors` LIKE 'domain_expiry_date'");
+if ($check_domain_exp && mysqli_num_rows($check_domain_exp) == 0) {
+    mysqli_query($connection_server, "ALTER TABLE `sas_vendors` ADD `domain_expiry_date` DATE NULL AFTER `expiry_date` ");
+}
+
 // 1b. Fix Gift Card ID Type Mismatch & Missing Columns (Branch DG6.7)
 $gc_tables_to_fix = ['sas_vendor_giftcard_products', 'sas_global_giftcard_products'];
 foreach ($gc_tables_to_fix as $table) {

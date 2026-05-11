@@ -141,33 +141,12 @@ function hex2rgb($hex) {
           </a>
         </li><!-- End SiteMap Icon -->
 
-        <li class="nav-item dropdown">
-
-          <a class="nav-link nav-icon" href="#" data-bs-toggle="dropdown">
-            <i class="bi bi-bell"></i>
-            <span class="badge bg-primary badge-number">1</span>
-          </a><!-- End Notification Icon -->
-
-          <ul class="dropdown-menu dropdown-menu-end dropdown-menu-arrow notifications">
-            <li class="dropdown-header">
-              Latest Notification
-              <!-- <a href="#"><span class="badge rounded-pill bg-primary p-2 ms-2">View all</span></a> -->
-            </li>
-            <li>
-              <hr class="dropdown-divider">
-            </li>
-
-            <li class="notification-item">
-              <i class="bi bi-exclamation-circle text-warning"></i>
-              <div>
-                <h4>Lorem Ipsum</h4>
-                <p>Quae dolorem earum veritatis oditseno</p>
-                <p>30 min. ago</p>
-              </div>
-            </li>
-          </ul><!-- End Notification Dropdown Items -->
-
-        </li><!-- End Notification Nav -->
+        <li class="nav-item">
+          <a class="nav-link nav-icon d-flex align-items-center" href="/VendorOrderPortal.php?hash=<?php echo $get_logged_admin_details['access_hash']; ?>" target="_blank" title="My Order Portal">
+            <i class="bi bi-shield-lock-fill text-primary"></i>
+            <span class="small d-none d-md-inline ms-1 fw-bold text-primary" style="font-size: 10px;">PORTAL</span>
+          </a>
+        </li><!-- End Portal Icon -->
 
         <li class="nav-item dropdown pe-3">
 
@@ -247,6 +226,41 @@ function hex2rgb($hex) {
           <span>Platform Guide</span>
         </a>
       </li><!-- End SiteMap Nav -->
+
+      <!-- AI Business Suite Nav Item -->
+      <?php if (isset($get_logged_admin_details) && !empty($get_logged_admin_details['ai_status'])): ?>
+      <li class="nav-item">
+        <a class="nav-link <?php echo in_array($current_page, ['AISettings.php','AIMarketing.php']) ? '' : 'collapsed'; ?>"
+           data-bs-target="#ai-suite-nav" data-bs-toggle="collapse" href="#">
+          <i class="bi bi-cpu-fill"></i>
+          <span>AI Business Suite</span>
+          <span class="badge bg-primary ms-auto rounded-pill" style="font-size:.6rem;">ON</span>
+          <i class="bi bi-chevron-down ms-1 small"></i>
+        </a>
+        <ul id="ai-suite-nav" class="nav-content collapse <?php echo in_array($current_page, ['AISettings.php','AIMarketing.php']) ? 'show' : ''; ?>">
+          <li>
+            <a href="<?php echo $web_http_host; ?>/bc-admin/AISettings.php" class="<?php echo $current_page == 'AISettings.php' ? 'active' : ''; ?>">
+              <i class="bi bi-circle"></i><span>AI Settings & Tokens</span>
+            </a>
+          </li>
+          <li>
+            <a href="<?php echo $web_http_host; ?>/bc-admin/AIMarketing.php" class="<?php echo $current_page == 'AIMarketing.php' ? 'active' : ''; ?>">
+              <i class="bi bi-circle"></i><span>AI Marketing Studio</span>
+            </a>
+          </li>
+        </ul>
+      </li>
+      <?php else: ?>
+      <li class="nav-item">
+        <a class="nav-link collapsed" href="<?php echo $web_http_host; ?>/bc-admin/AISettings.php" title="Enable AI Features">
+          <i class="bi bi-cpu"></i>
+          <span>AI Business Suite</span>
+          <span class="badge bg-secondary ms-auto rounded-pill" style="font-size:.6rem;">OFF</span>
+        </a>
+      </li>
+      <?php endif; ?>
+
+      <li class="nav-heading">Business Management</li>
 
       <li class="nav-item">
         <?php $manage_user_active = in_array($current_page, ['CreateUser.php', 'KnowledgeBase.php', 'Users.php', 'Transactions.php', 'BatchTransactions.php', 'PaymentOrders.php', 'FundTransferRequests.php', 'ShareFund.php', 'APIRequests.php']); ?>
@@ -421,6 +435,8 @@ function hex2rgb($hex) {
         </ul>
       </li>
       
+      <li class="nav-heading">Service Operations</li>
+
       <li class="nav-item">
         <?php $api_manager_active = in_array($current_page, ['MarketPlace.php', 'ProductSetUp.php', 'Airtime.php', 'BulkSMS.php', 'SharedData.php', 'SmeData.php', 'CorporateData.php', 'DirectData.php', 'Electric.php', 'Betting.php', 'Exam.php', 'Cable.php', 'DataBundleCard.php', 'GiftCard.php', 'VirtualCard.php', 'NINCard.php', 'BVNVerification.php']); ?>
         <a class="nav-link <?php echo $api_manager_active ? 'active_item' : 'collapsed'; ?>" data-bs-target="#api-manager-nav" data-bs-toggle="collapse" href="#">
@@ -587,40 +603,10 @@ function hex2rgb($hex) {
         </ul>
       </li>
 
-      <!-- AI Business Suite Nav Item -->
-      <?php if (isset($get_logged_admin_details) && !empty($get_logged_admin_details['ai_status'])): ?>
-      <li class="nav-item">
-        <a class="nav-link <?php echo in_array($current_page, ['AISettings.php','AIMarketing.php']) ? '' : 'collapsed'; ?>"
-           data-bs-target="#ai-suite-nav" data-bs-toggle="collapse" href="#">
-          <i class="bi bi-cpu-fill" style="color:#7c3aed"></i>
-          <span style="font-weight:700;color:#7c3aed">AI Business Suite</span>
-          <span class="badge ms-auto rounded-pill" style="font-size:.6rem;background:#7c3aed;color:#fff">ON</span>
-          <i class="bi bi-chevron-down ms-1 small"></i>
-        </a>
-        <ul id="ai-suite-nav" class="nav-content collapse <?php echo in_array($current_page, ['AISettings.php','AIMarketing.php']) ? 'show' : ''; ?>">
-          <li>
-            <a href="<?php echo $web_http_host; ?>/bc-admin/AISettings.php" class="<?php echo $current_page == 'AISettings.php' ? 'active' : ''; ?>">
-              <i class="bi bi-circle"></i><span>AI Settings & Tokens</span>
-            </a>
-          </li>
-          <li>
-            <a href="<?php echo $web_http_host; ?>/bc-admin/AIMarketing.php" class="<?php echo $current_page == 'AIMarketing.php' ? 'active' : ''; ?>">
-              <i class="bi bi-circle"></i><span>AI Marketing Studio</span>
-            </a>
-          </li>
-        </ul>
-      </li>
-      <?php else: ?>
-      <li class="nav-item">
-        <a class="nav-link collapsed" href="<?php echo $web_http_host; ?>/bc-admin/AISettings.php" title="Enable AI Features">
-          <i class="bi bi-cpu" style="color:#9ca3af"></i>
-          <span style="color:#9ca3af">AI Business Suite</span>
-          <span class="badge bg-secondary ms-auto rounded-pill" style="font-size:.6rem;">OFF</span>
-        </a>
-      </li>
-      <?php endif; ?>
 
 
+
+      <li class="nav-heading">System Control</li>
 
       <li class="nav-item">
         <a class="nav-link collapsed" href="javascript:void(0)" onclick="startAdminGuide()">
