@@ -238,13 +238,23 @@ class AIChatActivity : AppCompatActivity() {
                     "data" -> api.purchaseData(params)
                     "cable" -> api.purchaseCable(params)
                     "electric" -> api.purchaseElectric(params)
+                    "exam" -> api.purchaseExam(params)
+                    "betting" -> api.purchaseBetting(params)
                     else -> null
                 }
                 
                 if (response?.isSuccessful == true) {
                     val resBody = response.body()
+                    val status = resBody?.get("status")?.toString() ?: ""
                     val msg = resBody?.get("desc")?.toString() ?: "Transaction processed"
-                    appendLog("AI Result: $msg")
+                    
+                    if (status == "pending") {
+                        appendLog("AI Result: ⏳ $msg (Processing...)")
+                    } else if (status == "success") {
+                        appendLog("AI Result: ✅ $msg")
+                    } else {
+                        appendLog("AI Result: $msg")
+                    }
                 }
             } catch (e: Exception) {
                 appendLog("Execution Failed: " + e.localizedMessage)

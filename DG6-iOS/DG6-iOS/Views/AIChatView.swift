@@ -168,9 +168,19 @@ struct AIChatView: View {
         AppNetworkService.shared.request(endpoint, params: intent) { (result: Result<APIResponse, Error>) in
             DispatchQueue.main.async {
                 self.isLoading = false
+                self.isLoading = false
                 switch result {
                 case .success(let response):
-                    self.appendLog(isUser: false, text: "AI Result: \(response.desc ?? response.message ?? "Processed")")
+                    let status = response.status ?? ""
+                    let msg = response.desc ?? response.message ?? "Processed"
+                    
+                    if status == "pending" {
+                        self.appendLog(isUser: false, text: "AI Result: ⏳ \(msg) (Processing...)")
+                    } else if status == "success" {
+                        self.appendLog(isUser: false, text: "AI Result: ✅ \(msg)")
+                    } else {
+                        self.appendLog(isUser: false, text: "AI Result: \(msg)")
+                    }
                 case .failure(let error):
                     self.appendLog(isUser: false, text: "Execution Error: \(error.localizedDescription)")
                 }
