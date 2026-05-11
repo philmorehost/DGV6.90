@@ -14,6 +14,82 @@
     </div>
 </div>
 
+<?php 
+    $current_page = basename($_SERVER['PHP_SELF']);
+    $ai_suggestion = "";
+    $ai_service_label = "";
+    
+    switch($current_page) {
+        case "Airtime.php":
+            $ai_suggestion = "Buy MTN 500 airtime for 08012345678";
+            $ai_service_label = "Airtime";
+            break;
+        case "Data.php":
+            $ai_suggestion = "Buy Glo 1GB data for 08123456789";
+            $ai_service_label = "Data";
+            break;
+        case "Cable.php":
+            $ai_suggestion = "Pay for DSTV Compact on 1023456789";
+            $ai_service_label = "Cable TV";
+            break;
+        case "Electric.php":
+            $ai_suggestion = "Buy 2000 electricity for 14123456789 (IKEDC)";
+            $ai_service_label = "Electricity";
+            break;
+        case "Betting.php":
+            $ai_suggestion = "Fund Sportybet with 1000 on 78945612";
+            $ai_service_label = "Betting";
+            break;
+        case "Exam.php":
+            $ai_suggestion = "Buy 1 WAEC pin";
+            $ai_service_label = "Exam Pins";
+            break;
+    }
+    
+    if(!empty($ai_suggestion)):
+?>
+<div class="row mb-4">
+    <div class="col-12">
+        <div class="card border-0 shadow-sm rounded-4 overflow-hidden" style="background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);">
+            <div class="card-body p-3">
+                <div class="d-flex align-items-center">
+                    <div class="bg-primary bg-opacity-10 p-2 rounded-3 me-3">
+                        <i class="bi bi-robot text-primary fs-4"></i>
+                    </div>
+                    <div class="flex-grow-1">
+                        <div class="d-flex justify-content-between align-items-center mb-1">
+                            <span class="small fw-bold text-uppercase text-muted ls-1">AI Assistant Shortcut</span>
+                            <span class="badge bg-primary bg-opacity-10 text-primary border border-primary border-opacity-10">Try This</span>
+                        </div>
+                        <div class="d-flex align-items-center bg-white rounded-3 p-2 border">
+                            <code id="ai-cmd-text" class="text-dark small flex-grow-1 user-select-all"><?php echo $ai_suggestion; ?></code>
+                            <button class="btn btn-sm btn-link p-0 ms-2 text-primary" onclick="copyAiCmd()" title="Copy to clipboard">
+                                <i class="bi bi-clipboard" id="copy-icon"></i>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+function copyAiCmd() {
+    const text = document.getElementById('ai-cmd-text').innerText;
+    navigator.clipboard.writeText(text).then(() => {
+        const icon = document.getElementById('copy-icon');
+        icon.classList.remove('bi-clipboard');
+        icon.classList.add('bi-check2-all');
+        setTimeout(() => {
+            icon.classList.remove('bi-check2-all');
+            icon.classList.add('bi-clipboard');
+        }, 2000);
+    });
+}
+</script>
+<?php endif; ?>
+
 <style>
     .ls-1 { letter-spacing: 1px; }
     .rounded-4 { border-radius: 1rem !important; }

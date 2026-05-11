@@ -162,8 +162,8 @@
             const now = Date.now();
             const ageHours = (now - data.ts) / (1000 * 60 * 60);
             
-            // Expiry: 12 hours
-            if (ageHours > 12) {
+            // Expiry: 48 hours
+            if (ageHours > 48) {
                 localStorage.removeItem(key);
                 return;
             }
