@@ -288,7 +288,14 @@
                                                 </div>
                                             </div>
                                         </td>
-                                        <td><a href="//<?php echo $user['website_url']; ?>" target="_blank" class="small text-decoration-none"><i class="bi bi-link-45deg me-1"></i><?php echo $user['website_url']; ?></a></td>
+                                        <td>
+                                            <div class="d-flex flex-column">
+                                                <a href="//<?php echo $user['website_url']; ?>" target="_blank" class="small text-decoration-none"><i class="bi bi-link-45deg me-1"></i>Site: <?php echo $user['website_url']; ?></a>
+                                                <?php if(!empty($user['access_hash'])): ?>
+                                                    <a href="/VendorOrderPortal.php?hash=<?php echo $user['access_hash']; ?>" target="_blank" class="extra-small text-primary mt-1 fw-bold"><i class="bi bi-shield-lock me-1"></i>Secure Portal</a>
+                                                <?php endif; ?>
+                                            </div>
+                                        </td>
                                         <td>
                                             <div class="fw-bold">₦<?php echo number_format($user['balance'],2); ?></div>
                                             <div class="small text-muted"><?php echo $user['phone_number']; ?></div>
@@ -348,7 +355,14 @@
                                             <div class="fw-bold text-dark mb-0"><?php echo $user['firstname'].' '.$user['lastname']; ?></div>
                                             <div class="small text-muted"><?php echo $user['email']; ?></div>
                                         </td>
-                                        <td><?php echo $user['website_url']; ?></td>
+                                        <td>
+                                            <div class="d-flex flex-column">
+                                                <div class="small fw-bold"><?php echo $user['website_url']; ?></div>
+                                                <?php if(!empty($user['access_hash'])): ?>
+                                                    <a href="/VendorOrderPortal.php?hash=<?php echo $user['access_hash']; ?>" target="_blank" class="extra-small text-primary mt-1 fw-bold"><i class="bi bi-shield-lock me-1"></i>Secure Portal</a>
+                                                <?php endif; ?>
+                                            </div>
+                                        </td>
                                         <td>
                                             <?php if($user['status'] == 0): ?>
                                                 <span class="badge bg-danger bg-opacity-10 text-danger border">Expired/Locked</span>
@@ -390,7 +404,14 @@
                                             <div class="fw-bold text-dark mb-0"><?php echo $user['firstname'].' '.$user['lastname']; ?></div>
                                             <div class="small text-muted"><?php echo $user['email']; ?></div>
                                         </td>
-                                        <td><?php echo $user['website_url']; ?></td>
+                                        <td>
+                                            <div class="d-flex flex-column">
+                                                <div class="small fw-bold"><?php echo $user['website_url']; ?></div>
+                                                <?php if(!empty($user['access_hash'])): ?>
+                                                    <a href="/VendorOrderPortal.php?hash=<?php echo $user['access_hash']; ?>" target="_blank" class="extra-small text-primary mt-1 fw-bold"><i class="bi bi-shield-lock me-1"></i>Secure Portal</a>
+                                                <?php endif; ?>
+                                            </div>
+                                        </td>
                                         <td class="small text-muted"><?php echo $user['reg_date']; ?></td>
                                         <td class="text-end pe-3">
                                             <button onclick="updateVendorAccountStatus('1','<?php echo $user['id']; ?>','<?php echo $user['email']; ?>')" class="btn btn-outline-success btn-sm px-3 rounded-pill">Restore</button>
