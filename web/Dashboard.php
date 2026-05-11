@@ -476,10 +476,11 @@ $is_kyc_compliant = ($get_logged_user_details['kyc_status'] == 2);
                     $threshold = (int)($v_ai['voice_tx_threshold'] ?? 50);
                     $v_status = (int)$get_logged_user_details['ai_voice_status'];
 
-                    if ($v_status == 1): ?>
+                    if ($v_status == 1 || (int)$get_logged_user_details['ai_status'] == 1): ?>
                         <div class="card p-4 mb-4 border-0 shadow-sm animate__animated animate__pulse animate__infinite" style="background: linear-gradient(135deg, #4f46e5, #7c3aed); color: white;">
-                            <h6 class="fw-bold mb-2"><i class="bi bi-cpu-fill me-2"></i>AI Review Pending</h6>
-                            <p class="x-small opacity-75 mb-0">Your Zero-Click Voice access is being reviewed by the admin.</p>
+                            <h6 class="fw-bold mb-2"><i class="bi bi-cpu-fill me-2"></i>AI Access Active/Pending</h6>
+                            <p class="x-small opacity-75 mb-0">Your AI Assistant access is active or pending review.</p>
+                            <a href="AISuite.php" class="btn btn-light btn-sm w-100 rounded-pill fw-bold text-primary shadow-sm mt-3">GO TO AI SUITE</a>
                         </div>
                     <?php elseif ($v_status == 0): ?>
                         <div class="card p-4 mb-4 border-0 shadow-sm" style="background: <?php echo ($tx_count >= $threshold) ? 'linear-gradient(135deg, #000, #4338ca)' : '#fff'; ?>; color: <?php echo ($tx_count >= $threshold) ? 'white' : '#64748b'; ?>;">

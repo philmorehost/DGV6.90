@@ -119,7 +119,7 @@
                                 <p class="text-muted small">Tokens power your AI Assistant and Voice commands.</p>
                             </div>
                             <div class="text-end">
-                                <span class="badge bg-primary bg-opacity-10 text-primary rounded-pill px-3 py-2">
+                                <span class="badge bg-primary text-white rounded-pill px-3 py-2 shadow-sm">
                                     <i class="bi bi-shield-check me-1"></i> Active
                                 </span>
                             </div>
@@ -178,7 +178,7 @@
                                         <div class="small">Tap the microphone in the AI Assistant to buy VTU with your voice.</div>
                                     </div>
                                 </div>
-                            <?php elseif ($ai_voice_status == 1): ?>
+                            <?php elseif ($ai_voice_status == 1 || (int)$get_logged_user_details['ai_status'] == 1): ?>
                                 <div class="alert alert-warning border-0 rounded-4 d-flex align-items-center p-3 mb-0">
                                     <i class="bi bi-hourglass-split fs-3 me-3"></i>
                                     <div>
