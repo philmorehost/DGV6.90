@@ -43,9 +43,10 @@
                     $ios_ordered = $pending_vendor['order_ios'];
                     $playstore_ordered = $pending_vendor['order_playstore'];
                     $sms_bridge_ordered = $pending_vendor['order_sms_bridge'];
+                    $selected_addons = $pending_vendor['selected_addons'];
 
-                    $insert_sql = "INSERT INTO sas_vendors (email, password, firstname, lastname, phone_number, website_url, home_address, balance, status, min_withdrawal_amount, max_withdrawal_amount, daily_payout_limit, app_base_url, apk_ordered, ios_ordered, playstore_ordered, sms_bridge_ordered)
-                                   VALUES ('$email', '$password', '$firstname', '$lastname', '$phone_number', '$website_url', '$home_address', '0.00', '1', '$min_with', '$max_with', '$payout_limit', '$app_base_url', '$apk_ordered', '$ios_ordered', '$playstore_ordered', '$sms_bridge_ordered')";
+                    $insert_sql = "INSERT INTO sas_vendors (email, password, firstname, lastname, phone_number, website_url, home_address, balance, status, min_withdrawal_amount, max_withdrawal_amount, daily_payout_limit, app_base_url, apk_ordered, ios_ordered, playstore_ordered, sms_bridge_ordered, selected_addons)
+                                   VALUES ('$email', '$password', '$firstname', '$lastname', '$phone_number', '$website_url', '$home_address', '0.00', '1', '$min_with', '$max_with', '$payout_limit', '$app_base_url', '$apk_ordered', '$ios_ordered', '$playstore_ordered', '$sms_bridge_ordered', '$selected_addons')";
 
                         if(mysqli_query($connection_server, $insert_sql)) {
                         $new_vendor_id = mysqli_insert_id($connection_server);
@@ -279,6 +280,16 @@
                                                 <?php if(($row['payment_method'] == 'bank_deposit' || $row['payment_method'] == 'paystack') && trim($row['payment_status']) != 'paid'): ?>
                                                     <a href="?action=mark_paid&id=<?php echo $row['id']; ?>" class="btn btn-info btn-sm rounded-pill px-3 fw-bold shadow-sm" onclick="return confirm('Confirm receipt of manual payment?');">Verify Payment</a>
                                                 <?php endif; ?>
+                                                
+                                                <div class="btn-group btn-group-sm mt-1">
+                                                    <button type="button" class="btn btn-outline-primary rounded-start-pill px-3 send-invoice" data-id="<?php echo $row['id']; ?>" title="Send Invoice Email">
+                                                        <i class="bi bi-envelope-paper"></i> Invoice
+                                                    </button>
+                                                    <a href="EditVendorOrder.php?id=<?php echo $row['id']; ?>" class="btn btn-outline-secondary rounded-end-pill px-3" title="Edit Order Details">
+                                                        <i class="bi bi-pencil-square"></i> Edit
+                                                    </a>
+                                                </div>
+
                                                 <div class="btn-group btn-group-sm mt-1">
                                                     <a href="?action=approve&id=<?php echo $row['id']; ?>" class="btn btn-primary <?php if(trim($row['payment_status']) != 'paid') echo 'disabled'; ?> rounded-start-pill px-3 fw-bold" onclick="return confirm('Approve and activate vendor account?');">Approve</a>
                                                     <a href="?action=decline&id=<?php echo $row['id']; ?>" class="btn btn-outline-danger rounded-end-pill px-3" onclick="return confirm('Reject and delete registration?');">Decline</a>
@@ -299,5 +310,42 @@
     </section>
 
     <?php include("../func/bc-spadmin-footer.php"); ?>
+
+    <script>
+        document.querySelectorAll('.send-invoice').forEach(button => {
+            button.addEventListener('click', function() {
+                const id = this.getAttribute('data-id');
+                const btn = this;
+                const originalText = btn.innerHTML;
+                
+                if(!confirm('Send professional invoice to this vendor?')) return;
+
+                btn.disabled = true;
+                btn.innerHTML = '<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> Sending...';
+
+                fetch('ajax-send-invoice.php', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                    body: 'id=' + id + '&_csrf_token=<?php echo bc_generate_csrf_token(); ?>'
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if(data.status === 'success') {
+                        alert('Invoice successfully sent to vendor.');
+                    } else {
+                        alert('Error: ' + data.message);
+                    }
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                    alert('A system error occurred while sending the invoice.');
+                })
+                .finally(() => {
+                    btn.disabled = false;
+                    btn.innerHTML = originalText;
+                });
+            });
+        });
+    </script>
 </body>
 </html>
