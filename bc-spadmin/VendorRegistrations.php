@@ -198,6 +198,7 @@
                                         <th class="ps-4">#</th>
                                         <th>Vendor Identity</th>
                                         <th>Subscription</th>
+                                        <th>Order Summary</th>
                                         <th>Payment Verification</th>
                                         <th>Date</th>
                                         <th class="text-end pe-4">Actions</th>
@@ -223,6 +224,21 @@
                                         </td>
                                         <td>
                                             <span class="badge bg-primary bg-opacity-10 text-dark-primary rounded-pill px-3"><?php echo htmlspecialchars($row['package_name']); ?></span>
+                                        </td>
+                                        <td>
+                                            <div class="small">
+                                                <ul class="list-unstyled mb-0">
+                                                    <li><i class="bi bi-check2-circle text-success me-1"></i> <?php echo htmlspecialchars($row['package_name']); ?></li>
+                                                    <?php if($row['order_apk']): ?><li><i class="bi bi-plus-circle text-primary me-1"></i> Android APK</li><?php endif; ?>
+                                                    <?php if($row['order_ios']): ?><li><i class="bi bi-plus-circle text-primary me-1"></i> iOS App</li><?php endif; ?>
+                                                    <?php if($row['order_playstore']): ?><li><i class="bi bi-plus-circle text-primary me-1"></i> Playstore Listing</li><?php endif; ?>
+                                                    <?php if($row['order_sms_bridge']): ?><li><i class="bi bi-plus-circle text-primary me-1"></i> SMS Bridge</li><?php endif; ?>
+                                                    <?php if($row['domain_registration_fee'] > 0): ?><li><i class="bi bi-plus-circle text-primary me-1"></i> Domain (₦<?php echo number_format($row['domain_registration_fee'], 0); ?>)</li><?php endif; ?>
+                                                </ul>
+                                                <div class="mt-2 pt-2 border-top">
+                                                    <strong class="text-primary">Total: ₦<?php echo number_format($row['total_amount'], 2); ?></strong>
+                                                </div>
+                                            </div>
                                         </td>
                                         <td>
                                             <div class="small"><strong>Method:</strong> <?php echo ucwords(str_replace('_', ' ', $row['payment_method'])); ?></div>

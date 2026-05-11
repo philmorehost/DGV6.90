@@ -1,6 +1,12 @@
 <?php session_start();
     include("../func/bc-spadmin-config.php");
 
+    // Auto-migration: Ensure package_type column exists
+    $check_pkg_cols = mysqli_query($connection_server, "SHOW COLUMNS FROM sas_billing_packages LIKE 'package_type'");
+    if(mysqli_num_rows($check_pkg_cols) == 0) {
+        mysqli_query($connection_server, "ALTER TABLE sas_billing_packages ADD COLUMN package_type VARCHAR(20) DEFAULT 'subscription' AFTER name");
+    }
+
     // Handle Delete Request
     if(isset($_GET['delete_id'])) {
         $delete_id = mysqli_real_escape_string($connection_server, $_GET['delete_id']);
@@ -16,14 +22,15 @@
         $name = mysqli_real_escape_string($connection_server, $_POST['name']);
         $price = mysqli_real_escape_string($connection_server, $_POST['price']);
         $duration_days = mysqli_real_escape_string($connection_server, $_POST['duration_days']);
+        $package_type = mysqli_real_escape_string($connection_server, $_POST['package_type']);
 
         if(empty($package_id)) {
             // Add New Package
-            $sql = "INSERT INTO sas_billing_packages (name, price, duration_days) VALUES ('$name', '$price', '$duration_days')";
+            $sql = "INSERT INTO sas_billing_packages (name, package_type, price, duration_days) VALUES ('$name', '$package_type', '$price', '$duration_days')";
             $_SESSION['page_alert'] = "Package added successfully!";
         } else {
             // Update Existing Package
-            $sql = "UPDATE sas_billing_packages SET name='$name', price='$price', duration_days='$duration_days' WHERE id='$package_id'";
+            $sql = "UPDATE sas_billing_packages SET name='$name', package_type='$package_type', price='$price', duration_days='$duration_days' WHERE id='$package_id'";
             $_SESSION['page_alert'] = "Package updated successfully!";
         }
 
@@ -98,13 +105,40 @@
                                 <input type="text" class="form-control rounded-3" id="name" name="name" value="<?php echo $edit_package['name'] ?? ''; ?>" placeholder="e.g. Monthly Basic" required>
                             </div>
                             <div class="mb-3">
+                                <label for="package_type" class="form-label small fw-bold text-muted text-uppercase">Package Type</label>
+                                <select class="form-select rounded-3" id="package_type" name="package_type" required onchange="toggleDuration(this.value)">
+                                    <option value="subscription" <?php echo (isset($edit_package) && $edit_package['package_type'] == 'subscription') ? 'selected' : ''; ?>>Recurring Subscription</option>
+                                    <option value="one-off" <?php echo (isset($edit_package) && $edit_package['package_type'] == 'one-off') ? 'selected' : ''; ?>>ONE-OFF PAYMENT</option>
+                                </select>
+                            </div>
+                            <div class="mb-3">
                                 <label for="price" class="form-label small fw-bold text-muted text-uppercase">Price (₦)</label>
                                 <input type="number" step="0.01" class="form-control rounded-3" id="price" name="price" value="<?php echo $edit_package['price'] ?? ''; ?>" placeholder="0.00" required>
                             </div>
-                            <div class="mb-4">
+                            <div class="mb-4" id="duration_wrapper">
                                 <label for="duration_days" class="form-label small fw-bold text-muted text-uppercase">Duration (Days)</label>
                                 <input type="number" class="form-control rounded-3" id="duration_days" name="duration_days" value="<?php echo $edit_package['duration_days'] ?? ''; ?>" placeholder="30" required>
                             </div>
+
+                            <script>
+                            function toggleDuration(type) {
+                                const wrapper = document.getElementById('duration_wrapper');
+                                const input = document.getElementById('duration_days');
+                                if(type === 'one-off') {
+                                    wrapper.style.opacity = '0.5';
+                                    input.value = '9999';
+                                    input.readOnly = true;
+                                } else {
+                                    wrapper.style.opacity = '1';
+                                    input.readOnly = false;
+                                    if(input.value == '9999') input.value = '30';
+                                }
+                            }
+                            // Initial state
+                            window.onload = function() {
+                                toggleDuration(document.getElementById('package_type').value);
+                            }
+                            </script>
                             <button type="submit" name="save_package" class="btn btn-primary w-100 rounded-pill fw-bold shadow-sm">
                                 <i class="bi bi-save me-1"></i> Save Package
                             </button>
@@ -172,6 +206,7 @@
                                     <tr class="small text-uppercase text-muted">
                                         <th class="ps-4">#</th>
                                         <th>Package Name</th>
+                                        <th>Type</th>
                                         <th>Price</th>
                                         <th>Duration</th>
                                         <th class="text-end pe-4">Actions</th>
@@ -186,8 +221,21 @@
                                     <tr>
                                         <td class="ps-4 text-muted"><?php echo $count++; ?></td>
                                         <td><div class="fw-bold text-dark"><?php echo htmlspecialchars($row['name']); ?></div></td>
+                                        <td>
+                                            <?php if(($row['package_type'] ?? '') == 'one-off'): ?>
+                                                <span class="badge bg-success bg-opacity-10 text-success rounded-pill px-3">One-Off</span>
+                                            <?php else: ?>
+                                                <span class="badge bg-warning bg-opacity-10 text-warning rounded-pill px-3">Subscription</span>
+                                            <?php endif; ?>
+                                        </td>
                                         <td><span class="fw-bold text-primary">₦<?php echo number_format($row['price'], 2); ?></span></td>
-                                        <td><span class="badge bg-info bg-opacity-10 text-info rounded-pill px-3"><?php echo htmlspecialchars($row['duration_days']); ?> Days</span></td>
+                                        <td>
+                                            <?php if(($row['package_type'] ?? '') == 'one-off'): ?>
+                                                <span class="badge bg-secondary bg-opacity-10 text-secondary rounded-pill px-3">Lifetime</span>
+                                            <?php else: ?>
+                                                <span class="badge bg-info bg-opacity-10 text-info rounded-pill px-3"><?php echo htmlspecialchars($row['duration_days']); ?> Days</span>
+                                            <?php endif; ?>
+                                        </td>
                                         <td class="text-end pe-4">
                                             <div class="btn-group btn-group-sm">
                                                 <a href="BillingPackages.php?edit_id=<?php echo $row['id']; ?>" class="btn btn-outline-primary" title="Edit"><i class="bi bi-pencil"></i></a>
