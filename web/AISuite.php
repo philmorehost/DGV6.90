@@ -186,7 +186,7 @@
                                         <div class="small">The admin is reviewing your account for autonomous access.</div>
                                     </div>
                                 </div>
-                            <?php else: ?>
+                            <?php elseif ($ai_voice_status == 0 || $ai_voice_status == 3): ?>
                                 <form method="post">
                                     <?php echo bc_csrf_field(); ?>
                                     <button type="submit" name="apply-ai-voice" class="btn btn-dark btn-lg w-100 fw-bold rounded-pill shadow-sm" <?php if ($tx_count < $v_limit) echo 'disabled'; ?>>

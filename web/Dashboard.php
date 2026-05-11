@@ -496,7 +496,7 @@ $is_kyc_compliant = ($get_logged_user_details['kyc_status'] == 2);
                                 <?php endif; ?>
                             </p>
                             <?php if ($tx_count >= $threshold): ?>
-                                <a href="AccountSettings.php" class="btn btn-light btn-sm w-100 rounded-pill fw-bold text-primary shadow-sm">APPLY FOR AI ACCESS</a>
+                                <a href="AISuite.php" class="btn btn-light btn-sm w-100 rounded-pill fw-bold text-primary shadow-sm">APPLY FOR AI ACCESS</a>
                             <?php else: ?>
                                 <div class="progress rounded-pill" style="height: 6px; background: #e2e8f0;">
                                     <div class="progress-bar bg-primary" style="width: <?php echo min(100, ($tx_count/$threshold)*100); ?>%"></div>
