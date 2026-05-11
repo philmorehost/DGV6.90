@@ -230,7 +230,16 @@ PROMPT;
 
         // Validation & Sanitization
         $parsed['phone'] = bc_sanitize_phone($parsed['phone'] ?? '');
-        $parsed['amount'] = bc_sanitize_number($parsed['amount'] ?? 0);
+        
+        $service = strtolower($parsed['service'] ?? '');
+        if (in_array($service, ['data', 'cable', 'exam'])) {
+            // Preserve strings for plan identifiers (e.g. "1GB", "Compact", "WAEC")
+            $parsed['amount'] = trim(strip_tags((string)($parsed['amount'] ?? '')));
+        } else {
+            // Strictly numeric for monetary services
+            $parsed['amount'] = bc_sanitize_number($parsed['amount'] ?? 0);
+        }
+        
         $parsed['confidence'] = (int)($parsed['confidence'] ?? 0);
 
         return $parsed;

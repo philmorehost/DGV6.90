@@ -260,19 +260,36 @@ switch ($action_type) {
         // ─── AI Parameter Mapping ────────────────────────────
         $type_map = [
             'sme'               => 'sme-data',
+            'sme-data'          => 'sme-data',
+            'sme data'          => 'sme-data',
             'gifting'           => 'cg-data',
+            'gifting data'      => 'cg-data',
+            'cg'                => 'cg-data',
+            'cg-data'           => 'cg-data',
             'corporate'         => 'cg-data',
             'corporate gifting' => 'cg-data',
             'shared'            => 'shared-data',
+            'shared data'       => 'shared-data',
+            'shared-data'       => 'shared-data',
             'direct'            => 'dd-data',
+            'direct data'       => 'dd-data',
+            'direct-data'       => 'dd-data',
             'prepaid'           => 'prepaid',
-            'postpaid'          => 'postpaid'
+            'postpaid'          => 'postpaid',
+            'pre-paid'          => 'prepaid',
+            'post-paid'         => 'postpaid'
         ];
-        $raw_type = strtolower($intent['type'] ?? '');
+
+        $raw_type = strtolower(trim($intent['type'] ?? ''));
         $mapped_type = $type_map[$raw_type] ?? $raw_type;
 
+        // Provider/Network Normalization
+        $network = strtolower(trim($intent['network'] ?? ''));
+        $network = str_replace(['mobile', ' '], ['', ''], $network); // "9 mobile" -> "9"
+        if ($network == '9') $network = '9mobile';
+
         $get_api_post_info = [
-            'network'      => $intent['network'],
+            'network'      => $network,
             'phone_number' => $intent['phone'],
             'amount'       => $intent['amount'],
             'type'         => $mapped_type,
