@@ -690,8 +690,6 @@ if (isset($get_logged_user_details)):
 
 <?php endif; ?>
 
-<?php endif; ?>
-
 <!-- Referral Modal -->
 <div class="modal fade" id="referralModal" tabindex="-1" aria-labelledby="referralModalLabel" aria-hidden="true">
   <div class="modal-dialog modal-dialog-centered">
