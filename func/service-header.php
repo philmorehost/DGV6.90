@@ -63,9 +63,12 @@
                         </div>
                         <div class="d-flex align-items-center bg-white rounded-3 p-2 border">
                             <code id="ai-cmd-text" class="text-dark small flex-grow-1 user-select-all"><?php echo $ai_suggestion; ?></code>
-                            <button class="btn btn-sm btn-link p-0 ms-2 text-primary" onclick="copyAiCmd()" title="Copy to clipboard">
-                                <i class="bi bi-clipboard" id="copy-icon"></i>
-                            </button>
+                            <div class="d-flex gap-2 ms-2">
+                                <button class="btn btn-sm btn-link p-0 text-primary" onclick="copyAiCmd()" title="Copy to clipboard">
+                                    <i class="bi bi-clipboard" id="copy-icon"></i>
+                                </button>
+                                <button class="btn btn-sm btn-primary rounded-pill px-2 py-0" style="font-size: 10px;" onclick="useAiCmd('<?php echo addslashes($ai_suggestion); ?>')">Use Now</button>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -86,6 +89,17 @@ function copyAiCmd() {
             icon.classList.add('bi-clipboard');
         }, 2000);
     });
+}
+
+function useAiCmd(cmd) {
+    if (typeof window.__ai_open === 'function') {
+        window.__ai_open();
+        const input = document.getElementById('ai-input');
+        if (input) {
+            input.value = cmd;
+            input.focus();
+        }
+    }
 }
 </script>
 <?php endif; ?>

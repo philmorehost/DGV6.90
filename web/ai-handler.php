@@ -257,10 +257,28 @@ switch ($action_type) {
 
         // 3. Prepare for Transaction Execution
         $purchase_method = "API"; 
+        // ─── AI Parameter Mapping ────────────────────────────
+        $type_map = [
+            'sme'               => 'sme-data',
+            'gifting'           => 'cg-data',
+            'corporate'         => 'cg-data',
+            'corporate gifting' => 'cg-data',
+            'shared'            => 'shared-data',
+            'direct'            => 'dd-data',
+            'prepaid'           => 'prepaid',
+            'postpaid'          => 'postpaid'
+        ];
+        $raw_type = strtolower($intent['type'] ?? '');
+        $mapped_type = $type_map[$raw_type] ?? $raw_type;
+
         $get_api_post_info = [
             'network'      => $intent['network'],
             'phone_number' => $intent['phone'],
             'amount'       => $intent['amount'],
+            'type'         => $mapped_type,
+            'provider'     => $intent['network'],
+            'quantity'     => $intent['amount'],
+            'meter_number' => $intent['phone'],
             'id'           => $intent['id'] ?? '' 
         ];
 

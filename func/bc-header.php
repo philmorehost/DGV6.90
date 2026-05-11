@@ -674,6 +674,16 @@ if (isset($get_logged_user_details)):
   <?php if (!empty($ai_user_ctx['session_error'])): ?>
   window.__ai_auto_open   = true;
   window.__ai_init_msg    = "I noticed your last transaction had an issue: '<?php echo addslashes($ai_user_ctx['session_error']); ?>'. <?php echo addslashes($ai_user_ctx['smart_explanation'] ?? ''); ?> How can I help you complete your purchase?";
+  <?php else: ?>
+  window.__ai_init_msg    = "Hello! I'm your AI Assistant. How can I help you? <?php 
+    $page_tips = [
+        'Airtime.php' => 'Try: "Buy MTN 100 airtime for 08012345678"',
+        'Data.php'    => 'Try: "Buy Airtel 2GB SME data for 08123456789"',
+        'Electric.php'=> 'Try: "Pay 2000 for IKEDC Prepaid 010123456789"',
+        'Cable.php'   => 'Try: "Renew DSTV Compact for 123456789"',
+    ];
+    echo isset($page_tips[$current_page]) ? 'You can say something like: ' . addslashes($page_tips[$current_page]) : ''; 
+  ?>";
   <?php endif; ?>
 </script>
 <script src="<?php echo $web_http_host; ?>/jsfile/ai-assistant.js" defer></script>
@@ -682,8 +692,8 @@ if (isset($get_logged_user_details)):
 // Dynamic AI Suggestions per Service Page
 $suggestions = [
     'Airtime.php' => 'Try: "Buy MTN 100 airtime for 08012345678"',
-    'Data.php'    => 'Try: "Buy Airtel 2GB data for 08123456789"',
-    'Electric.php'=> 'Try: "Pay 2000 for IKEDC 010123456789"',
+    'Data.php'    => 'Try: "Buy Airtel 2GB SME data for 08123456789"',
+    'Electric.php'=> 'Try: "Pay 2000 for IKEDC Prepaid 010123456789"',
     'Cable.php'   => 'Try: "Renew DSTV Compact for 123456789"',
 ];
 if (isset($suggestions[$current_page])): ?>
