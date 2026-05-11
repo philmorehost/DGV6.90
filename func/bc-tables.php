@@ -1359,7 +1359,6 @@ if ($connection_server) {
             }
         }
     }
-}
 // --- Branch DG6.6 Migration for Gift Card & P2P enhancements ---
 
 // 1. Vendor Gift Card Commission & Default Markup
@@ -1828,3 +1827,4 @@ if ($check_options_table && mysqli_num_rows($check_options_table) > 0) {
 }
 mysqli_query($connection_server, "UPDATE sas_vendors SET ai_model_assigned='gemini-1.5-flash' WHERE ai_model_assigned IN ('phi4-mini', 'gemma:2b', 'llama3', 'llama4-scout', 'gemma4:e2b') OR ai_model_assigned IS NULL OR ai_model_assigned=''");
 mysqli_query($connection_server, "UPDATE sas_users SET ai_model_assigned='gemini-1.5-flash' WHERE ai_model_assigned IN ('phi4-mini', 'gemma:2b', 'llama3')");
+}
