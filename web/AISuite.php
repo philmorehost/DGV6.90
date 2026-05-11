@@ -219,7 +219,7 @@
                         <div class="command-group mb-3">
                             <label class="x-small fw-bold text-uppercase text-muted mb-1">Data Bundle</label>
                             <div class="input-group input-group-sm mb-2">
-                                <input type="text" class="form-control bg-light border-0 x-small" value="Buy Airtel 2GB data for 08123456789" readonly id="cmd-data">
+                                <input type="text" class="form-control bg-light border-0 x-small" value="Buy Airtel 2GB SME data for 08123456789" readonly id="cmd-data">
                                 <button class="btn btn-outline-primary" type="button" onclick="copyCmd('cmd-data')"><i class="bi bi-clipboard"></i></button>
                             </div>
                         </div>
