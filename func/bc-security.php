@@ -138,8 +138,9 @@ function bc_sanitize(string $input): string {
 
 /**
  * Sanitize a numeric value. Returns 0 if not numeric.
+ * @param mixed $input
  */
-function bc_sanitize_number(mixed $input, int $decimals = 2): float {
+function bc_sanitize_number($input, int $decimals = 2): float {
     $cleaned = preg_replace('/[^0-9.]/', '', (string)$input);
     return is_numeric($cleaned) ? round((float)$cleaned, $decimals) : 0.0;
 }
@@ -351,14 +352,12 @@ function bc_log_security_event(string $event_type, string $action, string $actor
  * Sanitizes and validates a user-submitted AI prompt.
  * Returns: sanitized prompt string, or FALSE if the prompt is malicious/invalid.
  *
- * Blocks: SQL injection attempts, PHP code, transaction commands,
- * and non-fintech topics (optional "strict" mode).
- *
- * @param string $raw_prompt    The raw user input
- * @param bool   $strict_mode   If true, blocks any prompt not related to VTU/fintech
- * @param array  $context       Contextual metadata (e.g. page, balance)
+ * @param string $raw_prompt
+ * @param bool $strict_mode
+ * @param array $context
+ * @return string|false
  */
-function bc_firewall_prompt(string $raw_prompt, bool $strict_mode = false, array $context = []): string|false {
+function bc_firewall_prompt(string $raw_prompt, bool $strict_mode = false, array $context = []) {
     // Strip tags and dangerous chars
     $prompt = strip_tags(trim($raw_prompt));
     $prompt = preg_replace('/[\x00-\x1F\x7F]/', '', $prompt); // Remove control chars
