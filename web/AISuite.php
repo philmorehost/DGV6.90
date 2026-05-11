@@ -227,7 +227,7 @@
                         <div class="command-group mb-3">
                             <label class="x-small fw-bold text-uppercase text-muted mb-1">Electricity</label>
                             <div class="input-group input-group-sm mb-2">
-                                <input type="text" class="form-control bg-light border-0 x-small" value="Pay 2000 for IKEDC 010123456789" readonly id="cmd-power">
+                                <input type="text" class="form-control bg-light border-0 x-small" value="Pay 2000 for IKEDC Prepaid 010123456789" readonly id="cmd-power">
                                 <button class="btn btn-outline-primary" type="button" onclick="copyCmd('cmd-power')"><i class="bi bi-clipboard"></i></button>
                             </div>
                         </div>

@@ -25,7 +25,7 @@
             $ai_service_label = "Airtime";
             break;
         case "Data.php":
-            $ai_suggestion = "Buy Glo 1GB data for 08123456789";
+            $ai_suggestion = "Buy Glo 1GB SME data for 08123456789";
             $ai_service_label = "Data";
             break;
         case "Cable.php":
@@ -33,7 +33,7 @@
             $ai_service_label = "Cable TV";
             break;
         case "Electric.php":
-            $ai_suggestion = "Buy 2000 electricity for 14123456789 (IKEDC)";
+            $ai_suggestion = "Pay 2000 for IKEDC Prepaid 14123456789";
             $ai_service_label = "Electricity";
             break;
         case "Betting.php":
