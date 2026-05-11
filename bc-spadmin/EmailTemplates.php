@@ -152,7 +152,7 @@
                             if($key == 'vendor-transactions') $placeholders = ['{admin_firstname}', '{admin_lastname}', '{email}', '{firstname}', '{balance_before}', '{balance_after}', '{amount}', '{description}', '{type}'];
                             if($key == 'vendor-funding') $placeholders = ['{firstname}', '{lastname}', '{balance_before}', '{balance_after}', '{amount}', '{description}', '{type}'];
                             if($key == 'vendor-refund') $placeholders = ['{firstname}', '{lastname}', '{amount}', '{description}'];
-                            if($key == 'vendor-welcome-activated') $placeholders = ['{firstname}', '{lastname}', '{expiry_date}', '{domain_nameservers}', '{domain_ip_address}', '{domain_registrar_url}'];
+                            if($key == 'vendor-welcome-activated') $placeholders = ['{firstname}', '{lastname}', '{expiry_date}', '{domain_nameservers}', '{domain_ip_address}', '{domain_registrar_url}', '{portal_link}'];
                         ?>
                         <div class="tab-pane fade <?php echo $first_t ? 'show active' : ''; ?>" id="tab-<?php echo $key; ?>">
                             <div class="bg-light p-3 rounded-4 mb-4">
