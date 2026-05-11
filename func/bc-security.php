@@ -408,6 +408,11 @@ function bc_firewall_prompt(string $raw_prompt, bool $strict_mode = false, array
         
         if (!empty($context['last_fail_reason'])) $ctx_parts[] = "Last Error: " . $context['last_fail_reason'];
         
+        // Include Current Data Prices to avoid ₦0 estimates
+        if (!empty($context['current_data_prices']) && is_array($context['current_data_prices'])) {
+            $ctx_parts[] = "Current Data Prices: " . implode(" | ", $context['current_data_prices']);
+        }
+
         if (!empty($ctx_parts)) {
             $system_context .= " [Context: " . implode(", ", $ctx_parts) . "] ";
         }

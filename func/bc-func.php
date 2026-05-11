@@ -72,6 +72,29 @@ function bc_get_ai_user_context($user_details) {
         }
     }
 
+    // 5. Get current data prices for context (to avoid ₦0 estimates)
+    $data_prices = [];
+    $levels = [1 => "sas_smart_parameter_values", 2 => "sas_agent_parameter_values", 3 => "sas_api_parameter_values"];
+    $acc_level = (int)($user_details['account_level'] ?? 1);
+    $price_table = $levels[$acc_level] ?? $levels[1];
+    
+    $price_q = mysqli_query($connection_server, "
+        SELECT p.product_name, v.val_1 as size, v.val_2 as price 
+        FROM $price_table v
+        JOIN sas_products p ON v.product_id = p.id
+        WHERE v.vendor_id = '$vendor_id' 
+        AND p.status = 1
+        AND v.status = 1
+        AND (p.product_name LIKE '%data%' OR p.product_name LIKE '%bundle%')
+        ORDER BY p.product_name ASC, CAST(v.val_1 AS UNSIGNED) ASC
+        LIMIT 40
+    ");
+    if ($price_q) {
+        while($p = mysqli_fetch_assoc($price_q)) {
+            $data_prices[] = $p['product_name'] . " " . $p['size'] . ": ₦" . (float)$p['price'];
+        }
+    }
+
     return [
         'username' => $user_details['username'],
         'vendor_id' => $vendor_id,
@@ -81,6 +104,7 @@ function bc_get_ai_user_context($user_details) {
         'last_fail_plan' => $last_fail ? $last_fail['name'] : '',
         'recent_history' => $recent_history,
         'session_error' => $immediate_error,
+        'current_data_prices' => $data_prices,
         'smart_explanation' => $immediate_error ? bc_get_ai_failure_explanation($immediate_error, $last_fail ? $last_fail['name'] : '') : ''
     ];
 }
