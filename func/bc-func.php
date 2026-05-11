@@ -70,6 +70,8 @@ function bc_get_ai_user_context($user_details) {
         while($h = mysqli_fetch_assoc($history_q)) {
             $recent_history[] = $h['name'] . " to " . $h['target'] . " (₦" . $h['amount'] . ")";
         }
+    }
+
     // 5. Get current service prices for context (Data, Cable, Exam, etc.)
     $services_prices = [];
     $levels = [1 => "sas_smart_parameter_values", 2 => "sas_agent_parameter_values", 3 => "sas_api_parameter_values"];
