@@ -1,35 +1,6 @@
 <?php session_start();
     include("../func/bc-spadmin-config.php");
 
-    // Auto-migration: Ensure package_type column exists
-    $check_pkg_cols = mysqli_query($connection_server, "SHOW COLUMNS FROM sas_billing_packages LIKE 'package_type'");
-    if(mysqli_num_rows($check_pkg_cols) == 0) {
-        mysqli_query($connection_server, "ALTER TABLE sas_billing_packages ADD COLUMN package_type VARCHAR(20) DEFAULT 'subscription' AFTER name");
-    }
-
-    // Auto-migration: Create sas_billing_addons table
-    mysqli_query($connection_server, "CREATE TABLE IF NOT EXISTS sas_billing_addons (id INT AUTO_INCREMENT PRIMARY KEY, name VARCHAR(255) NOT NULL, price DECIMAL(10, 2) NOT NULL, icon VARCHAR(50) DEFAULT 'bi-box-seam', created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP)");
-
-    // Seed addons if empty
-    $check_addons = mysqli_query($connection_server, "SELECT id FROM sas_billing_addons LIMIT 1");
-    if(mysqli_num_rows($check_addons) == 0) {
-        $default_addons = [
-            ['Android APK', getSuperAdminOption('apk_development_price', '0'), 'bi-android2'],
-            ['iOS App', getSuperAdminOption('ios_development_price', '0'), 'bi-apple'],
-            ['PlayStore Listing', getSuperAdminOption('playstore_listing_price', '0'), 'bi-google-play'],
-            ['SMS Bridge', getSuperAdminOption('sms_bridge_price', '0'), 'bi-chat-dots']
-        ];
-        foreach($default_addons as $da) {
-            mysqli_query($connection_server, "INSERT INTO sas_billing_addons (name, price, icon) VALUES ('{$da[0]}', '{$da[1]}', '{$da[2]}')");
-        }
-    }
-
-    // Ensure selected_addons column exists in sas_pending_vendors
-    $check_pv_cols = mysqli_query($connection_server, "SHOW COLUMNS FROM sas_pending_vendors LIKE 'selected_addons'");
-    if(mysqli_num_rows($check_pv_cols) == 0) {
-        mysqli_query($connection_server, "ALTER TABLE sas_pending_vendors ADD COLUMN selected_addons TEXT AFTER order_sms_bridge");
-    }
-
     // Handle Addon Actions
     if(isset($_POST['save_addon'])) {
         $addon_id = mysqli_real_escape_string($connection_server, $_POST['addon_id']);

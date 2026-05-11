@@ -165,6 +165,7 @@ if (!in_array('app_base_url', $vendor_existing)) {
     mysqli_query($connection_server, "ALTER TABLE sas_vendors ADD COLUMN ios_ordered TINYINT(1) DEFAULT 0");
     mysqli_query($connection_server, "ALTER TABLE sas_vendors ADD COLUMN playstore_ordered TINYINT(1) DEFAULT 0");
     mysqli_query($connection_server, "ALTER TABLE sas_vendors ADD COLUMN sms_bridge_ordered TINYINT(1) DEFAULT 0");
+    mysqli_query($connection_server, "ALTER TABLE sas_vendors ADD COLUMN selected_addons TEXT DEFAULT NULL");
 }
 
 if (!in_array('sms_bridge_ordered', $vendor_existing) && in_array('app_base_url', $vendor_existing)) {
@@ -222,6 +223,13 @@ CREATE TABLE IF NOT EXISTS sas_pending_vendors (
     UNIQUE (email),
     UNIQUE (website_url))");
 
+if ($create_pending_vendors_table) {
+    $check_pv_addons = mysqli_query($connection_server, "SHOW COLUMNS FROM sas_pending_vendors LIKE 'selected_addons'");
+    if (mysqli_num_rows($check_pv_addons) == 0) {
+        mysqli_query($connection_server, "ALTER TABLE sas_pending_vendors ADD COLUMN selected_addons TEXT AFTER order_sms_bridge");
+    }
+}
+
 //Create Billing Packages Table
 $create_billing_packages_table = mysqli_query($connection_server, "
     CREATE TABLE IF NOT EXISTS sas_billing_packages (
@@ -230,6 +238,37 @@ $create_billing_packages_table = mysqli_query($connection_server, "
     price DECIMAL(10, 2) NOT NULL,
     duration_days INT NOT NULL,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP)");
+
+if ($create_billing_packages_table) {
+    $check_bp_type = mysqli_query($connection_server, "SHOW COLUMNS FROM sas_billing_packages LIKE 'package_type'");
+    if (mysqli_num_rows($check_bp_type) == 0) {
+        mysqli_query($connection_server, "ALTER TABLE sas_billing_packages ADD COLUMN package_type VARCHAR(20) DEFAULT 'subscription' AFTER name");
+    }
+}
+
+//Create Billing Addons Table
+$create_billing_addons_table = mysqli_query($connection_server, "CREATE TABLE IF NOT EXISTS sas_billing_addons (id INT AUTO_INCREMENT PRIMARY KEY, name VARCHAR(255) NOT NULL, price DECIMAL(10, 2) NOT NULL, icon VARCHAR(50) DEFAULT 'bi-box-seam', created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP)");
+
+if ($create_billing_addons_table) {
+    $check_addons_seed = mysqli_query($connection_server, "SELECT id FROM sas_billing_addons LIMIT 1");
+    if (mysqli_num_rows($check_addons_seed) == 0) {
+        // Only seed if functions exist
+        if(function_exists('getSuperAdminOption')) {
+            $default_addons = [
+                ['Android APK', getSuperAdminOption('apk_development_price', '0'), 'bi-android2'],
+                ['iOS App', getSuperAdminOption('ios_development_price', '0'), 'bi-apple'],
+                ['PlayStore Listing', getSuperAdminOption('playstore_listing_price', '0'), 'bi-google-play'],
+                ['SMS Bridge', getSuperAdminOption('sms_bridge_price', '0'), 'bi-chat-dots']
+            ];
+            foreach($default_addons as $da) {
+                $da_name = mysqli_real_escape_string($connection_server, $da[0]);
+                $da_price = mysqli_real_escape_string($connection_server, $da[1]);
+                $da_icon = mysqli_real_escape_string($connection_server, $da[2]);
+                mysqli_query($connection_server, "INSERT INTO sas_billing_addons (name, price, icon) VALUES ('$da_name', '$da_price', '$da_icon')");
+            }
+        }
+    }
+}
 
 //Create Vendor Status Message Table
 $create_vendor_status_message_table = mysqli_query($connection_server, "CREATE TABLE IF NOT EXISTS sas_vendor_status_messages (vendor_id INT UNSIGNED NOT NULL, message LONGTEXT NOT NULL, date TIMESTAMP DEFAULT CURRENT_TIMESTAMP)");
