@@ -7,12 +7,13 @@
         $a_name = mysqli_real_escape_string($connection_server, $_POST['addon_name']);
         $a_price = mysqli_real_escape_string($connection_server, $_POST['addon_price']);
         $a_icon = mysqli_real_escape_string($connection_server, $_POST['addon_icon']);
+        $a_dl = mysqli_real_escape_string($connection_server, $_POST['download_url']);
 
         if(empty($addon_id)) {
-            mysqli_query($connection_server, "INSERT INTO sas_billing_addons (name, price, icon) VALUES ('$a_name', '$a_price', '$a_icon')");
+            mysqli_query($connection_server, "INSERT INTO sas_billing_addons (name, price, icon, download_url) VALUES ('$a_name', '$a_price', '$a_icon', '$a_dl')");
             $_SESSION['page_alert'] = "Addon added successfully!";
         } else {
-            mysqli_query($connection_server, "UPDATE sas_billing_addons SET name='$a_name', price='$a_price', icon='$a_icon' WHERE id='$addon_id'");
+            mysqli_query($connection_server, "UPDATE sas_billing_addons SET name='$a_name', price='$a_price', icon='$a_icon', download_url='$a_dl' WHERE id='$addon_id'");
             $_SESSION['page_alert'] = "Addon updated successfully!";
         }
         header("Location: BillingPackages.php"); exit();
@@ -170,9 +171,14 @@
                 <div class="card shadow-sm border-0 rounded-4 mt-4">
                     <div class="card-header bg-dark py-3 border-0 text-white d-flex justify-content-between align-items-center">
                         <h6 class="mb-0"><i class="bi bi-phone-fill me-2"></i>Dynamic Billing Addons</h6>
-                        <button type="button" class="btn btn-sm btn-outline-light rounded-pill" onclick="showAddonForm()">
-                            <i class="bi bi-plus-circle me-1"></i> Add New
-                        </button>
+                        <div class="d-flex gap-2">
+                            <a href="VendorDownloadStats.php" class="btn btn-sm btn-info text-white rounded-pill">
+                                <i class="bi bi-bar-chart-fill me-1"></i> Download Stats
+                            </a>
+                            <button type="button" class="btn btn-sm btn-outline-light rounded-pill" onclick="showAddonForm()">
+                                <i class="bi bi-plus-circle me-1"></i> Add New
+                            </button>
+                        </div>
                     </div>
                     <div class="card-body p-4">
                         <!-- Addon Form (Hidden by default) -->
@@ -189,8 +195,8 @@
                                     <input type="number" step="0.01" name="addon_price" id="addon_price" class="form-control rounded-3" required>
                                 </div>
                                 <div class="mb-3">
-                                    <label class="form-label small fw-bold">Icon (Bootstrap Icon Class)</label>
-                                    <input type="text" name="addon_icon" id="addon_icon" class="form-control rounded-3" placeholder="bi-box-seam">
+                                    <label class="form-label small fw-bold">Download Source URL (Cloud path/Zip link)</label>
+                                    <input type="text" name="download_url" id="addon_dl" class="form-control rounded-3" placeholder="https://cloud.com/file.zip">
                                 </div>
                                 <div class="d-flex gap-2">
                                     <button type="submit" name="save_addon" class="btn btn-primary rounded-pill px-4">Save Addon</button>
@@ -243,6 +249,7 @@
                     document.getElementById('addon_name').value = '';
                     document.getElementById('addon_price').value = '';
                     document.getElementById('addon_icon').value = 'bi-box-seam';
+                    document.getElementById('addon_dl').value = '';
                 }
                 function hideAddonForm() {
                     document.getElementById('addon_form_wrapper').style.display = 'none';
@@ -254,6 +261,7 @@
                     document.getElementById('addon_name').value = data.name;
                     document.getElementById('addon_price').value = data.price;
                     document.getElementById('addon_icon').value = data.icon;
+                    document.getElementById('addon_dl').value = data.download_url || '';
                     document.getElementById('addon_form_wrapper').scrollIntoView({behavior: 'smooth'});
                 }
                 </script>

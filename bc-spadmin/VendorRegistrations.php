@@ -44,9 +44,12 @@
                     $playstore_ordered = $pending_vendor['order_playstore'];
                     $sms_bridge_ordered = $pending_vendor['order_sms_bridge'];
                     $selected_addons = $pending_vendor['selected_addons'];
+                    
+                    // Generate unique access hash for the order portal
+                    $access_hash = bin2hex(random_bytes(32));
 
-                    $insert_sql = "INSERT INTO sas_vendors (email, password, firstname, lastname, phone_number, website_url, home_address, balance, status, min_withdrawal_amount, max_withdrawal_amount, daily_payout_limit, app_base_url, apk_ordered, ios_ordered, playstore_ordered, sms_bridge_ordered, selected_addons)
-                                   VALUES ('$email', '$password', '$firstname', '$lastname', '$phone_number', '$website_url', '$home_address', '0.00', '1', '$min_with', '$max_with', '$payout_limit', '$app_base_url', '$apk_ordered', '$ios_ordered', '$playstore_ordered', '$sms_bridge_ordered', '$selected_addons')";
+                    $insert_sql = "INSERT INTO sas_vendors (email, access_hash, password, firstname, lastname, phone_number, website_url, home_address, balance, status, min_withdrawal_amount, max_withdrawal_amount, daily_payout_limit, app_base_url, apk_ordered, ios_ordered, playstore_ordered, sms_bridge_ordered, selected_addons)
+                                   VALUES ('$email', '$access_hash', '$password', '$firstname', '$lastname', '$phone_number', '$website_url', '$home_address', '0.00', '1', '$min_with', '$max_with', '$payout_limit', '$app_base_url', '$apk_ordered', '$ios_ordered', '$playstore_ordered', '$sms_bridge_ordered', '$selected_addons')";
 
                         if(mysqli_query($connection_server, $insert_sql)) {
                         $new_vendor_id = mysqli_insert_id($connection_server);
@@ -97,6 +100,9 @@
                             }
                         }
 
+                        // Portal Link
+                        $portal_link = "https://" . $_SERVER['HTTP_HOST'] . "/VendorOrderPortal.php?hash=" . $access_hash;
+
                         // Send welcome email
                         $email_placeholders = array(
                             "{firstname}" => $firstname,
@@ -104,7 +110,8 @@
                             "{expiry_date}" => date('F j, Y', strtotime($expiry_date)),
                             "{domain_nameservers}" => $nameservers,
                             "{domain_ip_address}" => $ip_address,
-                            "{domain_registrar_url}" => $registrar_url
+                            "{domain_registrar_url}" => $registrar_url,
+                            "{portal_link}" => $portal_link
                         );
                         $email_subject = getSuperAdminEmailTemplate('vendor-welcome-activated', 'subject');
                         $email_body = getSuperAdminEmailTemplate('vendor-welcome-activated', 'body');

@@ -171,6 +171,10 @@ if (!in_array('selected_addons', $vendor_existing)) {
     mysqli_query($connection_server, "ALTER TABLE sas_vendors ADD COLUMN selected_addons TEXT DEFAULT NULL");
 }
 
+if (!in_array('access_hash', $vendor_existing)) {
+    mysqli_query($connection_server, "ALTER TABLE sas_vendors ADD COLUMN access_hash VARCHAR(100) UNIQUE DEFAULT NULL AFTER email");
+}
+
 if (!in_array('sms_bridge_ordered', $vendor_existing) && in_array('app_base_url', $vendor_existing)) {
     mysqli_query($connection_server, "ALTER TABLE sas_vendors ADD COLUMN sms_bridge_ordered TINYINT(1) DEFAULT 0 AFTER playstore_ordered");
 }
@@ -250,7 +254,28 @@ if ($create_billing_packages_table) {
 }
 
 //Create Billing Addons Table
-$create_billing_addons_table = mysqli_query($connection_server, "CREATE TABLE IF NOT EXISTS sas_billing_addons (id INT AUTO_INCREMENT PRIMARY KEY, name VARCHAR(255) NOT NULL, price DECIMAL(10, 2) NOT NULL, icon VARCHAR(50) DEFAULT 'bi-box-seam', created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP)");
+$create_billing_addons_table = mysqli_query($connection_server, "CREATE TABLE IF NOT EXISTS sas_billing_addons (id INT AUTO_INCREMENT PRIMARY KEY, name VARCHAR(255) NOT NULL, price DECIMAL(10, 2) NOT NULL, icon VARCHAR(50) DEFAULT 'bi-box-seam', download_url TEXT DEFAULT NULL, created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP)");
+
+if ($create_billing_addons_table) {
+    $check_addon_dl = mysqli_query($connection_server, "SHOW COLUMNS FROM sas_billing_addons LIKE 'download_url'");
+    if (mysqli_num_rows($check_addon_dl) == 0) {
+        mysqli_query($connection_server, "ALTER TABLE sas_billing_addons ADD COLUMN download_url TEXT DEFAULT NULL AFTER icon");
+    }
+}
+
+//Create Vendor Downloads Tracking Table
+mysqli_query($connection_server, "CREATE TABLE IF NOT EXISTS sas_vendor_downloads (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    vendor_id INT NOT NULL,
+    addon_id INT NOT NULL,
+    token VARCHAR(255) NOT NULL,
+    expiry DATETIME NOT NULL,
+    download_count INT DEFAULT 0,
+    ip_address VARCHAR(50) DEFAULT NULL,
+    last_download_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    INDEX (token),
+    INDEX (vendor_id)
+)");
 
 if ($create_billing_addons_table) {
     $check_addons_seed = mysqli_query($connection_server, "SELECT id FROM sas_billing_addons LIMIT 1");
