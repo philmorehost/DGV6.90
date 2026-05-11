@@ -37,6 +37,9 @@
 
     // Handle Add/Edit Request
     if(isset($_POST['save_package'])) {
+        $package_id = mysqli_real_escape_string($connection_server, $_POST['package_id']);
+        $name = mysqli_real_escape_string($connection_server, $_POST['name']);
+        $price = mysqli_real_escape_string($connection_server, $_POST['price']);
         $duration_days = mysqli_real_escape_string($connection_server, $_POST['duration_days']);
         $package_type = mysqli_real_escape_string($connection_server, $_POST['package_type']);
         $download_url = mysqli_real_escape_string($connection_server, $_POST['download_url']);
