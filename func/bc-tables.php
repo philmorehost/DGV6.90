@@ -165,6 +165,9 @@ if (!in_array('app_base_url', $vendor_existing)) {
     mysqli_query($connection_server, "ALTER TABLE sas_vendors ADD COLUMN ios_ordered TINYINT(1) DEFAULT 0");
     mysqli_query($connection_server, "ALTER TABLE sas_vendors ADD COLUMN playstore_ordered TINYINT(1) DEFAULT 0");
     mysqli_query($connection_server, "ALTER TABLE sas_vendors ADD COLUMN sms_bridge_ordered TINYINT(1) DEFAULT 0");
+}
+
+if (!in_array('selected_addons', $vendor_existing)) {
     mysqli_query($connection_server, "ALTER TABLE sas_vendors ADD COLUMN selected_addons TEXT DEFAULT NULL");
 }
 
