@@ -229,11 +229,28 @@
                                             <div class="small">
                                                 <ul class="list-unstyled mb-0">
                                                     <li><i class="bi bi-check2-circle text-success me-1"></i> <?php echo htmlspecialchars($row['package_name']); ?></li>
-                                                    <?php if($row['order_apk']): ?><li><i class="bi bi-plus-circle text-primary me-1"></i> Android APK</li><?php endif; ?>
-                                                    <?php if($row['order_ios']): ?><li><i class="bi bi-plus-circle text-primary me-1"></i> iOS App</li><?php endif; ?>
-                                                    <?php if($row['order_playstore']): ?><li><i class="bi bi-plus-circle text-primary me-1"></i> Playstore Listing</li><?php endif; ?>
-                                                    <?php if($row['order_sms_bridge']): ?><li><i class="bi bi-plus-circle text-primary me-1"></i> SMS Bridge</li><?php endif; ?>
-                                                    <?php if($row['domain_registration_fee'] > 0): ?><li><i class="bi bi-plus-circle text-primary me-1"></i> Domain (₦<?php echo number_format($row['domain_registration_fee'], 0); ?>)</li><?php endif; ?>
+                                                    <?php 
+                                                        // Legacy checks
+                                                        if($row['order_apk']): ?><li><i class="bi bi-plus-circle text-primary me-1"></i> Android APK</li><?php endif; 
+                                                        if($row['order_ios']): ?><li><i class="bi bi-plus-circle text-primary me-1"></i> iOS App</li><?php endif; 
+                                                        if($row['order_playstore']): ?><li><i class="bi bi-plus-circle text-primary me-1"></i> Playstore Listing</li><?php endif; 
+                                                        if($row['order_sms_bridge']): ?><li><i class="bi bi-plus-circle text-primary me-1"></i> SMS Bridge</li><?php endif; 
+                                                        
+                                                        // Dynamic Addons lookup
+                                                        if(!empty($row['selected_addons'])) {
+                                                            $addon_ids = explode(',', $row['selected_addons']);
+                                                            $addon_ids_clean = array_map('intval', $addon_ids);
+                                                            $addon_ids_str = implode(',', $addon_ids_clean);
+                                                            $addons_res = mysqli_query($connection_server, "SELECT name FROM sas_billing_addons WHERE id IN ($addon_ids_str)");
+                                                            if($addons_res) {
+                                                                while($addon_row = mysqli_fetch_assoc($addons_res)) {
+                                                                    echo "<li><i class='bi bi-plus-circle text-primary me-1'></i>".htmlspecialchars($addon_row['name'])."</li>";
+                                                                }
+                                                            }
+                                                        }
+
+                                                        if($row['domain_registration_fee'] > 0): ?><li><i class="bi bi-plus-circle text-primary me-1"></i> Domain (₦<?php echo number_format($row['domain_registration_fee'], 0); ?>)</li><?php endif; 
+                                                    ?>
                                                 </ul>
                                                 <div class="mt-2 pt-2 border-top">
                                                     <strong class="text-primary">Total: ₦<?php echo number_format($row['total_amount'], 2); ?></strong>

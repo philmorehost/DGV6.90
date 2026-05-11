@@ -6,12 +6,8 @@
     include_once("../func/bc-func.php");
     include("../func/whmcs-func.php");
 
-    $apk_price = (float)getSuperAdminOption('apk_development_price', '0');
-    $ios_price = (float)getSuperAdminOption('ios_development_price', '0');
-    $playstore_price = (float)getSuperAdminOption('playstore_listing_price', '0');
-    $sms_bridge_price = (float)getSuperAdminOption('sms_bridge_price', '0');
-
     // Fetch domain settings
+    $nameservers = '';
     $nameservers = '';
     $ip_address = '';
     $registrar_url = '';
@@ -40,6 +36,10 @@
         $order_ios = isset($_POST['order_ios']) ? 1 : 0;
         $order_playstore = isset($_POST['order_playstore']) ? 1 : 0;
         $order_sms_bridge = isset($_POST['order_sms_bridge']) ? 1 : 0;
+
+        // Dynamic Addons
+        $selected_addons_ids = $_POST['addons'] ?? [];
+        $selected_addons_str = mysqli_real_escape_string($connection_server, implode(',', $selected_addons_ids));
         $domain_fee = (float)($_POST['domain_fee'] ?? 0);
         $total_amount = (float)($_POST['total_amount'] ?? 0);
         $domain_option = $_POST['domain_option'] ?? 'register';
@@ -64,7 +64,7 @@
                         $def_max = getSuperAdminOption('default_max_withdrawal', '50000');
                         $def_limit = getSuperAdminOption('default_daily_payout_limit', '10');
 
-                        $sql = "INSERT INTO sas_pending_vendors (website_url, email, password, firstname, lastname, phone_number, home_address, billing_package_id, payment_method, status, min_withdrawal_amount, max_withdrawal_amount, daily_payout_limit, app_base_url, order_apk, order_ios, order_playstore, order_sms_bridge, domain_registration_fee, total_amount) VALUES ('$website_url', '$email', '$md5_pass', '$first', '$last', '$phone', '$address', '$billing_package_id', '$payment_method', '0', '$def_min', '$def_max', '$def_limit', '$app_base_url', '$order_apk', '$order_ios', '$order_playstore', '$order_sms_bridge', '$domain_fee', '$total_amount')";
+                        $sql = "INSERT INTO sas_pending_vendors (website_url, email, password, firstname, lastname, phone_number, home_address, billing_package_id, payment_method, status, min_withdrawal_amount, max_withdrawal_amount, daily_payout_limit, app_base_url, order_apk, order_ios, order_playstore, order_sms_bridge, selected_addons, domain_registration_fee, total_amount) VALUES ('$website_url', '$email', '$md5_pass', '$first', '$last', '$phone', '$address', '$billing_package_id', '$payment_method', '0', '$def_min', '$def_max', '$def_limit', '$app_base_url', '$order_apk', '$order_ios', '$order_playstore', '$order_sms_bridge', '$selected_addons_str', '$domain_fee', '$total_amount')";
                         if(mysqli_query($connection_server, $sql)) {
                             $pending_id = mysqli_insert_id($connection_server);
 
@@ -94,10 +94,15 @@
                                 $v_pkg = mysqli_fetch_assoc($v_pkg_res);
 
                                 $calculated_total = (float)($v_pkg['price'] ?? 0);
-                                if($order_apk) $calculated_total += $apk_price;
-                                if($order_ios) $calculated_total += $ios_price;
-                                if($order_playstore) $calculated_total += $playstore_price;
-                                if($order_sms_bridge) $calculated_total += $sms_bridge_price;
+                                
+                                // Dynamic Addon Price Verification
+                                if(!empty($selected_addons_ids)) {
+                                    $addon_ids_clean = array_map(function($id) use ($connection_server) { return mysqli_real_escape_string($connection_server, $id); }, $selected_addons_ids);
+                                    $addon_ids_str = implode(',', $addon_ids_clean);
+                                    $addon_price_res = mysqli_query($connection_server, "SELECT SUM(price) as total_addon_price FROM sas_billing_addons WHERE id IN ($addon_ids_str)");
+                                    $addon_price_row = mysqli_fetch_assoc($addon_price_res);
+                                    $calculated_total += (float)($addon_price_row['total_addon_price'] ?? 0);
+                                }
 
                                 if ($domain_option == 'register') {
                                     $actual_domain_fee = 0;
@@ -552,32 +557,29 @@
                         </div>
                     </div>
 
-                    <!-- Add-ons -->
                     <div class="card mb-4 shadow-sm">
                         <div class="card-header">
-                            <h5 class="mb-0 fw-bold"><i class="bi bi-app-indicator me-2 text-primary"></i>3. Mobile App Options</h5>
+                            <h5 class="mb-0 fw-bold"><i class="bi bi-app-indicator me-2 text-primary"></i>3. Service Add-ons (One-Off)</h5>
                         </div>
                         <div class="card-body p-4">
                             <div class="row g-3">
                                 <?php
-                                $addons = [
-                                    ['id' => 'add_apk', 'name' => 'order_apk', 'label' => 'Android APK', 'price' => $apk_price, 'icon' => 'bi-android2'],
-                                    ['id' => 'add_ios', 'name' => 'order_ios', 'label' => 'iOS App', 'price' => $ios_price, 'icon' => 'bi-apple'],
-                                    ['id' => 'add_playstore', 'name' => 'order_playstore', 'label' => 'Play Store', 'price' => $playstore_price, 'icon' => 'bi-google-play'],
-                                    ['id' => 'add_sms_bridge', 'name' => 'order_sms_bridge', 'label' => 'SMS Bridge', 'price' => $sms_bridge_price, 'icon' => 'bi-chat-dots']
-                                ];
-                                foreach($addons as $addon):
+                                $addons_q = mysqli_query($connection_server, "SELECT * FROM sas_billing_addons ORDER BY id ASC");
+                                if(mysqli_num_rows($addons_q) > 0):
+                                    while($addon = mysqli_fetch_assoc($addons_q)):
                                 ?>
                                 <div class="col-6 col-md-3">
-                                    <input class="d-none addon-trigger" type="checkbox" name="<?php echo $addon['name'] ?>" id="<?php echo $addon['id'] ?>" data-price="<?php echo $addon['price'] ?>" onchange="updateCheckoutTotal()">
-                                    <label class="addon-card shadow-sm" for="<?php echo $addon['id'] ?>">
+                                    <input class="d-none addon-trigger" type="checkbox" name="addons[]" id="addon_<?php echo $addon['id'] ?>" value="<?php echo $addon['id'] ?>" data-price="<?php echo $addon['price'] ?>" onchange="updateCheckoutTotal()">
+                                    <label class="addon-card shadow-sm" for="addon_<?php echo $addon['id'] ?>">
                                         <div class="addon-check"><i class="bi bi-check"></i></div>
-                                        <div class="addon-icon shadow-sm"><i class="bi <?php echo $addon['icon'] ?>"></i></div>
-                                        <div class="fw-bold small text-dark"><?php echo $addon['label'] ?></div>
+                                        <div class="addon-icon shadow-sm"><i class="bi <?php echo htmlspecialchars($addon['icon']) ?>"></i></div>
+                                        <div class="fw-bold small text-dark"><?php echo htmlspecialchars($addon['name']) ?></div>
                                         <div class="addon-price">₦<?php echo number_format($addon['price'], 0) ?></div>
                                     </label>
                                 </div>
-                                <?php endforeach; ?>
+                                <?php endwhile; else: ?>
+                                <div class="col-12 text-center text-muted py-3">No additional services available at the moment.</div>
+                                <?php endif; ?>
                             </div>
                         </div>
                     </div>

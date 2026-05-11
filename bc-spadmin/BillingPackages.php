@@ -7,6 +7,53 @@
         mysqli_query($connection_server, "ALTER TABLE sas_billing_packages ADD COLUMN package_type VARCHAR(20) DEFAULT 'subscription' AFTER name");
     }
 
+    // Auto-migration: Create sas_billing_addons table
+    mysqli_query($connection_server, "CREATE TABLE IF NOT EXISTS sas_billing_addons (id INT AUTO_INCREMENT PRIMARY KEY, name VARCHAR(255) NOT NULL, price DECIMAL(10, 2) NOT NULL, icon VARCHAR(50) DEFAULT 'bi-box-seam', created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP)");
+
+    // Seed addons if empty
+    $check_addons = mysqli_query($connection_server, "SELECT id FROM sas_billing_addons LIMIT 1");
+    if(mysqli_num_rows($check_addons) == 0) {
+        $default_addons = [
+            ['Android APK', getSuperAdminOption('apk_development_price', '0'), 'bi-android2'],
+            ['iOS App', getSuperAdminOption('ios_development_price', '0'), 'bi-apple'],
+            ['PlayStore Listing', getSuperAdminOption('playstore_listing_price', '0'), 'bi-google-play'],
+            ['SMS Bridge', getSuperAdminOption('sms_bridge_price', '0'), 'bi-chat-dots']
+        ];
+        foreach($default_addons as $da) {
+            mysqli_query($connection_server, "INSERT INTO sas_billing_addons (name, price, icon) VALUES ('{$da[0]}', '{$da[1]}', '{$da[2]}')");
+        }
+    }
+
+    // Ensure selected_addons column exists in sas_pending_vendors
+    $check_pv_cols = mysqli_query($connection_server, "SHOW COLUMNS FROM sas_pending_vendors LIKE 'selected_addons'");
+    if(mysqli_num_rows($check_pv_cols) == 0) {
+        mysqli_query($connection_server, "ALTER TABLE sas_pending_vendors ADD COLUMN selected_addons TEXT AFTER order_sms_bridge");
+    }
+
+    // Handle Addon Actions
+    if(isset($_POST['save_addon'])) {
+        $addon_id = mysqli_real_escape_string($connection_server, $_POST['addon_id']);
+        $a_name = mysqli_real_escape_string($connection_server, $_POST['addon_name']);
+        $a_price = mysqli_real_escape_string($connection_server, $_POST['addon_price']);
+        $a_icon = mysqli_real_escape_string($connection_server, $_POST['addon_icon']);
+
+        if(empty($addon_id)) {
+            mysqli_query($connection_server, "INSERT INTO sas_billing_addons (name, price, icon) VALUES ('$a_name', '$a_price', '$a_icon')");
+            $_SESSION['page_alert'] = "Addon added successfully!";
+        } else {
+            mysqli_query($connection_server, "UPDATE sas_billing_addons SET name='$a_name', price='$a_price', icon='$a_icon' WHERE id='$addon_id'");
+            $_SESSION['page_alert'] = "Addon updated successfully!";
+        }
+        header("Location: BillingPackages.php"); exit();
+    }
+
+    if(isset($_GET['delete_addon'])) {
+        $del_addon = mysqli_real_escape_string($connection_server, $_GET['delete_addon']);
+        mysqli_query($connection_server, "DELETE FROM sas_billing_addons WHERE id='$del_addon'");
+        $_SESSION['page_alert'] = "Addon deleted!";
+        header("Location: BillingPackages.php"); exit();
+    }
+
     // Handle Delete Request
     if(isset($_GET['delete_id'])) {
         $delete_id = mysqli_real_escape_string($connection_server, $_GET['delete_id']);
@@ -150,39 +197,95 @@
                 </div>
 
                 <div class="card shadow-sm border-0 rounded-4 mt-4">
-                    <div class="card-header bg-dark py-3 border-0 text-white">
-                        <h6 class="mb-0"><i class="bi bi-phone-fill me-2"></i>App Development Fees (One-Off)</h6>
+                    <div class="card-header bg-dark py-3 border-0 text-white d-flex justify-content-between align-items-center">
+                        <h6 class="mb-0"><i class="bi bi-phone-fill me-2"></i>Dynamic Billing Addons</h6>
+                        <button type="button" class="btn btn-sm btn-outline-light rounded-pill" onclick="showAddonForm()">
+                            <i class="bi bi-plus-circle me-1"></i> Add New
+                        </button>
                     </div>
                     <div class="card-body p-4">
-                        <form method="POST" action="BillingPackages.php">
-                            <?php
-                            $apk_price = getSuperAdminOption('apk_development_price', '0');
-                            $ios_price = getSuperAdminOption('ios_development_price', '0');
-                            $play_price = getSuperAdminOption('playstore_listing_price', '0');
-                            $sms_price = getSuperAdminOption('sms_bridge_price', '0');
-                            ?>
-                            <div class="mb-3">
-                                <label class="form-label small fw-bold text-muted text-uppercase">Android APK Price (₦)</label>
-                                <input type="number" name="apk_price" class="form-control rounded-3" value="<?php echo $apk_price; ?>" required>
-                            </div>
-                            <div class="mb-3">
-                                <label class="form-label small fw-bold text-muted text-uppercase">iOS App Price (₦)</label>
-                                <input type="number" name="ios_price" class="form-control rounded-3" value="<?php echo $ios_price; ?>" required>
-                            </div>
-                            <div class="mb-3">
-                                <label class="form-label small fw-bold text-muted text-uppercase">Play Store Listing (₦)</label>
-                                <input type="number" name="playstore_price" class="form-control rounded-3" value="<?php echo $play_price; ?>" required>
-                            </div>
-                            <div class="mb-4">
-                                <label class="form-label small fw-bold text-muted text-uppercase">SMS Bridge APK (₦)</label>
-                                <input type="number" name="sms_bridge_price" class="form-control rounded-3" value="<?php echo $sms_price; ?>" required>
-                            </div>
-                            <button type="submit" name="update-app-services" class="btn btn-dark w-100 rounded-pill fw-bold shadow-sm">
-                                Update App Prices
-                            </button>
-                        </form>
+                        <!-- Addon Form (Hidden by default) -->
+                        <div id="addon_form_wrapper" style="display: none;" class="mb-4 p-3 bg-light rounded-3 border">
+                            <h6 class="fw-bold mb-3" id="addon_form_title">Add New Addon</h6>
+                            <form method="POST" action="BillingPackages.php">
+                                <input type="hidden" name="addon_id" id="addon_id">
+                                <div class="mb-3">
+                                    <label class="form-label small fw-bold">Addon Name</label>
+                                    <input type="text" name="addon_name" id="addon_name" class="form-control rounded-3" required>
+                                </div>
+                                <div class="mb-3">
+                                    <label class="form-label small fw-bold">Price (₦)</label>
+                                    <input type="number" step="0.01" name="addon_price" id="addon_price" class="form-control rounded-3" required>
+                                </div>
+                                <div class="mb-3">
+                                    <label class="form-label small fw-bold">Icon (Bootstrap Icon Class)</label>
+                                    <input type="text" name="addon_icon" id="addon_icon" class="form-control rounded-3" placeholder="bi-box-seam">
+                                </div>
+                                <div class="d-flex gap-2">
+                                    <button type="submit" name="save_addon" class="btn btn-primary rounded-pill px-4">Save Addon</button>
+                                    <button type="button" class="btn btn-light border rounded-pill px-4" onclick="hideAddonForm()">Cancel</button>
+                                </div>
+                            </form>
+                        </div>
+
+                        <div class="table-responsive">
+                            <table class="table table-sm table-hover align-middle mb-0">
+                                <thead class="table-light">
+                                    <tr class="small text-uppercase text-muted">
+                                        <th>Icon</th>
+                                        <th>Name</th>
+                                        <th>Price</th>
+                                        <th class="text-end">Edit</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <?php
+                                    $addons_q = mysqli_query($connection_server, "SELECT * FROM sas_billing_addons ORDER BY id ASC");
+                                    if(mysqli_num_rows($addons_q) > 0):
+                                        while($addon = mysqli_fetch_assoc($addons_q)):
+                                    ?>
+                                    <tr>
+                                        <td><i class="bi <?php echo htmlspecialchars($addon['icon']); ?> text-primary"></i></td>
+                                        <td><span class="small fw-bold"><?php echo htmlspecialchars($addon['name']); ?></span></td>
+                                        <td><span class="small">₦<?php echo number_format($addon['price'], 0); ?></span></td>
+                                        <td class="text-end">
+                                            <div class="btn-group btn-group-sm">
+                                                <button class="btn btn-outline-primary" onclick='editAddon(<?php echo json_encode($addon); ?>)'><i class="bi bi-pencil"></i></button>
+                                                <a href="BillingPackages.php?delete_addon=<?php echo $addon['id']; ?>" class="btn btn-outline-danger" onclick="return confirm('Delete this addon?')"><i class="bi bi-trash"></i></a>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                    <?php endwhile; else: ?>
+                                    <tr><td colspan="4" class="text-center py-3 text-muted x-small">No addons configured.</td></tr>
+                                    <?php endif; ?>
+                                </tbody>
+                            </table>
+                        </div>
                     </div>
                 </div>
+
+                <script>
+                function showAddonForm() {
+                    document.getElementById('addon_form_wrapper').style.display = 'block';
+                    document.getElementById('addon_form_title').innerText = 'Add New Addon';
+                    document.getElementById('addon_id').value = '';
+                    document.getElementById('addon_name').value = '';
+                    document.getElementById('addon_price').value = '';
+                    document.getElementById('addon_icon').value = 'bi-box-seam';
+                }
+                function hideAddonForm() {
+                    document.getElementById('addon_form_wrapper').style.display = 'none';
+                }
+                function editAddon(data) {
+                    document.getElementById('addon_form_wrapper').style.display = 'block';
+                    document.getElementById('addon_form_title').innerText = 'Edit Addon';
+                    document.getElementById('addon_id').value = data.id;
+                    document.getElementById('addon_name').value = data.name;
+                    document.getElementById('addon_price').value = data.price;
+                    document.getElementById('addon_icon').value = data.icon;
+                    document.getElementById('addon_form_wrapper').scrollIntoView({behavior: 'smooth'});
+                }
+                </script>
             </div>
             <div class="col-lg-8">
                 <div class="card shadow-sm border-0 rounded-4 overflow-hidden">
