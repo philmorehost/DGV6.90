@@ -123,6 +123,10 @@ if ($create_vendor_table) {
     if (!in_array('reg_otp_enabled', $existing_columns)) {
         mysqli_query($connection_server, "ALTER TABLE sas_vendors ADD COLUMN reg_otp_enabled TINYINT(1) DEFAULT 1");
     }
+
+    if (!in_array('identity_api_id', $existing_columns)) {
+        mysqli_query($connection_server, "ALTER TABLE sas_vendors ADD COLUMN identity_api_id INT DEFAULT NULL");
+    }
 }
 
 // Add columns to pending vendors as well

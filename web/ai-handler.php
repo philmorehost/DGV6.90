@@ -231,32 +231,6 @@ switch ($action_type) {
     case 'voice_vtu':
     case 'execute_vtu':
         execute_vtu_logic:
-        // 1. Get Intent (either parsed now or passed from client or session)
-        if ($action_type === 'execute_vtu') {
-            $intent = $json_input['intent'] ?? $_POST['intent'] ?? $_SESSION['ai_pending_vtu'] ?? null;
-        } else {
-            $intent = $ai->parseVtuIntent($prompt_raw, $model_to_use, $context_data);
-        }
-
-        if (!$intent || $intent['confidence'] < 50) {
-             echo json_encode(['status' => 'error', 'code' => 'LOW_CONFIDENCE', 'message' => 'I could not understand that command clearly. Please speak slowly and mention the network, amount, and number.']);
-             exit;
-        }
-
-        // 2. Check Authorization for Autonomous Action
-        if (($get_logged_user_details['ai_voice_status'] ?? 0) != 2 && $action_type === 'voice_vtu') {
-             // Fallback: If not approved for zero-click, treat as a chat request but keep the intent
-             $ai_result = $ai->chat($model_to_use, $safe_prompt);
-             $ai_result['pending_vtu'] = $intent;
-             $_SESSION['ai_pending_vtu'] = $intent; // Server-side persistence
-             break; // Skip the direct execution below
-        }
-        
-        // Note: execute_vtu is ALWAYS allowed if the user has a pending intent, 
-        // as it is a conscious confirmation step.
-
-        // 3. Prepare for Transaction Execution
-        $purchase_method = "API"; 
         // ─── AI Parameter Mapping ────────────────────────────
         $type_map = [
             'sme'               => 'sme-data',
@@ -280,6 +254,81 @@ switch ($action_type) {
             'post-paid'         => 'postpaid'
         ];
 
+        $service_map = [
+            'airtime'     => 'func/airtime.php',
+            'data'        => 'func/data.php',
+            'electricity' => 'func/electric.php',
+            'cable'       => 'func/cable.php',
+            'betting'     => 'func/betting.php',
+            'exam'        => 'func/exam.php'
+        ];
+
+        // 1. Get Intent (either parsed now or passed from client or session)
+        if ($action_type === 'execute_vtu') {
+            $intent = $json_input['intent'] ?? $_POST['intent'] ?? $_SESSION['ai_pending_vtu'] ?? null;
+        } else {
+            $intent = $ai->parseVtuIntent($prompt_raw, $model_to_use, $context_data);
+        }
+
+        if (!$intent || $intent['confidence'] < 50) {
+             echo json_encode(['status' => 'error', 'code' => 'LOW_CONFIDENCE', 'message' => 'I could not understand that command clearly. Please speak slowly and mention the network, amount, and number.']);
+             exit;
+        }
+
+        // 2. Check Authorization and Perform Professional Verification
+        $verified_name = "";
+        if (in_array(strtolower($intent['service']), ['electricity', 'cable'])) {
+            // Perform professional verification before AI summarizes
+            $action_function = 3; // Verify
+            $purchase_method = "API";
+            $raw_type = strtolower(trim($intent['type'] ?? ''));
+            $mapped_type = $type_map[$raw_type] ?? $raw_type;
+            
+            $get_api_post_info = [
+                'provider'     => $intent['network'],
+                'type'         => (strtolower($intent['service']) === 'cable') ? $intent['network'] : $mapped_type,
+                'meter_number' => $intent['phone'],
+                'iuc_number'   => $intent['phone'],
+                'package'      => $intent['amount'], // Cable plan identifier
+                'network'      => str_replace(['mobile', ' '], ['', ''], strtolower($intent['network'] ?? ''))
+            ];
+            if ($get_api_post_info['network'] == '9') $get_api_post_info['network'] = '9mobile';
+
+            $handler_rel = $service_map[strtolower($intent['service'])] ?? '';
+            $handler_path = __DIR__ . "/" . $handler_rel;
+            
+            if (!empty($handler_rel) && file_exists($handler_path)) {
+                ob_start(); // Prevent direct output
+                include($handler_path);
+                ob_end_clean();
+                
+                $verify_res = json_decode($json_response_encode ?? '{}', true);
+                if (($verify_res['status'] ?? '') === 'success') {
+                    $verified_name = $verify_res['customer_name'] ?? $verify_res['desc'] ?? "";
+                }
+            }
+        }
+
+        if (($get_logged_user_details['ai_voice_status'] ?? 0) != 2 && $action_type === 'voice_vtu') {
+             // Fallback: If not approved for zero-click, treat as a chat request but keep the intent
+             $augmented_prompt = $safe_prompt;
+             if (!empty($verified_name)) {
+                 $augmented_prompt = "[SYSTEM: The verified customer name for this account is \"$verified_name\". Please include this in your summary to the user.] " . $safe_prompt;
+             }
+
+             $ai_result = $ai->chat($model_to_use, $augmented_prompt);
+             $ai_result['pending_vtu'] = $intent;
+             $_SESSION['ai_pending_vtu'] = $intent; // Server-side persistence
+             break; // Skip the direct execution below
+        }
+        
+        // Note: execute_vtu is ALWAYS allowed if the user has a pending intent, 
+        // as it is a conscious confirmation step.
+
+        // 3. Prepare for Transaction Execution
+        $action_function = 1; // Purchase
+        $purchase_method = "API"; 
+        
         $raw_type = strtolower(trim($intent['type'] ?? ''));
         $mapped_type = $type_map[$raw_type] ?? $raw_type;
 
@@ -297,15 +346,6 @@ switch ($action_type) {
             'quantity'     => $intent['amount'],
             'meter_number' => $intent['phone'],
             'id'           => $intent['id'] ?? '' 
-        ];
-
-        $service_map = [
-            'airtime'     => 'func/airtime.php',
-            'data'        => 'func/data.php',
-            'electricity' => 'func/electric.php',
-            'cable'       => 'func/cable.php',
-            'betting'     => 'func/betting.php',
-            'exam'        => 'func/exam.php'
         ];
 
         $handler_rel = $service_map[strtolower($intent['service'])] ?? '';

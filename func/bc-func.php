@@ -2332,6 +2332,17 @@ function getIdentityProvider($vid = null) {
 }
 
 /**
+ * Returns the configured identity verification API ID for a vendor.
+ */
+function getIdentityApiId($vid = null) {
+    global $connection_server;
+    if ($vid === null) $vid = resolveVendorID();
+    $vid_esc = mysqli_real_escape_string($connection_server, $vid);
+    $r = mysqli_fetch_assoc(mysqli_query($connection_server, "SELECT identity_api_id FROM sas_vendors WHERE id='$vid_esc' LIMIT 1"));
+    return $r['identity_api_id'] ?? 0;
+}
+
+/**
  * Fuzzy name matching: returns true if names share >= 70% similarity.
  */
 function namesMatch($name1, $name2) {
@@ -2636,9 +2647,61 @@ function fetchNINProfile($nin, $vid) {
         return fetchNINProfileWithDojah($nin, $vid);
     } elseif ($provider === "qoreid") {
         return fetchNINProfileWithQoreID($nin, $vid);
+    } elseif ($provider === "localhost") {
+        return fetchNINProfileWithLocalhost($nin, $vid);
     } else {
         return fetchNINProfileWithMonnify($nin, $vid);
     }
+}
+
+/**
+ * Fetch NIN profile from a Local Marketplace API provider.
+ */
+function fetchNINProfileWithLocalhost($nin, $vid) {
+    global $connection_server;
+    $api_id = getIdentityApiId($vid);
+    $api_details = mysqli_fetch_assoc(mysqli_query($connection_server, "SELECT * FROM sas_apis WHERE id='$api_id' AND vendor_id='$vid' LIMIT 1"));
+    
+    if (!$api_details) {
+        return ["status" => "failed", "message" => "Local API provider not configured or not found"];
+    }
+
+    $api_url = "https://" . $api_details['api_base_url'] . "/api/nin-card.php";
+    $api_key = $api_details['api_key'];
+
+    $payload = json_encode(["api_key" => $api_key, "nin" => $nin]);
+
+    $ch = curl_init($api_url);
+    curl_setopt_array($ch, [
+        CURLOPT_RETURNTRANSFER => true,
+        CURLOPT_POST           => true,
+        CURLOPT_POSTFIELDS     => $payload,
+        CURLOPT_TIMEOUT        => 45,
+        CURLOPT_HTTPHEADER     => ["Content-Type: application/json"],
+    ]);
+    $res = curl_exec($ch);
+    $body = $res ? json_decode($res, true) : null;
+    curl_close($ch);
+
+    if (!$body || ($body['status'] ?? '') !== 'success') {
+        return ["status" => "failed", "message" => $body['desc'] ?? "Failed to connect to local API"];
+    }
+
+    // Map the standard DGV API response back to our internal profile format
+    return [
+        "status"          => "success",
+        "provider"        => "localhost:" . $api_details['api_base_url'],
+        "firstname"       => $body['firstname'] ?? '',
+        "middlename"      => $body['middlename'] ?? '',
+        "lastname"        => $body['lastname'] ?? '',
+        "birthdate"       => $body['birthdate'] ?? '',
+        "gender"          => $body['gender'] ?? '',
+        "photo_data"      => $body['photo_data'] ?? '',
+        "phone"           => $body['phone'] ?? '',
+        "address"         => $body['address'] ?? '',
+        "residence_state" => $body['residence_state'] ?? '',
+        "state_of_origin" => $body['state_of_origin'] ?? '',
+    ];
 }
 
 /**
@@ -5074,9 +5137,60 @@ function fetchBVNProfile($bvn, $vid) {
         return fetchBVNProfileWithDojah($bvn, $vid);
     } elseif ($provider === "qoreid") {
         return fetchBVNProfileWithQoreID($bvn, $vid);
+    } elseif ($provider === "localhost") {
+        return fetchBVNProfileWithLocalhost($bvn, $vid);
     } else {
         return fetchBVNProfileWithMonnify($bvn, $vid);
     }
+}
+
+/**
+ * Fetch BVN profile from a Local Marketplace API provider.
+ */
+function fetchBVNProfileWithLocalhost($bvn, $vid) {
+    global $connection_server;
+    $api_id = getIdentityApiId($vid);
+    $api_details = mysqli_fetch_assoc(mysqli_query($connection_server, "SELECT * FROM sas_apis WHERE id='$api_id' AND vendor_id='$vid' LIMIT 1"));
+    
+    if (!$api_details) {
+        return ["status" => "failed", "message" => "Local API provider not configured or not found"];
+    }
+
+    $api_url = "https://" . $api_details['api_base_url'] . "/api/bvn-verify.php";
+    $api_key = $api_details['api_key'];
+
+    $payload = json_encode(["api_key" => $api_key, "bvn" => $bvn]);
+
+    $ch = curl_init($api_url);
+    curl_setopt_array($ch, [
+        CURLOPT_RETURNTRANSFER => true,
+        CURLOPT_POST           => true,
+        CURLOPT_POSTFIELDS     => $payload,
+        CURLOPT_TIMEOUT        => 45,
+        CURLOPT_HTTPHEADER     => ["Content-Type: application/json"],
+    ]);
+    $res = curl_exec($ch);
+    $body = $res ? json_decode($res, true) : null;
+    curl_close($ch);
+
+    if (!$body || ($body['status'] ?? '') !== 'success') {
+        return ["status" => "failed", "message" => $body['desc'] ?? "Failed to connect to local API"];
+    }
+
+    return [
+        "status"          => "success",
+        "provider"        => "localhost:" . $api_details['api_base_url'],
+        "firstname"       => $body['firstname'] ?? '',
+        "middlename"      => $body['middlename'] ?? '',
+        "lastname"        => $body['lastname'] ?? '',
+        "birthdate"       => $body['birthdate'] ?? '',
+        "gender"          => $body['gender'] ?? '',
+        "photo_data"      => $body['photo_data'] ?? '',
+        "phone"           => $body['phone'] ?? '',
+        "address"         => $body['address'] ?? '',
+        "residence_state" => $body['residence_state'] ?? '',
+        "state_of_origin" => $body['state_of_origin'] ?? '',
+    ];
 }
 function fetchBVNProfileWithDojah($bvn, $vid) {
     global $connection_server;

@@ -35,13 +35,15 @@
     }
 
     if(isset($_POST["update-identity-provider"])){
-        $allowed_providers = ["monnify", "dojah", "qoreid", "smileid"];
+        $allowed_providers = ["monnify", "dojah", "qoreid", "smileid", "localhost"];
         $identity_provider_gateways = ["dojah", "qoreid", "smileid"];
         $vendor_id = $get_logged_admin_details["id"];
 
         $selected_provider = mysqli_real_escape_string($connection_server, trim(strip_tags($_POST["identity_provider"] ?? "monnify")));
         if (!in_array($selected_provider, $allowed_providers)) $selected_provider = "monnify";
-        mysqli_query($connection_server, "UPDATE sas_vendors SET identity_provider='$selected_provider' WHERE id='$vendor_id'");
+        
+        $identity_api_id = (int)($_POST["identity_api_id"] ?? 0);
+        mysqli_query($connection_server, "UPDATE sas_vendors SET identity_provider='$selected_provider', identity_api_id='$identity_api_id' WHERE id='$vendor_id'");
 
         // Save API keys for identity verification providers
         foreach ($identity_provider_gateways as $gw_name) {
@@ -699,6 +701,7 @@
                             "dojah"   => "Dojah",
                             "qoreid"  => "QoreID (VerifyMe)",
                             "smileid" => "Smile Identity",
+                            "localhost" => "Localhost (Local Vendor API)"
                         ];
                         $idp_gateways = ["dojah", "qoreid", "smileid"];
                         $idp_key_labels = [
@@ -738,6 +741,28 @@
                             </div>
                         </div>
                         <?php endforeach; ?>
+
+                        <div class="p-3 border rounded-4 mb-3 idp-keys-block" id="idp-keys-localhost" style="display:<?php echo ($current_idp === 'localhost') ? '' : 'none'; ?>">
+                            <h6 class="fw-bold mb-3">Local Marketplace API</h6>
+                            <div class="row g-3">
+                                <div class="col-md-12">
+                                    <label class="form-label small fw-bold">Select Installed Identity API</label>
+                                    <select name="identity_api_id" class="form-select">
+                                        <option value="0">-- Select API --</option>
+                                        <?php 
+                                        $current_api_id = getIdentityApiId($get_logged_admin_details["id"]);
+                                        $q_apis = mysqli_query($connection_server, "SELECT * FROM sas_apis WHERE vendor_id='".$get_logged_admin_details["id"]."' AND api_type='identity-verification'");
+                                        while($api = mysqli_fetch_assoc($q_apis)): ?>
+                                            <option value="<?php echo $api['id']; ?>" <?php echo ($current_api_id == $api['id']) ? 'selected' : ''; ?>>
+                                                <?php echo strtoupper($api['api_base_url']); ?> (Status: <?php echo ($api['status'] == 1 ? 'Active' : 'Inactive'); ?>)
+                                            </option>
+                                        <?php endwhile; ?>
+                                    </select>
+                                    <div class="form-text mt-2 small">These are Identity Verification APIs you have installed from the MarketPlace. Ensure the selected API is "Active".</div>
+                                </div>
+                            </div>
+                        </div>
+
                         <button name="update-identity-provider" type="submit" class="btn btn-primary px-5 rounded-pill fw-bold">Save Provider Settings</button>
                     </form>
                     <script>
