@@ -277,6 +277,21 @@ switch ($action_type) {
 
         // 2. Check Authorization and Perform Professional Verification
         $verified_name = "";
+        
+        // --- Provider Normalization ---
+        $provider_raw = strtolower(trim($intent['network'] ?? ''));
+        $clean_provider = $provider_raw;
+        $electric_providers = ['ikedc', 'ekedc', 'aedc', 'eedc', 'jedc', 'ibedc', 'kedco', 'phed', 'yedc', 'bedc', 'aba', 'kaedco'];
+        $cable_providers    = ['dstv', 'gotv', 'startimes', 'showmax'];
+        
+        foreach($electric_providers as $ep) {
+            if (strpos($provider_raw, $ep) !== false) { $clean_provider = $ep; break; }
+        }
+        foreach($cable_providers as $cp) {
+            if (strpos($provider_raw, $cp) !== false) { $clean_provider = $cp; break; }
+        }
+        $intent['network'] = $clean_provider; // Update intent with clean provider
+
         if (in_array(strtolower($intent['service']), ['electricity', 'cable'])) {
             // Perform professional verification before AI summarizes
             $action_function = 3; // Verify
@@ -313,7 +328,7 @@ switch ($action_type) {
              // Fallback: If not approved for zero-click, treat as a chat request but keep the intent
              $augmented_prompt = $safe_prompt;
              if (!empty($verified_name)) {
-                 $augmented_prompt = "[SYSTEM: The verified customer name for this account is \"$verified_name\". Please include this in your summary to the user.] " . $safe_prompt;
+                 $augmented_prompt = "[SYSTEM INSTRUCTION: The verified owner for this account is \"$verified_name\". You MUST mention this name clearly in your summary to the user so they can verify it before proceeding.] " . $safe_prompt;
              }
 
              $ai_result = $ai->chat($model_to_use, $augmented_prompt);
@@ -357,7 +372,7 @@ switch ($action_type) {
         }
 
         // Execute Transaction
-        include_once($handler_path);
+        include($handler_path);
         
         $res = json_decode($json_response_encode ?? '{}', true);
         
