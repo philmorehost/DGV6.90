@@ -247,7 +247,12 @@ if (in_array($purchase_method, $purchase_method_array)) {
                                         include_once($_SERVER['DOCUMENT_ROOT'] . "/func/api-gateway/verify/" . $api_gateway_name);
                                         $api_response_text = strtolower($api_response_text);
                                         if (in_array($api_response, array("successful", "pending"))) {
-                                            $json_response_array = array("status" => "success", "desc" => $api_response_description, "customer_name" => $api_response_description, "customer_address" => $api_response_customer_address);
+                                            $json_response_array = array(
+                                                "status" => "success", 
+                                                "desc" => $api_response_description, 
+                                                "customer_name" => $api_response_customer_name ?? $api_response_description, 
+                                                "customer_address" => $api_response_customer_address
+                                            );
                                             $json_response_encode = json_encode($json_response_array, true);
                                         }
                                         if ($api_response == "failed") {

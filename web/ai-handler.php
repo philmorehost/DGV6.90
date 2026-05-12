@@ -313,7 +313,8 @@ switch ($action_type) {
             $handler_path = __DIR__ . "/" . $handler_rel;
             
             if (!empty($handler_rel) && file_exists($handler_path)) {
-                ob_start(); // Prevent direct output
+                $json_response_encode = null; // Reset
+                ob_start(); 
                 include($handler_path);
                 ob_end_clean();
                 
@@ -406,25 +407,62 @@ switch ($action_type) {
         $ai_result = $ai->chat($model_to_use, $safe_prompt, ['temperature' => 0.3]);
         break;
     default:
-        // Smart Detection: If user says 'yes' and we have a pending intent in SESSION,
-        // automatically switch to execute_vtu logic to prevent 'forgetting'.
         $is_confirm = preg_match('/\b(yes|confirm|proceed|go ahead|yep|sure|ok|do it|okay|process)\b/i', trim($prompt_raw));
         if ($is_confirm && !empty($_SESSION['ai_pending_vtu'])) {
             $intent = $_SESSION['ai_pending_vtu'];
-            $action_type = 'execute_vtu'; // CRITICAL: Update action type for the goto logic
+            $action_type = 'execute_vtu'; 
             goto execute_vtu_logic;
         }
 
-        $ai_result = $ai->chat($model_to_use, $safe_prompt);
-        // Proactive Intent Detection for Confirmation Flow
-        if (preg_match('/buy|recharge|send|topup|data|airtime|pay|pin|exam/i', $prompt_raw)) {
+        // Proactive Intent Detection: Check if this is a transaction request
+        if (preg_match('/buy|recharge|send|topup|data|airtime|pay|pin|exam|electric|meter|ikedc|ekedc|aedc|phed|jedc|kedco|ibedc|eedc|bedc|kaedco|yedc|aba|dstv|gotv|startimes/i', $prompt_raw)) {
             $intent = $ai->parseVtuIntent($prompt_raw, $model_to_use, $context_data);
             if ($intent && $intent['confidence'] >= 50) {
-                $ai_result['pending_vtu'] = $intent;
+                // If it's electricity/cable, run verification BEFORE chat
+                if (in_array(strtolower($intent['service'] ?? ''), ['electricity', 'cable'])) {
+                    $action_function = 3; // Verify
+                    $purchase_method = "API";
+                    $raw_type_sub = strtolower(trim($intent['type'] ?? ''));
+                    $mapped_type_sub = $type_map[$raw_type_sub] ?? $raw_type_sub;
+                    
+                    $get_api_post_info = [
+                        'provider'     => $intent['network'],
+                        'type'         => (strtolower($intent['service']) === 'cable') ? $intent['network'] : $mapped_type_sub,
+                        'meter_number' => $intent['phone'],
+                        'iuc_number'   => $intent['phone'],
+                        'package'      => $intent['amount'],
+                        'network'      => str_replace(['mobile', ' '], ['', ''], strtolower($intent['network'] ?? ''))
+                    ];
+                    if ($get_api_post_info['network'] == '9') $get_api_post_info['network'] = '9mobile';
+
+                    $handler_rel_sub = $service_map[strtolower($intent['service'])] ?? '';
+                    $handler_path_sub = __DIR__ . "/" . $handler_rel_sub;
+                    
+                    if (!empty($handler_rel_sub) && file_exists($handler_path_sub)) {
+                        $json_response_encode = null;
+                        ob_start();
+                        include($handler_path_sub);
+                        ob_end_clean();
+                        $verify_res_sub = json_decode($json_response_encode ?? '{}', true);
+                        if (($verify_res_sub['status'] ?? '') === 'success') {
+                            $verified_name = $verify_res_sub['customer_name'] ?? $verify_res_sub['desc'] ?? "";
+                        }
+                    }
+                }
+                
+                if (!empty($verified_name)) {
+                    $safe_prompt = "[SYSTEM INSTRUCTION: The verified owner for this account is \"$verified_name\". You MUST mention this name clearly in your summary to the user so they can verify it before proceeding.] " . $safe_prompt;
+                }
+                
                 $_SESSION['ai_pending_vtu'] = $intent; // Save for next turn
+                $ai_result = $ai->chat($model_to_use, $safe_prompt);
+                $ai_result['pending_vtu'] = $intent;
+            } else {
+                $ai_result = $ai->chat($model_to_use, $safe_prompt);
             }
+        } else {
+            $ai_result = $ai->chat($model_to_use, $safe_prompt);
         }
-        break;
 }
 $ai_duration = $ai_result['duration_ms'] ?? 0;
 
