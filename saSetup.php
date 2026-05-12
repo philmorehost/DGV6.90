@@ -1,6 +1,11 @@
 <?php session_start();
     include("./func/bc-config.php");
     
+    if(!$connection_server){
+        header("Location: /dbSetup.php");
+        exit();
+    }
+    
     $json_response_encode = null;
     $setup_completed = false;
 
