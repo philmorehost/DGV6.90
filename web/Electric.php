@@ -11,6 +11,9 @@
             $response_message .= "<br>" . $json_response_decode["bonus_message"];
         }
         $_SESSION["product_purchase_response"] = $response_message;
+        if (isset($json_response_decode["ref"])) {
+            $_SESSION["last_transaction_ref"] = $json_response_decode["ref"];
+        }
         unset($_SESSION["meter_amount"]);
         unset($_SESSION["meter_number"]);
         unset($_SESSION["meter_provider"]);

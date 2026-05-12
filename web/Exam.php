@@ -6,6 +6,9 @@
 		include_once("func/exam.php");
         $json_response_decode = json_decode($json_response_encode,true);
         $_SESSION["product_purchase_response"] = $json_response_decode["desc"];
+        if (isset($json_response_decode["ref"])) {
+            $_SESSION["last_transaction_ref"] = $json_response_decode["ref"];
+        }
         header("Location: ".$_SERVER["REQUEST_URI"]);
     }
     

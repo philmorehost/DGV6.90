@@ -7,6 +7,9 @@
         include_once("func/betting.php");
         $json_response_decode = json_decode($json_response_encode,true);
         $_SESSION["product_purchase_response"] = $json_response_decode["desc"];
+        if (isset($json_response_decode["ref"])) {
+            $_SESSION["last_transaction_ref"] = $json_response_decode["ref"];
+        }
         unset($_SESSION["customer_amount"]);
         unset($_SESSION["customer_id"]);
         unset($_SESSION["customer_provider"]);

@@ -10,7 +10,9 @@
             $response_message .= "<br>" . $json_response_decode["bonus_message"];
         }
         $_SESSION["product_purchase_response"] = $response_message;
-        //echo '<script>alert("'.$json_response_decode["status"].': '.$json_response_decode["desc"].'");</script>';
+        if (isset($json_response_decode["ref"])) {
+            $_SESSION["last_transaction_ref"] = $json_response_decode["ref"];
+        }
         header("Location: ".$_SERVER["REQUEST_URI"]);
     }
 

@@ -10,30 +10,32 @@
     <?php
       $msg = $_SESSION["product_purchase_response"];
       $type = "success";
-      if(stripos($msg, 'Error') !== false || stripos($msg, 'reached the maximum') !== false || stripos($msg, 'Limit Reached') !== false || stripos($msg, 'failed') !== false) {
+      if(stripos($msg, 'Error') !== false || stripos($msg, 'reached the maximum') !== false || stripos($msg, 'Limit Reached') !== false || stripos($msg, 'failed') !== false || stripos($msg, 'Insufficient') !== false) {
           $type = "error";
       }
+      $last_ref = $_SESSION["last_transaction_ref"] ?? null;
     ?>
     const msg = <?php echo json_encode($msg); ?>;
     const type = <?php echo json_encode($type); ?>;
-    const msgHash = btoa(msg).substring(0, 32);
-    const lastMsg = localStorage.getItem('last_swal_msg');
-    const lastTime = localStorage.getItem('last_swal_time');
-    const now = Date.now();
+    const ref = <?php echo json_encode($last_ref); ?>;
 
-    if (lastMsg !== msgHash || (now - lastTime > 5000)) {
-        Swal.fire({
-            title: (type === "error" ? "Alert!" : "Message!"),
-            text: msg,
-            icon: type,
-            confirmButtonColor: 'var(--primary-color)'
-        });
-        localStorage.setItem('last_swal_msg', msgHash);
-        localStorage.setItem('last_swal_time', now);
-    }
+    Swal.fire({
+        title: (type === "error" ? "Alert!" : "Message!"),
+        html: msg,
+        icon: type,
+        confirmButtonColor: 'var(--primary-color)',
+        confirmButtonText: (ref && type === 'success' ? 'View Receipt' : 'OK')
+    }).then((result) => {
+        if (ref && type === 'success' && typeof showTransactionDetails === 'function') {
+            showTransactionDetails(ref);
+        }
+    });
   })();
 </script>
-<?php unset($_SESSION["product_purchase_response"]); ?>
+<?php 
+    unset($_SESSION["product_purchase_response"]); 
+    unset($_SESSION["last_transaction_ref"]);
+?>
 <?php endif; ?>
 
 
