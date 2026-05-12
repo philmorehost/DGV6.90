@@ -479,7 +479,7 @@ if ($connection_server) {
 		} else {
 			// Not logged in
 		$current_uri = explode("?", trim($_SERVER["REQUEST_URI"]))[0];
-		$public_pages = array("/web/Login.php", "/web/Register.php", "/web/PasswordRecovery.php", "/web/PayRequest.php", "/web/ajax-unblock-request.php", "/web/Inactive.php", "/web/LockoutResolution.php", "/web/APIDocs.php", "/blog.php", "/single-post.php", "/web/biometric-ajax.php", "/manifest.php", "/web/ViewCryptoInvoice.php");
+		$public_pages = array("/web/Login.php", "/web/Register.php", "/web/PasswordRecovery.php", "/web/PayRequest.php", "/web/ajax-unblock-request.php", "/web/Inactive.php", "/web/LockoutResolution.php", "/web/APIDocs.php", "/blog.php", "/single-post.php", "/web/biometric-ajax.php", "/manifest.php", "/web/ViewCryptoInvoice.php", "/dbSetup.php", "/saSetup.php");
 
 		$is_public_page = false;
 		foreach($public_pages as $page) {
@@ -505,8 +505,12 @@ if ($connection_server) {
         }
 
 	} else {
-		header("Location: /web/Error.php");
-		exit();
+		// Only redirect if NOT on setup pages (to allow fresh install)
+		$is_setup_page = in_array(explode("?", trim($_SERVER["REQUEST_URI"]))[0], array("/dbSetup.php", "/saSetup.php"));
+		if (!$is_setup_page) {
+			header("Location: /web/Error.php");
+			exit();
+		}
 	}
 } else {
 	//If Database Is Having Issue

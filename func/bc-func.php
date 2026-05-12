@@ -1892,6 +1892,28 @@ function createVendorEmailTemplateIfNotExists($email_type, $subject, $body)
 	}
 }
 
+function createSuperAdminEmailTemplateIfNotExists($email_type, $subject, $body)
+{
+	global $connection_server;
+
+	$email_type = mysqli_real_escape_string($connection_server, trim(strip_tags($email_type)));
+	$subject = mysqli_real_escape_string($connection_server, trim(strip_tags($subject)));
+	$body = mysqli_real_escape_string($connection_server, trim($body)); // Body allows HTML
+
+	if (!empty($subject) && !empty($body) && !empty($email_type)) {
+		$template_details = mysqli_query($connection_server, "SELECT * FROM sas_super_admin_email_templates WHERE email_type='$email_type'");
+		if (mysqli_num_rows($template_details) == 0) {
+			mysqli_query($connection_server, "INSERT INTO sas_super_admin_email_templates (email_type, subject, body) VALUES ('$email_type', '$subject', '$body')");
+			return "success";
+		} else {
+			return "failed";
+		}
+	} else {
+		return "failed";
+	}
+}
+
+
 //Payment Gateways
 //User Token
 function getUserMonnifyAccessToken()
