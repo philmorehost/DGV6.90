@@ -5,9 +5,9 @@
 ?>
 <!DOCTYPE html>
 <head>
-    <title>Fund Wallet | <?php echo $get_all_site_details["site_title"]; ?></title>
+    <title>Fund Wallet | <?php echo $get_all_super_admin_site_details["site_title"]; ?></title>
     <meta charset="UTF-8" />
-    <meta name="description" content="<?php echo substr($get_all_site_details["site_desc"], 0, 160); ?>" />
+    <meta name="description" content="<?php echo substr($get_all_super_admin_site_details["site_desc"], 0, 160); ?>" />
     <meta http-equiv="Content-Type" content="text/html; " />
     <meta name="theme-color" content="black" />
     <meta name="viewport" content="width=device-width, initial-scale=1"/>
@@ -322,7 +322,7 @@
 
                     <input id="gatewayname" hidden readonly required/>
                     <input id="amount-to-pay" hidden readonly required/>
-                    <input id="user-name" value="<?php echo $get_logged_admin_details['firstname']." ".$get_logged_admin_details['lastname']." ".$get_logged_admin_details['othername']; ?>" hidden readonly required/>
+                    <input id="user-name" value="<?php echo $get_logged_admin_details['firstname']." ".$get_logged_admin_details['lastname']." ".(isset($get_logged_admin_details['othername']) ? $get_logged_admin_details['othername'] : ""); ?>" hidden readonly required/>
                     <input id="user-email" value="<?php echo $get_logged_admin_details['email']; ?>" hidden readonly required/>
                     <input id="user-phone" value="<?php echo $get_logged_admin_details['phone_number']; ?>" hidden readonly required/>
                     <input id="num-ref" value="<?php echo $_GET['ref'] ?? ''; ?>" hidden readonly required/>

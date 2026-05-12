@@ -357,7 +357,7 @@ function bc_log_security_event(string $event_type, string $action, string $actor
  * @param array $context
  * @return string|false
  */
-function bc_firewall_prompt(string $raw_prompt, bool $strict_mode = false, array $context = []) {
+function bc_firewall_prompt($raw_prompt, $strict_mode = false, $context = []) {
     // Strip tags and dangerous chars
     $prompt = strip_tags(trim($raw_prompt));
     $prompt = preg_replace('/[\x00-\x1F\x7F]/', '', $prompt); // Remove control chars

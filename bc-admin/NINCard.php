@@ -3,8 +3,8 @@ include("../func/bc-admin-config.php");
 
 // Check NIN service is enabled
 if (empty($get_logged_admin_details['nin_card_enabled'])) {
-    $_SESSION["product_purchase_response"] = "NIN Card Service is not activated. Please activate it in Payment Gateway settings.";
-    header("Location: PaymentGateway.php");
+    $_SESSION["product_purchase_response"] = "NIN Card Service is not activated. Please activate it in Identity Services settings.";
+    header("Location: IdentityAPI.php");
     exit();
 }
 
@@ -36,12 +36,12 @@ $history = mysqli_query($connection_server, "SELECT r.*, u.username, u.firstname
     </div>
 
     <section class="section">
-        <?php include("../func/bc-admin-service-header.php"); ?>
+        <?php // include("../func/bc-admin-service-header.php"); ?>
 
         <div class="card shadow-sm border-0 rounded-4">
             <div class="card-header bg-white py-3 border-0 d-flex justify-content-between align-items-center">
                 <h6 class="fw-bold mb-0">All NIN Slip Requests</h6>
-                <a href="PaymentGateway.php#nin-card" class="btn btn-outline-secondary btn-sm rounded-pill">Settings</a>
+                <a href="IdentityAPI.php" class="btn btn-outline-secondary btn-sm rounded-pill">Settings</a>
             </div>
             <div class="card-body p-0">
                 <div class="table-responsive">

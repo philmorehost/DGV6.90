@@ -455,7 +455,7 @@ function hex2rgb($hex) {
           </li>
           <li>
             <a href="<?php echo $web_http_host; ?>/bc-admin/IdentityAPI.php" class="<?php echo ($current_page == 'IdentityAPI.php') ? 'active' : ''; ?>">
-              <i class="bi bi-shield-check"></i><span>Identity Services Setup</span>
+              <i class="bi bi-shield-check"></i><span>Identity Services Manager</span>
             </a>
           </li>
           <li><hr class="sidebar-divider my-1"><small class="px-3 text-muted" style="font-size:10px;text-transform:uppercase;letter-spacing:.05rem;">VTU Services</small></li>

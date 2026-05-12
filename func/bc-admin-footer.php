@@ -45,19 +45,26 @@
 <script>
   (function() {
     const msg = <?php echo json_encode($_SESSION["product_purchase_response"]); ?>;
-    const msgHash = btoa(msg).substring(0, 32);
+    const msgHash = '<?php echo md5($_SESSION["product_purchase_response"]); ?>';
     const lastMsg = localStorage.getItem('last_swal_msg');
     const lastTime = localStorage.getItem('last_swal_time');
     const now = Date.now();
 
-    if (lastMsg !== msgHash || (now - lastTime > 5000)) {
+    if (now - lastTime > 1000) {
+        let iconType = 'success';
+        const lowerMsg = msg.toLowerCase();
+        if (lowerMsg.includes('error') || lowerMsg.includes('fail') || lowerMsg.includes('block')) {
+            iconType = 'error';
+        } else if (lowerMsg.includes('wait') || lowerMsg.includes('pending') || lowerMsg.includes('insufficient')) {
+            iconType = 'warning';
+        }
+
         Swal.fire({
-            title: 'Message!',
+            title: 'Response',
             text: msg,
-            icon: 'success',
+            icon: iconType,
             confirmButtonColor: 'var(--primary-color)'
         });
-        localStorage.setItem('last_swal_msg', msgHash);
         localStorage.setItem('last_swal_time', now);
     }
   })();
@@ -68,12 +75,12 @@
 
 	<!-- <div style="text-align: center; max-height: 40%;" id="customAlertDiv" class="bg-2 box-shadow m-z-index-2 s-z-index-2 m-scroll-auto s-scroll-auto m-block-dp s-block-dp m-position-fix s-position-fix m-top-20 s-top-30 br-radius-5px m-width-60 s-width-26 m-height-auto s-height-auto m-padding-lt-1 s-padding-lt-1 m-padding-rt-1 s-padding-rt-1 m-padding-tp-5 s-padding-tp-1 m-padding-bm-5 s-padding-bm-1 m-margin-lt-19 s-margin-lt-26 m-margin-bm-2 s-margin-bm-2">
 	<span style="user-select: auto; word-break: break-word;" class="color-10 text-bold-500 m-font-size-15 s-font-size-18">
-		<?php echo $_SESSION["product_purchase_response"]; ?>
+		<?php echo isset($_SESSION["product_purchase_response"]) ? $_SESSION["product_purchase_response"] : ""; ?>
 	</span><br/>
 	<button style="text-align: center; user-select: auto;" onclick="customDismissPop();" onkeypress="keyCustomDismissPop(event);" class="button-box br-radius-50 onhover-bg-color-10 a-cursor color-2 bg-10 m-font-size-10 s-font-size-10 br-style-tp-0 m-inline-dp s-inline-block-dp m-bottom-0 s-bottom-5 m-position-sti s-position-sti m-width-30 s-width-30 m-height-auto s-height-auto m-margin-tp-1 s-margin-tp-1 m-margin-bm-2 s-margin-bm-2 m-margin-lt-0 s-margin-lt-0 m-margin-rt-0 s-margin-rt-0 m-padding-tp-5 s-padding-tp-5 m-padding-bm-5 s-padding-bm-5 m-padding-lt-5 s-padding-lt-5 m-padding-rt-5 s-padding-rt-5">
 		DISMISS
 	</button>
-</div>
+</div> -->
 <script>
 	function customDismissPop(){
 		var customAlertDiv = document.getElementById("customAlertDiv");

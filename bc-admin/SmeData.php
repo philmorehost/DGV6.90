@@ -494,16 +494,15 @@
                                     foreach($item_name_array as $products){
                                         $get_item_status_details = mysqli_fetch_array(mysqli_query($connection_server, "SELECT * FROM sas_sme_data_status WHERE vendor_id='".$get_logged_admin_details["id"]."' && product_name='$products'"));
                                         $product_table = mysqli_fetch_array(mysqli_query($connection_server, "SELECT * FROM sas_products WHERE vendor_id='".$get_logged_admin_details["id"]."' && product_name='$products' LIMIT 1"));
+                                        if ($get_item_status_details && $product_table) {
+                                            $product_smart_table = mysqli_query($connection_server, "SELECT * FROM sas_smart_parameter_values WHERE vendor_id='".$get_logged_admin_details["id"]."' && api_id='".$get_item_status_details["api_id"]."' && product_id='".$product_table["id"]."'");
+                                            $product_agent_table = mysqli_query($connection_server, "SELECT * FROM sas_agent_parameter_values WHERE vendor_id='".$get_logged_admin_details["id"]."' && api_id='".$get_item_status_details["api_id"]."' && product_id='".$product_table["id"]."'");
+                                            $product_api_table = mysqli_query($connection_server, "SELECT * FROM sas_api_parameter_values WHERE vendor_id='".$get_logged_admin_details["id"]."' && api_id='".$get_item_status_details["api_id"]."' && product_id='".$product_table["id"]."'");
 
-                                        $product_smart_table = mysqli_query($connection_server, "SELECT * FROM sas_smart_parameter_values WHERE vendor_id='".$get_logged_admin_details["id"]."' && api_id='".$get_item_status_details["api_id"]."' && product_id='".$product_table["id"]."'");
-                                        $product_agent_table = mysqli_query($connection_server, "SELECT * FROM sas_agent_parameter_values WHERE vendor_id='".$get_logged_admin_details["id"]."' && api_id='".$get_item_status_details["api_id"]."' && product_id='".$product_table["id"]."'");
-                                        $product_api_table = mysqli_query($connection_server, "SELECT * FROM sas_api_parameter_values WHERE vendor_id='".$get_logged_admin_details["id"]."' && api_id='".$get_item_status_details["api_id"]."' && product_id='".$product_table["id"]."'");
-
-                                        if(mysqli_num_rows($product_smart_table) > 0){
-                                            while(($product_smart_details = mysqli_fetch_assoc($product_smart_table)) && ($product_agent_details = mysqli_fetch_assoc($product_agent_table)) && ($product_api_details = mysqli_fetch_assoc($product_api_table))){
-                                                $status_badge = ($product_smart_details['status'] == 1) ? '<span class="badge bg-success bg-opacity-10 text-success rounded-pill px-2">Active</span>' : '<span class="badge bg-secondary bg-opacity-10 text-secondary rounded-pill px-2">Inactive</span>';
-
-                                                $package_display_name = !empty($product_smart_details["val_4"]) ? $product_smart_details["val_4"] : strtoupper(str_replace(["_","-"]," ",$product_smart_details["val_1"]));
+                                            if(mysqli_num_rows($product_smart_table) > 0){
+                                                while(($product_smart_details = mysqli_fetch_assoc($product_smart_table)) && ($product_agent_details = mysqli_fetch_assoc($product_agent_table)) && ($product_api_details = mysqli_fetch_assoc($product_api_table))){
+                                                    $status_badge = ($product_smart_details['status'] == 1) ? '<span class="badge bg-success bg-opacity-10 text-success rounded-pill px-2">Active</span>' : '<span class="badge bg-secondary bg-opacity-10 text-secondary rounded-pill px-2">Inactive</span>';
+                                                    $package_display_name = !empty($product_smart_details["val_4"]) ? $product_smart_details["val_4"] : strtoupper(str_replace(["_","-"]," ",$product_smart_details["val_1"]));
                                                 echo '
                                                 <tr>
                                                     <td class="fw-bold">
@@ -533,6 +532,7 @@
                                             }
                                         }
                                     }
+                                }
                                 ?>
                             </tbody>
                         </table>
