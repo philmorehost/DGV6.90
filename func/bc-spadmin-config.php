@@ -23,6 +23,15 @@
 	include_once(__DIR__ . "/bc-security.php"); // DGV6.90 AI Edition — Security utilities
 
 	if($connection_server){
+    // Manual Database Healing Trigger (DGV6.90 AI Stabilization)
+    if (isset($_GET['heal_db'])) {
+        $_SESSION['force_db_heal'] = true;
+        include_once(__DIR__ . "/bc-tables.php");
+        include_once(__DIR__ . "/bc-email-templates.php");
+        unset($_SESSION['force_db_heal']);
+        echo "<script>alert('Database self-healing complete! All tables and schemas verified.'); window.location.href='Dashboard.php';</script>";
+        exit();
+    }
     // Branch DG6.7 Optimization: Only run migrations if not already done in current session
     // This significantly improves site-wide page load speeds by skipping redundant DB structural checks.
     if (!isset($_SESSION['migrations_completed_version']) || $_SESSION['migrations_completed_version'] !== '6.9.6') {

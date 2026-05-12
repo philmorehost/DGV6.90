@@ -179,6 +179,12 @@
                     <div class="card-body p-4">
                         <div class="row g-3">
                             <div class="col-6 col-md-4 col-lg-2">
+                                <a href="Dashboard.php?heal_db=1" onclick="return confirm('This will audit and repair all database tables. Continue?')" class="btn btn-outline-danger w-100 py-3 rounded-4 border-2 d-flex flex-column align-items-center gap-2 hover-lift">
+                                    <i class="bi bi-shield-fill-check fs-3"></i>
+                                    <span class="small fw-bold">Heal DB</span>
+                                </a>
+                            </div>
+                            <div class="col-6 col-md-4 col-lg-2">
                                 <a href="AIManagement.php" class="btn btn-outline-primary w-100 py-3 rounded-4 border-2 d-flex flex-column align-items-center gap-2 hover-lift">
                                     <i class="bi bi-cpu-fill fs-3"></i>
                                     <span class="small fw-bold">AI Manager</span>

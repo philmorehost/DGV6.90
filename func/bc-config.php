@@ -28,7 +28,7 @@ if (!$connection_server) {
 if ($connection_server) {
     // Branch DG6.7 Optimization: Only run migrations if not already done globally or in current session
     // This significantly improves site-wide page load speeds by skipping redundant DB structural checks.
-    define('SYSTEM_VERSION', '6.9.6-ai'); // DGV6.90 AI Edition — triggers AI schema migrations
+    define('SYSTEM_VERSION', '6.9.7-ai'); // DGV6.90 AI Edition — triggers AI schema migrations
     $current_mig_v = $_SESSION['migrations_completed_version'] ?? '0';
 
     // Global Migration Check to avoid redundant checks for new visitors
@@ -41,7 +41,7 @@ if ($connection_server) {
         }
     }
 
-    if ($current_mig_v !== SYSTEM_VERSION) {
+    if ($current_mig_v !== SYSTEM_VERSION || (mysqli_num_rows(mysqli_query($connection_server, "SHOW TABLES LIKE 'sas_vendors'")) == 0) || isset($_SESSION['force_db_heal'])) {
         include_once(__DIR__ . "/bc-tables.php");
 
         // Migration: Add val_4 to parameter value tables
