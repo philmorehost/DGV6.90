@@ -7,7 +7,7 @@ if (in_array($purchase_method, $purchase_method_array)) {
         $phone_no = sanitize_phone_number(trim(strip_tags($_POST["phone-number"])));
         $phone_no = mysqli_real_escape_string($connection_server, $phone_no);
         $type = mysqli_real_escape_string($connection_server, trim(strip_tags(strtolower($_POST["type"]))));
-        $quantity = mysqli_real_escape_string($connection_server, trim(strip_tags(strtolower($_POST["quantity"]))));
+        $quantity = mysqli_real_escape_string($connection_server, trim(strip_tags($_POST["quantity"])));
 
     }
 
@@ -16,7 +16,7 @@ if (in_array($purchase_method, $purchase_method_array)) {
         $phone_no = sanitize_phone_number(trim(strip_tags($get_api_post_info["phone_number"] ?? $get_api_post_info["phone_no"] ?? "")));
         $phone_no = mysqli_real_escape_string($connection_server, $phone_no);
         $type = mysqli_real_escape_string($connection_server, trim(strip_tags(strtolower($get_api_post_info["type"] ?? $get_api_post_info["data_type"] ?? ""))));
-        $quantity = mysqli_real_escape_string($connection_server, trim(strip_tags(strtolower($get_api_post_info["quantity"] ?? $get_api_post_info["plan_code"] ?? ""))));
+        $quantity = mysqli_real_escape_string($connection_server, trim(strip_tags($get_api_post_info["quantity"] ?? $get_api_post_info["plan_code"] ?? "")));
     }
     //$discounted_amount = $amount;
     $type_alternative = ucwords($isp . " " . str_replace(["-", "_"], " ", $type));

@@ -205,7 +205,8 @@ class AIEngine
 You are a professional Nigerian VTU transaction intent parser.
 Extract the following fields from the user's voice command:
 - service: one of [airtime, data, electricity, cable, betting]
-- amount: numeric value in Naira (for airtime/electricity/betting) or data size (for data e.g. 1GB, 500MB)
+- amount: numeric value in Naira (for airtime/electricity/betting). 
+  IMPORTANT FOR DATA/CABLE: Look at the "Current Data Prices" context and use the EXACT string for the item (e.g. "1GB", "1.0GB", "Compact"). Do not change the format.
 - phone: 11-digit Nigerian phone number starting with 0
 - network: one of [MTN, Airtel, Glo, 9mobile]
 - type: for data [SME, Gifting, Corporate Gifting] or electricity [Prepaid, Postpaid] or cable [package name]
