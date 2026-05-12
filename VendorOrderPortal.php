@@ -7,12 +7,14 @@ if (empty($hash)) {
     die("Access denied. Invalid or missing secure key.");
 }
 
-$v_q = mysqli_query($connection_server, "SELECT v.*, bp.name as package_name, bp.download_url as package_dl FROM sas_vendors v LEFT JOIN sas_billing_packages bp ON v.current_billing_id = bp.id WHERE v.access_hash='$hash'");
+$v_q = mysqli_query($connection_server, "SELECT v.*, bp.name as package_name, bp.price as package_price, bp.duration_days, bp.download_url as package_dl FROM sas_vendors v LEFT JOIN sas_billing_packages bp ON v.current_billing_id = bp.id WHERE v.access_hash='$hash'");
 $vendor = mysqli_fetch_assoc($v_q);
 
 if (!$vendor) {
     die("Unauthorized access. This link may have been revoked.");
 }
+
+$platform_url = !empty($vendor['app_base_url']) ? $vendor['app_base_url'] : $vendor['website_url'];
 
 // Handle Renewal Actions
 $renewal_response = null;
@@ -78,169 +80,381 @@ if ($has_addons) {
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <title>Order Details & Downloads | <?php echo htmlspecialchars($vendor['firstname']); ?></title>
+    <title>Vendor Portal | <?php echo htmlspecialchars($vendor['firstname']); ?></title>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1"/>
     <link href="assets-2/vendor/bootstrap/css/bootstrap.min.css" rel="stylesheet">
     <link href="assets-2/vendor/bootstrap-icons/bootstrap-icons.css" rel="stylesheet">
-    <link href="assets-2/css/style.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/4.1.1/animate.min.css"/>
     <style>
-        body { background-color: #f4f7f6; }
-        .portal-card { border: none; border-radius: 20px; box-shadow: 0 10px 30px rgba(0,0,0,0.05); }
-        .download-card { 
-            border: 2px solid #f0f0f0; 
-            border-radius: 15px; 
+        :root {
+            --primary: #6366f1;
+            --primary-light: #818cf8;
+            --primary-dark: #4f46e5;
+            --secondary: #64748b;
+            --success: #10b981;
+            --bg: #0f172a;
+            --card-bg: rgba(30, 41, 59, 0.7);
+            --border: rgba(255, 255, 255, 0.1);
+            --text-main: #f8fafc;
+            --text-muted: #94a3b8;
+        }
+
+        body { 
+            background-color: var(--bg); 
+            color: var(--text-main);
+            font-family: 'Outfit', sans-serif;
+            background-image: radial-gradient(circle at 0% 0%, rgba(99, 102, 241, 0.15) 0%, transparent 50%),
+                              radial-gradient(circle at 100% 100%, rgba(168, 85, 247, 0.1) 0%, transparent 50%);
+            background-attachment: fixed;
+            min-height: 100vh;
+        }
+
+        .glass-card {
+            background: var(--card-bg);
+            backdrop-filter: blur(12px);
+            border: 1px solid var(--border);
+            border-radius: 24px;
+            box-shadow: 0 20px 50px rgba(0, 0, 0, 0.2);
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+        }
+
+        .glass-card:hover {
+            border-color: rgba(99, 102, 241, 0.3);
+        }
+
+        .balance-badge {
+            background: linear-gradient(135deg, var(--primary), #a855f7);
+            padding: 2rem;
+            border-radius: 24px;
+            box-shadow: 0 10px 30px rgba(99, 102, 241, 0.3);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .balance-badge::after {
+            content: '';
+            position: absolute;
+            top: -50%;
+            left: -50%;
+            width: 200%;
+            height: 200%;
+            background: radial-gradient(circle, rgba(255,255,255,0.1) 0%, transparent 70%);
+            pointer-events: none;
+        }
+
+        .nav-pill-custom {
+            background: rgba(255, 255, 255, 0.05);
+            padding: 4px;
+            border-radius: 12px;
+            border: 1px solid var(--border);
+        }
+
+        .download-item {
+            background: rgba(255, 255, 255, 0.03);
+            border: 1px solid var(--border);
+            border-radius: 18px;
+            padding: 1.5rem;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        .download-item:hover {
+            background: rgba(255, 255, 255, 0.06);
+            transform: translateY(-5px);
+            border-color: var(--primary-light);
+        }
+
+        .btn-premium {
+            background: linear-gradient(to right, var(--primary), var(--primary-dark));
+            border: none;
+            color: white;
+            padding: 12px 24px;
+            border-radius: 14px;
+            font-weight: 600;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 15px rgba(99, 102, 241, 0.2);
+        }
+
+        .btn-premium:hover {
+            transform: scale(1.02);
+            box-shadow: 0 6px 20px rgba(99, 102, 241, 0.4);
+            color: white;
+        }
+
+        .btn-outline-premium {
+            background: transparent;
+            border: 2px solid var(--border);
+            color: var(--text-main);
+            padding: 8px 20px;
+            border-radius: 12px;
+            font-weight: 500;
             transition: all 0.3s ease;
         }
-        .download-card:hover { 
-            border-color: #0d6efd; 
-            background-color: #f8fbff;
-            transform: translateY(-3px);
+
+        .btn-outline-premium:hover {
+            background: var(--primary);
+            border-color: var(--primary);
+            color: white;
+        }
+
+        .status-pulse {
+            width: 10px;
+            height: 10px;
+            background: var(--success);
+            border-radius: 50%;
+            display: inline-block;
+            margin-right: 8px;
+            box-shadow: 0 0 0 rgba(16, 185, 129, 0.4);
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse {
+            0% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.7); }
+            70% { transform: scale(1); box-shadow: 0 0 0 10px rgba(16, 185, 129, 0); }
+            100% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(16, 185, 129, 0); }
+        }
+
+        .text-gradient {
+            background: linear-gradient(to right, #fff, #94a3b8);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .label-modern {
+            font-size: 0.75rem;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            color: var(--text-muted);
+            margin-bottom: 0.25rem;
+            display: block;
+        }
+
+        .icon-box {
+            width: 48px;
+            height: 48px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 14px;
+            background: rgba(99, 102, 241, 0.1);
+            color: var(--primary-light);
+        }
+
+        /* Modal Overrides */
+        .modal-content {
+            background: #1e293b;
+            border: 1px solid var(--border);
+            border-radius: 28px;
         }
     </style>
 </head>
 <body>
     <div class="container py-5">
         <div class="row justify-content-center">
-            <div class="col-lg-8">
-                <div class="text-center mb-5">
-                    <h2 class="fw-bold text-primary">Your Order Portal</h2>
-                    <p class="text-muted">Hello, <?php echo htmlspecialchars($vendor['firstname']); ?>! Here is the summary of your activated services.</p>
-                    <div class="badge bg-white shadow-sm border p-3 rounded-pill">
-                        <span class="text-muted small text-uppercase fw-bold me-2">Wallet Balance:</span>
-                        <span class="fw-black text-primary fs-5">₦<?php echo number_format($vendor['balance'], 2); ?></span>
+            <div class="col-xl-10">
+                
+                <!-- Header Section -->
+                <div class="row align-items-center mb-5 animate__animated animate__fadeInDown">
+                    <div class="col-md-7 mb-4 mb-md-0">
+                        <h1 class="display-5 fw-800 text-gradient mb-2">Order Portal</h1>
+                        <p class="text-muted fs-5">Welcome back, <span class="text-white fw-semibold"><?php echo htmlspecialchars($vendor['firstname']); ?></span>. Review your digital ecosystem below.</p>
+                    </div>
+                    <div class="col-md-5">
+                        <div class="balance-badge">
+                            <div class="small text-white text-opacity-75 text-uppercase fw-bold mb-1">Available Balance</div>
+                            <div class="h2 fw-bold text-white mb-0">₦<?php echo number_format($vendor['balance'], 2); ?></div>
+                            <i class="bi bi-wallet2 position-absolute end-0 bottom-0 m-3 fs-1 text-white text-opacity-10"></i>
+                        </div>
                     </div>
                 </div>
 
                 <?php if ($renewal_response): ?>
-                <div class="alert alert-<?php echo $renewal_response['status'] == 'success' ? 'success' : 'danger'; ?> border-0 rounded-4 shadow-sm mb-4 animate__animated animate__fadeIn">
-                    <i class="bi <?php echo $renewal_response['status'] == 'success' ? 'bi-check-circle-fill' : 'bi-exclamation-triangle-fill'; ?> me-2"></i>
-                    <?php echo $renewal_response['message']; ?>
+                <div class="alert glass-card border-0 p-4 mb-4 animate__animated animate__zoomIn <?php echo $renewal_response['status'] == 'success' ? 'text-success' : 'text-danger'; ?>">
+                    <div class="d-flex align-items-center">
+                        <i class="bi <?php echo $renewal_response['status'] == 'success' ? 'bi-check-circle' : 'bi-x-circle'; ?> fs-3 me-3"></i>
+                        <div class="fw-medium"><?php echo $renewal_response['message']; ?></div>
+                    </div>
                 </div>
                 <?php endif; ?>
 
-                <!-- Order Summary Card -->
-                <div class="card portal-card p-4 mb-4">
-                    <div class="d-flex justify-content-between align-items-center mb-4">
-                        <h5 class="fw-bold mb-0">Subscription Summary</h5>
-                        <span class="badge bg-success bg-opacity-10 text-success rounded-pill px-3">Active</span>
-                    </div>
-                    <div class="row g-3">
-                        <div class="col-md-6">
-                            <label class="small text-muted text-uppercase fw-bold">Active Plan</label>
-                            <div class="fw-bold fs-5 text-dark"><?php echo htmlspecialchars($vendor['package_name']); ?></div>
-                        </div>
-                        <div class="col-md-6">
-                            <label class="small text-muted text-uppercase fw-bold">Platform URL</label>
-                            <div class="text-primary fw-bold"><i class="bi bi-globe me-1"></i> <?php echo htmlspecialchars($vendor['app_base_url']); ?></div>
-                        </div>
-                        <div class="col-md-6">
-                            <label class="small text-muted text-uppercase fw-bold">Account Expiry</label>
-                            <div class="text-dark fw-bold"><?php echo date('F d, Y', strtotime($vendor['expiry_date'])); ?></div>
-                            <form method="post" onsubmit="return confirm('Renew your site for ₦<?php echo number_format($vendor['package_price'], 0); ?> using wallet balance?');">
-                                <input type="hidden" name="renew_action" value="renew_site">
-                                <button type="submit" class="btn btn-outline-success btn-sm rounded-pill px-3 mt-2 fw-bold">Renew Site (₦<?php echo number_format($vendor['package_price'], 0); ?>)</button>
-                            </form>
-                        </div>
-                        <div class="col-md-6">
-                            <label class="small text-muted text-uppercase fw-bold">Domain Expiry</label>
-                            <div class="text-dark fw-bold">
-                                <?php echo (!empty($vendor['domain_expiry_date']) && $vendor['domain_expiry_date'] != '0000-00-00') ? date('F d, Y', strtotime($vendor['domain_expiry_date'])) : 'Pending Setup'; ?>
-                            </div>
-                            <?php if(!empty($vendor['app_base_url'])): ?>
-                            <form method="post" onsubmit="return confirm('Renew your domain for another year using wallet balance?');">
-                                <input type="hidden" name="renew_action" value="renew_domain">
-                                <button type="submit" class="btn btn-outline-primary btn-sm rounded-pill px-3 mt-2 fw-bold">Renew Domain</button>
-                            </form>
-                            <?php endif; ?>
-                        </div>
-
-                        <?php if($has_apps || $has_addons): ?>
-                        <div class="col-12 mt-4 pt-3 border-top">
-                            <label class="small text-muted text-uppercase fw-bold mb-2">Platform Configuration</label>
-                            <div class="d-flex flex-wrap gap-2">
-                                <?php if($vendor['apk_ordered']): ?><span class="badge bg-light text-dark border rounded-pill px-3"><i class="bi bi-android2 me-1"></i>Android App</span><?php endif; ?>
-                                <?php if($vendor['ios_ordered']): ?><span class="badge bg-light text-dark border rounded-pill px-3"><i class="bi bi-apple me-1"></i>iOS App</span><?php endif; ?>
-                                <?php if($vendor['playstore_ordered']): ?><span class="badge bg-light text-dark border rounded-pill px-3"><i class="bi bi-shop me-1"></i>Playstore</span><?php endif; ?>
-                                <?php if($vendor['sms_bridge_ordered']): ?><span class="badge bg-light text-dark border rounded-pill px-3"><i class="bi bi-sim me-1"></i>SMS Bridge</span><?php endif; ?>
-                                
-                                <?php 
-                                    if($has_addons) {
-                                        $ids_arr = array_map('intval', explode(',', $addon_ids));
-                                        $safe_ids = implode(',', $ids_arr);
-                                        $addons_res = mysqli_query($connection_server, "SELECT name FROM sas_billing_addons WHERE id IN ($safe_ids)");
-                                        while($arow = mysqli_fetch_assoc($addons_res)) {
-                                            echo '<span class="badge bg-primary bg-opacity-10 text-primary border border-primary border-opacity-10 rounded-pill px-3"><i class="bi bi-plus-circle me-1"></i>'.htmlspecialchars($arow['name']).'</span>';
-                                        }
-                                    }
-                                ?>
-                            </div>
-                        </div>
-                        <?php endif; ?>
-                    </div>
-                </div>
-
-                <?php if ($has_addons || $has_apps || $has_package_dl): ?>
-                <!-- Downloads Section -->
-                <div class="card portal-card p-4">
-                    <h5 class="fw-bold mb-4"><i class="bi bi-cloud-arrow-down-fill me-2 text-primary"></i>Digital Assets & Apps</h5>
-                    
-                    <div class="alert alert-info border-0 rounded-4 small mb-4">
-                        <i class="bi bi-info-circle-fill me-2"></i> For your security, download links expire <strong>12 hours</strong> after generation. You can always come back here to generate a fresh link.
-                    </div>
-
-                    <div class="row g-3">
-                        <?php if ($has_package_dl): ?>
-                        <div class="col-12 mb-2">
-                            <div class="download-card p-4 border-primary bg-primary bg-opacity-10 shadow-sm">
-                                <div class="d-flex align-items-center mb-3">
-                                    <div class="bg-primary p-3 rounded-4 me-3 text-white">
-                                        <i class="bi bi-code-square fs-3"></i>
-                                    </div>
-                                    <div>
-                                        <div class="fw-bold fs-5"><?php echo htmlspecialchars($vendor['package_name']); ?> Source Script</div>
-                                        <div class="small text-primary fw-bold">Primary Digital Asset</div>
-                                    </div>
-                                </div>
-                                <button class="btn btn-primary w-100 rounded-pill fw-bold py-2 generate-dl" data-pkg-id="<?php echo $vendor['current_billing_id']; ?>" data-hash="<?php echo $hash; ?>">
-                                    <i class="bi bi-shield-lock-fill me-1"></i> Generate Secure Script Link
-                                </button>
-                            </div>
-                        </div>
-                        <?php endif; ?>
-
-                        <?php if (empty($addons) && !$has_apps && !$has_package_dl): ?>
-                            <div class="col-12 text-center py-4 text-muted small">
-                                <i class="bi bi-hourglass-split fs-2 d-block mb-2"></i>
-                                Your custom builds are being prepared. Check back shortly.
-                            </div>
-                        <?php else: ?>
-                            <?php foreach ($addons as $addon): ?>
-                            <div class="col-md-6">
-                                <div class="download-card p-3 h-100">
-                                    <div class="d-flex align-items-center mb-3">
-                                        <div class="bg-primary bg-opacity-10 p-3 rounded-4 me-3">
-                                            <i class="bi <?php echo htmlspecialchars($addon['icon']); ?> text-primary fs-4"></i>
-                                        </div>
+                <div class="row g-4">
+                    <!-- Vendor Profile Section -->
+                    <div class="col-12">
+                        <div class="glass-card p-4 animate__animated animate__fadeInUp" style="animation-delay: 0.1s;">
+                            <div class="row g-4">
+                                <div class="col-md-4">
+                                    <span class="label-modern">Business Identity</span>
+                                    <div class="d-flex align-items-center">
+                                        <div class="icon-box me-3"><i class="bi bi-person-badge fs-4"></i></div>
                                         <div>
-                                            <div class="fw-bold"><?php echo htmlspecialchars($addon['name']); ?></div>
-                                            <div class="extra-small text-muted">Ready for download</div>
+                                            <div class="fw-bold"><?php echo htmlspecialchars($vendor['firstname'] . ' ' . $vendor['lastname']); ?></div>
+                                            <div class="small text-muted"><?php echo htmlspecialchars($vendor['email']); ?></div>
                                         </div>
                                     </div>
-                                    <button class="btn btn-primary w-100 rounded-pill fw-bold btn-sm generate-dl" data-id="<?php echo $addon['id']; ?>" data-hash="<?php echo $hash; ?>">
-                                        <i class="bi bi-link-45deg me-1"></i> Generate Download Link
-                                    </button>
+                                </div>
+                                <div class="col-md-4">
+                                    <span class="label-modern">Communication</span>
+                                    <div class="d-flex align-items-center">
+                                        <div class="icon-box me-3"><i class="bi bi-telephone-outbound fs-4"></i></div>
+                                        <div>
+                                            <div class="fw-bold"><?php echo htmlspecialchars($vendor['phone_number']); ?></div>
+                                            <div class="small text-muted">Primary Contact</div>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="col-md-4">
+                                    <span class="label-modern">Operational Base</span>
+                                    <div class="d-flex align-items-center">
+                                        <div class="icon-box me-3"><i class="bi bi-geo-alt fs-4"></i></div>
+                                        <div class="small fw-medium text-truncate" title="<?php echo htmlspecialchars($vendor['home_address']); ?>">
+                                            <?php echo htmlspecialchars($vendor['home_address']); ?>
+                                        </div>
+                                    </div>
                                 </div>
                             </div>
-                            <?php endforeach; ?>
-                        <?php endif; ?>
+                        </div>
+                    </div>
+
+                    <!-- Subscription Summary -->
+                    <div class="col-lg-12">
+                        <div class="glass-card p-4 h-100 animate__animated animate__fadeInUp" style="animation-delay: 0.2s;">
+                            <div class="d-flex justify-content-between align-items-center mb-4 pb-3 border-bottom border-white border-opacity-5">
+                                <h5 class="fw-bold mb-0"><i class="bi bi-shield-check me-2 text-primary-light"></i>Subscription Status</h5>
+                                <div class="badge bg-success bg-opacity-10 text-success rounded-pill px-3 py-2"><span class="status-pulse"></span>Active System</div>
+                            </div>
+                            
+                            <div class="row g-4">
+                                <div class="col-md-3 col-6">
+                                    <span class="label-modern">Active Tier</span>
+                                    <div class="fw-bold fs-5"><?php echo htmlspecialchars($vendor['package_name'] ?? 'N/A'); ?></div>
+                                </div>
+                                <div class="col-md-4 col-6">
+                                    <span class="label-modern">Platform URL</span>
+                                    <div class="fw-bold text-primary-light text-truncate">
+                                        <a href="<?php echo $platform_url; ?>" target="_blank" class="text-decoration-none text-primary-light">
+                                            <i class="bi bi-link-45deg"></i> <?php echo htmlspecialchars($platform_url ?: 'Not Configured'); ?>
+                                        </a>
+                                    </div>
+                                </div>
+                                <div class="col-md-5">
+                                    <div class="row g-3">
+                                        <div class="col-sm-6">
+                                            <span class="label-modern">System Expiry</span>
+                                            <div class="fw-bold"><?php echo date('M d, Y', strtotime($vendor['expiry_date'])); ?></div>
+                                            <form method="post" onsubmit="return confirm('Renew for ₦<?php echo number_format($vendor['package_price'], 2); ?>?');">
+                                                <input type="hidden" name="renew_action" value="renew_site">
+                                                <button type="submit" class="btn btn-outline-premium btn-sm mt-2 w-100">Renew (₦<?php echo number_format($vendor['package_price'], 0); ?>)</button>
+                                            </form>
+                                        </div>
+                                        <div class="col-sm-6">
+                                            <span class="label-modern">Domain Expiry</span>
+                                            <div class="fw-bold">
+                                                <?php echo (!empty($vendor['domain_expiry_date']) && $vendor['domain_expiry_date'] != '0000-00-00') ? date('M d, Y', strtotime($vendor['domain_expiry_date'])) : '<span class="text-warning">Pending Setup</span>'; ?>
+                                            </div>
+                                            <?php if(!empty($platform_url)): ?>
+                                            <form method="post">
+                                                <input type="hidden" name="renew_action" value="renew_domain">
+                                                <button type="submit" class="btn btn-outline-premium btn-sm mt-2 w-100">Renew Domain</button>
+                                            </form>
+                                            <?php endif; ?>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div class="col-12 pt-3">
+                                    <span class="label-modern mb-3">Deployed Modules</span>
+                                    <div class="d-flex flex-wrap gap-2">
+                                        <?php if($vendor['apk_ordered']): ?><span class="badge glass-card bg-white bg-opacity-5 rounded-pill px-3 py-2 border-0"><i class="bi bi-android2 me-2"></i>Android Build</span><?php endif; ?>
+                                        <?php if($vendor['ios_ordered']): ?><span class="badge glass-card bg-white bg-opacity-5 rounded-pill px-3 py-2 border-0"><i class="bi bi-apple me-2"></i>iOS Build</span><?php endif; ?>
+                                        <?php if($vendor['playstore_ordered']): ?><span class="badge glass-card bg-white bg-opacity-5 rounded-pill px-3 py-2 border-0"><i class="bi bi-shop me-2"></i>Playstore</span><?php endif; ?>
+                                        <?php if($vendor['sms_bridge_ordered']): ?><span class="badge glass-card bg-white bg-opacity-5 rounded-pill px-3 py-2 border-0"><i class="bi bi-broadcast me-2"></i>SMS Bridge</span><?php endif; ?>
+                                        
+                                        <?php 
+                                            if($has_addons) {
+                                                $ids_arr = array_map('intval', explode(',', $addon_ids));
+                                                $safe_ids = implode(',', $ids_arr);
+                                                $addons_res = mysqli_query($connection_server, "SELECT name FROM sas_billing_addons WHERE id IN ($safe_ids)");
+                                                while($arow = mysqli_fetch_assoc($addons_res)) {
+                                                    echo '<span class="badge glass-card bg-primary bg-opacity-10 text-primary-light rounded-pill px-3 py-2 border-0"><i class="bi bi-plus-circle me-2"></i>'.htmlspecialchars($arow['name']).'</span>';
+                                                }
+                                            }
+                                        ?>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Digital Assets Grid -->
+                    <div class="col-12">
+                        <div class="glass-card p-4 animate__animated animate__fadeInUp" style="animation-delay: 0.3s;">
+                            <h5 class="fw-bold mb-4"><i class="bi bi-layers-half me-2 text-primary-light"></i>Digital Assets & Downloads</h5>
+                            
+                            <div class="alert bg-primary bg-opacity-5 border border-primary border-opacity-10 rounded-4 small mb-4 text-primary-light">
+                                <i class="bi bi-info-circle-fill me-2"></i> Generation links are encrypted and valid for 12 hours. Refresh this portal for new tokens.
+                            </div>
+
+                            <div class="row g-4">
+                                <?php if ($has_package_dl): ?>
+                                <div class="col-12">
+                                    <div class="download-item p-4 border-primary border-opacity-20 bg-primary bg-opacity-5 shadow-sm">
+                                        <div class="row align-items-center">
+                                            <div class="col-md-8 mb-3 mb-md-0 text-center text-md-start">
+                                                <div class="d-flex align-items-center justify-content-center justify-content-md-start">
+                                                    <div class="icon-box bg-primary p-3 rounded-4 me-3 text-white">
+                                                        <i class="bi bi-terminal fs-3"></i>
+                                                    </div>
+                                                    <div>
+                                                        <div class="fw-bold fs-5"><?php echo htmlspecialchars($vendor['package_name']); ?> Source Core</div>
+                                                        <div class="small text-primary-light fw-medium">Complete Server-Side VTU Script Bundle</div>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                            <div class="col-md-4">
+                                                <button class="btn btn-premium w-100 generate-dl" data-pkg-id="<?php echo $vendor['current_billing_id']; ?>" data-hash="<?php echo $hash; ?>">
+                                                    <i class="bi bi-shield-lock-fill me-2"></i> Generate Link
+                                                </button>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                                <?php endif; ?>
+
+                                <?php if (empty($addons) && !$has_apps && !$has_package_dl): ?>
+                                    <div class="col-12 text-center py-5 text-muted">
+                                        <i class="bi bi-stack fs-1 d-block mb-3 opacity-25"></i>
+                                        <div class="fs-5">No assets available for this tier yet.</div>
+                                        <p class="small">Contact administration if you believe this is an error.</p>
+                                    </div>
+                                <?php else: ?>
+                                    <?php foreach ($addons as $addon): ?>
+                                    <div class="col-md-6 col-xl-4">
+                                        <div class="download-item">
+                                            <div class="d-flex align-items-center mb-4">
+                                                <div class="icon-box me-3">
+                                                    <i class="bi <?php echo htmlspecialchars($addon['icon'] ?: 'bi-box-seam'); ?> fs-4"></i>
+                                                </div>
+                                                <div class="overflow-hidden">
+                                                    <div class="fw-bold text-truncate"><?php echo htmlspecialchars($addon['name']); ?></div>
+                                                    <div class="small text-muted">Production Build</div>
+                                                </div>
+                                            </div>
+                                            <button class="btn btn-outline-premium w-100 btn-sm generate-dl" data-id="<?php echo $addon['id']; ?>" data-hash="<?php echo $hash; ?>">
+                                                <i class="bi bi-lightning-charge me-2"></i> Request Link
+                                            </button>
+                                        </div>
+                                    </div>
+                                    <?php endforeach; ?>
+                                <?php endif; ?>
+                            </div>
+                        </div>
                     </div>
                 </div>
-                <?php endif; ?>
 
-                <div class="text-center mt-5">
-                    <p class="text-muted small">&copy; <?php echo date('Y'); ?> Digital Assets Portal. All Rights Reserved.</p>
-                </div>
+                <footer class="text-center mt-5 pt-5 opacity-50 small">
+                    <p>&copy; <?php echo date('Y'); ?> Digital Assets Cloud • Powered by DGV6.90 Architecture</p>
+                </footer>
             </div>
         </div>
     </div>
@@ -248,21 +462,23 @@ if ($has_addons) {
     <!-- Modal for Dynamic Link -->
     <div class="modal fade" id="linkModal" tabindex="-1" aria-hidden="true">
         <div class="modal-dialog modal-dialog-centered">
-            <div class="modal-content border-0 rounded-4 shadow">
+            <div class="modal-content text-white p-2">
                 <div class="modal-body p-4 text-center">
                     <div class="bg-success bg-opacity-10 p-4 rounded-circle d-inline-block mb-4">
-                        <i class="bi bi-check2-circle text-success fs-1"></i>
+                        <i class="bi bi-shield-check text-success display-4"></i>
                     </div>
-                    <h5 class="fw-bold mb-2">Link Generated Successfully!</h5>
-                    <p class="text-muted small mb-4">You can now download your file. Remember, this link will expire in 12 hours.</p>
+                    <h4 class="fw-bold mb-3">Link Securely Prepared</h4>
+                    <p class="text-muted small mb-4">Your personalized download link has been generated and is ready for use.</p>
                     
-                    <div class="bg-light p-3 rounded-4 mb-4 text-break small font-monospace" id="generatedLink">
+                    <div class="bg-black bg-opacity-30 p-3 rounded-4 mb-4 text-break small font-monospace border border-white border-opacity-5" id="generatedLink">
                         Loading...
                     </div>
 
-                    <div class="d-grid gap-2">
-                        <a href="#" id="downloadBtn" class="btn btn-primary rounded-pill py-2 fw-bold">Download Now</a>
-                        <button type="button" class="btn btn-light rounded-pill py-2" data-bs-dismiss="modal">Close</button>
+                    <div class="d-grid gap-3">
+                        <a href="#" id="downloadBtn" class="btn btn-premium py-3">
+                            <i class="bi bi-cloud-download me-2"></i> Start Download
+                        </a>
+                        <button type="button" class="btn btn-link text-muted text-decoration-none" data-bs-dismiss="modal">Dismiss</button>
                     </div>
                 </div>
             </div>
@@ -281,9 +497,10 @@ if ($has_addons) {
                 const originalText = this.innerHTML;
                 
                 this.disabled = true;
-                this.innerHTML = '<span class="spinner-border spinner-border-sm"></span> Generating...';
-
-                let postBody = 'hash=' + vHash;
+                this.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span> Processing...';
+                this.classList.add('opacity-75');
+ 
+                let postBody = 'hash=' + encodeURIComponent(vHash);
                 if(addonId) postBody += '&addon_id=' + addonId;
                 if(pkgId) postBody += '&package_id=' + pkgId;
 
@@ -299,12 +516,17 @@ if ($has_addons) {
                         document.getElementById('downloadBtn').href = data.url;
                         modal.show();
                     } else {
-                        alert(data.message);
+                        alert('System Error: ' + data.message);
                     }
+                })
+                .catch(err => {
+                    console.error('Fetch error:', err);
+                    alert('Connection timeout. Please try again.');
                 })
                 .finally(() => {
                     this.disabled = false;
                     this.innerHTML = originalText;
+                    this.classList.remove('opacity-75');
                 });
             });
         });
