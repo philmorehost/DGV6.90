@@ -63,6 +63,13 @@
 
             if (!empty($username)) {
                 $check_tx = mysqli_query($connection_server, "SELECT id FROM sas_transactions WHERE vendor_id='$vendor_id' AND (api_reference='$transaction_ref' OR reference='$transaction_ref') LIMIT 1");
+
+                if (!$check_tx) {
+                    error_log("[PayStack Webhook] DB Query failed for reference $transaction_ref: " . mysqli_error($connection_server));
+                    http_response_code(500);
+                    die("Database Error");
+                }
+
                 if (mysqli_num_rows($check_tx) == 0) {
                     $new_ref = substr(str_shuffle("12345678901234567890"), 0, 15);
                     $desc = "Paystack Wallet Credit - ".str_replace("_"," ",$payment_method);

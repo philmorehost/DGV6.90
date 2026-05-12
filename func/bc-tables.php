@@ -532,7 +532,7 @@ foreach ($pricing_tables as $table) {
 }
 
 //Create User Transaction Table
-$create_user_transaction_table = mysqli_query($connection_server, "CREATE TABLE IF NOT EXISTS sas_transactions (vendor_id INT UNSIGNED NOT NULL, api_id INT UNSIGNED, product_id INT UNSIGNED, product_unique_id VARCHAR(225) NOT NULL, type_alternative VARCHAR(225), reference VARCHAR(225) NOT NULL, api_reference VARCHAR(225), username VARCHAR(225) NOT NULL, amount DECIMAL(65,30) UNSIGNED NOT NULL, discounted_amount DECIMAL(65,30) UNSIGNED NOT NULL, balance_before DECIMAL(65,30) UNSIGNED NOT NULL, balance_after DECIMAL(65,30) UNSIGNED NOT NULL, description LONGTEXT NOT NULL, mode VARCHAR(225) NOT NULL, api_website VARCHAR(225) NOT NULL, status INT UNSIGNED NOT NULL, date TIMESTAMP DEFAULT CURRENT_TIMESTAMP)");
+$create_user_transaction_table = mysqli_query($connection_server, "CREATE TABLE IF NOT EXISTS sas_transactions (id INT NOT NULL AUTO_INCREMENT PRIMARY KEY, vendor_id INT UNSIGNED NOT NULL, api_id INT UNSIGNED, product_id INT UNSIGNED, product_unique_id VARCHAR(225) NOT NULL, type_alternative VARCHAR(225), reference VARCHAR(225) NOT NULL, api_reference VARCHAR(225), username VARCHAR(225) NOT NULL, amount DECIMAL(65,30) UNSIGNED NOT NULL, discounted_amount DECIMAL(65,30) UNSIGNED NOT NULL, balance_before DECIMAL(65,30) UNSIGNED NOT NULL, balance_after DECIMAL(65,30) UNSIGNED NOT NULL, description LONGTEXT NOT NULL, mode VARCHAR(225) NOT NULL, api_website VARCHAR(225) NOT NULL, status INT UNSIGNED NOT NULL, date TIMESTAMP DEFAULT CURRENT_TIMESTAMP)");
 
 if ($create_user_transaction_table) {
     $check_col_trans = mysqli_query($connection_server, "SHOW COLUMNS FROM `sas_transactions` LIKE 'vendor_id'");
@@ -558,10 +558,36 @@ if ($create_user_transaction_table) {
     if (mysqli_num_rows($check_idx_vendor) == 0) {
         mysqli_query($connection_server, "ALTER TABLE `sas_transactions` ADD INDEX idx_vendor_lookup (vendor_id, status, type_alternative)");
     }
+
+    // Repair logic: Ensure 'id' exists (for tables created with older buggy migration)
+    $check_id = mysqli_query($connection_server, "SHOW COLUMNS FROM `sas_transactions` LIKE 'id'");
+    if (mysqli_num_rows($check_id) == 0) {
+        mysqli_query($connection_server, "ALTER TABLE `sas_transactions` ADD COLUMN id INT NOT NULL AUTO_INCREMENT PRIMARY KEY FIRST");
+    }
+
+    // Repair logic: Ensure 'api_reference' exists
+    $check_api_ref = mysqli_query($connection_server, "SHOW COLUMNS FROM `sas_transactions` LIKE 'api_reference'");
+    if (mysqli_num_rows($check_api_ref) == 0) {
+        mysqli_query($connection_server, "ALTER TABLE `sas_transactions` ADD COLUMN api_reference VARCHAR(225) AFTER reference");
+    }
 }
 
 //Create Vendor Transaction Table
-$create_vendor_transaction_table = mysqli_query($connection_server, "CREATE TABLE IF NOT EXISTS sas_vendor_transactions (vendor_id INT UNSIGNED NOT NULL, product_unique_id VARCHAR(225) NOT NULL, type_alternative VARCHAR(225), reference VARCHAR(225) NOT NULL, amount DECIMAL(65,30) UNSIGNED NOT NULL, discounted_amount DECIMAL(65,30) UNSIGNED NOT NULL, balance_before DECIMAL(65,30) UNSIGNED NOT NULL, balance_after DECIMAL(65,30) UNSIGNED NOT NULL, description LONGTEXT NOT NULL, api_website VARCHAR(225) NOT NULL, status INT UNSIGNED NOT NULL, date TIMESTAMP DEFAULT CURRENT_TIMESTAMP)");
+$create_vendor_transaction_table = mysqli_query($connection_server, "CREATE TABLE IF NOT EXISTS sas_vendor_transactions (id INT NOT NULL AUTO_INCREMENT PRIMARY KEY, vendor_id INT UNSIGNED NOT NULL, product_unique_id VARCHAR(225) NOT NULL, type_alternative VARCHAR(225), reference VARCHAR(225) NOT NULL, api_reference VARCHAR(225), amount DECIMAL(65,30) UNSIGNED NOT NULL, discounted_amount DECIMAL(65,30) UNSIGNED NOT NULL, balance_before DECIMAL(65,30) UNSIGNED NOT NULL, balance_after DECIMAL(65,30) UNSIGNED NOT NULL, description LONGTEXT NOT NULL, api_website VARCHAR(225) NOT NULL, status INT UNSIGNED NOT NULL, date TIMESTAMP DEFAULT CURRENT_TIMESTAMP)");
+
+if ($create_vendor_transaction_table) {
+    // Ensure 'id' exists
+    $check_id_v = mysqli_query($connection_server, "SHOW COLUMNS FROM `sas_vendor_transactions` LIKE 'id'");
+    if (mysqli_num_rows($check_id_v) == 0) {
+        mysqli_query($connection_server, "ALTER TABLE `sas_vendor_transactions` ADD COLUMN id INT NOT NULL AUTO_INCREMENT PRIMARY KEY FIRST");
+    }
+
+    // Ensure 'api_reference' exists
+    $check_api_ref_v = mysqli_query($connection_server, "SHOW COLUMNS FROM `sas_vendor_transactions` LIKE 'api_reference'");
+    if (mysqli_num_rows($check_api_ref_v) == 0) {
+        mysqli_query($connection_server, "ALTER TABLE `sas_vendor_transactions` ADD COLUMN api_reference VARCHAR(225) AFTER reference");
+    }
+}
 
 //Create Daily Product Tracker Table
 $create_daily_product_tracker_table = mysqli_query($connection_server, "CREATE TABLE IF NOT EXISTS sas_daily_purchase_tracker (vendor_id INT UNSIGNED NOT NULL, reference VARCHAR(225) NOT NULL, product_type VARCHAR(225) NOT NULL, product_id VARCHAR(225) NOT NULL, username VARCHAR(225) NOT NULL, date_purchased VARCHAR(225) NOT NULL, date TIMESTAMP DEFAULT CURRENT_TIMESTAMP)");

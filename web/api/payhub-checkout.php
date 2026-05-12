@@ -11,6 +11,10 @@ $reference = mysqli_real_escape_string($connection_server, trim(strip_tags($_GET
 $amount    = (float)($_GET["amount"] ?? 0);
 $email     = htmlspecialchars(trim($_GET["email"] ?? ''), ENT_QUOTES);
 $name      = htmlspecialchars(trim($_GET["name"]  ?? ''), ENT_QUOTES);
+if (!$connection_server) {
+    echo '<p style="color:red;font-family:sans-serif;padding:20px;">Database connection failed.</p>';
+    exit;
+}
 
 if (empty($reference) || $amount <= 0) {
     echo '<p style="color:red;font-family:sans-serif;padding:20px;">Invalid checkout parameters.</p>';

@@ -97,8 +97,12 @@ if (isset($_GET['action'])) {
             $is_vendor_funding = true;
         }
 
-        $tx = mysqli_fetch_assoc($q);
-        if (!$tx) die("Transaction not found");
+        $tx = $q ? mysqli_fetch_assoc($q) : null;
+        if (!$tx) {
+            if (ob_get_length()) ob_clean();
+            echo json_encode(['status' => 'error', 'message' => 'Transaction not found or query failed']);
+            exit;
+        }
 
         $vid = (int)$tx['vendor_id'];
         $amount = (float)$tx['amount'];
@@ -151,7 +155,9 @@ if (isset($_GET['action'])) {
             echo json_encode(['status' => 'error', 'message' => $res['message'] ?? 'Initialization failed']);
             exit;
         }
-        die("Invalid Gateway");
+        if (ob_get_length()) ob_clean();
+        echo json_encode(['status' => 'error', 'message' => 'Invalid Gateway']);
+        exit;
     }
 
     if ($action == 'get_transaction_details') {
