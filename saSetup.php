@@ -1,6 +1,8 @@
 <?php session_start();
     include("./func/bc-config.php");
     
+    $json_response_encode = null;
+
     if(isset($_POST["setup-profile"])){
         $first = mysqli_real_escape_string($connection_server, trim(strip_tags(ucwords($_POST["first"]))));
         $last = mysqli_real_escape_string($connection_server, trim(strip_tags(ucwords($_POST["last"]))));
@@ -18,220 +20,280 @@
                 if(filter_var($email, FILTER_VALIDATE_EMAIL)){
                     if(mysqli_num_rows($check_admin_with_email) == 0){
                         if(mysqli_num_rows($check_admin_with_phone) == 0){
-                        	mysqli_query($connection_server, "INSERT INTO sas_super_admin (email, password, firstname, lastname, phone_number, gender, home_address, status) VALUES ('$email','$md5_pass','$first','$last','$phone','$gender', '$address', '1')");
+                        	$q = mysqli_query($connection_server, "INSERT INTO sas_super_admin (email, password, firstname, lastname, phone_number, gender, home_address, status) VALUES ('$email','$md5_pass','$first','$last','$phone','$gender', '$address', '1')");
+                            if ($q) {
+                                $json_response_array = array("desc" => "Super Admin Account Created Successfully!");
+                                $json_response_encode = json_encode($json_response_array);
+                            } else {
+                                $json_response_array = array("desc" => "Database Error: Could not save profile.");
+                                $json_response_encode = json_encode($json_response_array);
+                            }
                         }else{
-                        	if(mysqli_num_rows($check_admin_with_phone) == 1){
-                        		//Phone Number Taken By Another Admin
-                        		$json_response_array = array("desc" => "Phone Number Taken By Another Admin");
-                        		$json_response_encode = json_encode($json_response_array,true);
-                        	}else{
-                        		//Duplicated Phone Number, Contact Admin
-                        		$json_response_array = array("desc" => "Duplicated Phone Number, Contact Admin");
-                        		$json_response_encode = json_encode($json_response_array,true);
-                        	}
+                            $json_response_array = array("desc" => "Error: Phone Number already in use.");
+                            $json_response_encode = json_encode($json_response_array);
                         }
                     }else{
-                        if(mysqli_num_rows($check_admin_with_email) == 1){
-                            //Email Taken By Another Admin
-                            $json_response_array = array("desc" => "Email Taken By Another Admin");
-                            $json_response_encode = json_encode($json_response_array,true);
-                        }else{
-                            //Duplicated Email, Contact Admin
-                            $json_response_array = array("desc" => "Duplicated Email, Contact Admin");
-                            $json_response_encode = json_encode($json_response_array,true);
-                        }
-                    }
-    
-                    $proceed_account_update = false;
-                    if($proceed_account_phone_verification == true){
-                        if(mysqli_num_rows($check_admin_with_phone) == 1){
-                            $admin_phone_fetch = mysqli_fetch_array($check_admin_with_phone);
-                            if($admin_phone_fetch["id"] == $get_logged_spadmin_details["id"]){
-                                $proceed_account_update = true;
-                            }else{
-                                //Phone Number Taken By Another Admin
-                                $json_response_array = array("desc" => "Phone Number Taken By Another Admin");
-                                $json_response_encode = json_encode($json_response_array,true);
-                            }
-                        }else{
-                            if(mysqli_num_rows($check_admin_with_phone) == 0){
-                                $proceed_account_update = true;
-                            }else{
-                                //Duplicated Phone Number, Contact Admin
-                                $json_response_array = array("desc" => "Duplicated Phone Number, Contact Admin");
-                                $json_response_encode = json_encode($json_response_array,true);
-                            }
-                        }
-                    }
-    
-                    if($proceed_account_update == true){
-                        mysqli_query($connection_server, "UPDATE sas_super_admin SET firstname='$first', lastname='$last', home_address='$address', email='$email', phone_number='$phone' WHERE id='".$get_logged_spadmin_details["id"]."'");
-                        //Profile Information Updated Successfully
-                        $json_response_array = array("desc" => "Profile Information Updated Successfully");
-                        $json_response_encode = json_encode($json_response_array,true);
+                        $json_response_array = array("desc" => "Error: Email Address already in use.");
+                        $json_response_encode = json_encode($json_response_array);
                     }
                 }else{
-                    //Invalid Email Address
-                    $json_response_array = array("desc" => "Invalid Email Address");
-                    $json_response_encode = json_encode($json_response_array,true);
+                    $json_response_array = array("desc" => "Error: Invalid Email Format.");
+                    $json_response_encode = json_encode($json_response_array);
                 }
         }else{
-            if(empty($first)){
-                //Firstname Field Empty
-                $json_response_array = array("desc" => "Firstname Field Empty");
-                $json_response_encode = json_encode($json_response_array,true);
-            }else{
-                if(empty($last)){
-                    //Lastname Field Empty
-                    $json_response_array = array("desc" => "Lastname Field Empty");
-                    $json_response_encode = json_encode($json_response_array,true);
-                }else{
-                    if(empty($address)){
-                        //Home Address Field Empty
-                        $json_response_array = array("desc" => "Home Address Field Empty");
-                        $json_response_encode = json_encode($json_response_array,true);
-                    }else{
-                        if(empty($email)){
-                            //Email Field Empty
-                            $json_response_array = array("desc" => "Email Field Empty");
-                            $json_response_encode = json_encode($json_response_array,true);
-                        }else{
-                            if(empty($phone)){
-                                //Phone Number Field Empty
-                                $json_response_array = array("desc" => "Phone Number Field Empty");
-                                $json_response_encode = json_encode($json_response_array,true);
-                            }else{
-                            	if((strlen($phone) < 11)){
-                            		//Phone Number Less Than 11 digit
-                            		$json_response_array = array("desc" => "Phone Number Less Than 11 digit");
-                            		$json_response_encode = json_encode($json_response_array,true);
-                            	}else{
-                            		if((strlen($phone) > 11)){
-                            			//Phone Number Greater Than 11 digit
-                            			$json_response_array = array("desc" => "Phone Number Greater Than 11 digit");
-                            			$json_response_encode = json_encode($json_response_array,true);
-                            		}else{
-                                		if(empty($pass)){
-                                    		//Password Field Empty
-                                    		$json_response_array = array("desc" => "Password Field Empty");
-                                    		$json_response_encode = json_encode($json_response_array,true);
-                                		}else{
-                                			if(empty($gender)){
-                                				//Gender Field Empty
-                                				$json_response_array = array("desc" => "Gender Field Empty");
-                                				$json_response_encode = json_encode($json_response_array,true);
-                                			}
-                                		}
-                            		}
-                            	}
-                            }
-                        }
-                    }
-                }
-            }
+            $json_response_array = array("desc" => "Error: Please fill all fields correctly (Phone must be 11 digits).");
+            $json_response_encode = json_encode($json_response_array);
         }
     
-        $json_response_decode = json_decode($json_response_encode,true);
-        $_SESSION["product_purchase_response"] = $json_response_decode["desc"];
-        header("Location: /bc-spadmin");
+        if ($json_response_encode) {
+            $json_response_decode = json_decode($json_response_encode,true);
+            $_SESSION["product_purchase_response"] = $json_response_decode["desc"];
+            
+            if (str_contains($json_response_decode["desc"], "Successfully")) {
+                header("Location: /bc-spadmin");
+                exit();
+            }
+        }
     }
 ?>
 <!DOCTYPE html>
+<html lang="en">
 <head>
-	<title>Super Admin</title>
+    <title>Super Admin Setup | DGV6.90 AI Edition</title>
     <meta charset="UTF-8" />
-    <meta name="description" content="" />
-    <meta http-equiv="Content-Type" content="text/html; " />
-    <meta name="theme-color" content="black" />
     <meta name="viewport" content="width=device-width, initial-scale=1"/>
-    <link rel="stylesheet" href="<?php echo $css_style_template_location; ?>">
-    <link rel="stylesheet" href="/cssfile/bc-style.css">
-    <meta name="author" content="Philmore Codes">
-    <meta name="dc.creator" content="Philmore Codes">
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link href="assets-2/vendor/bootstrap/css/bootstrap.min.css" rel="stylesheet">
+    <link href="assets-2/vendor/bootstrap-icons/bootstrap-icons.css" rel="stylesheet">
     <style>
-    	body{
-    		background-color: var(--color-5);
-    	}
+        :root {
+            --primary: #6366f1;
+            --primary-dark: #4f46e5;
+            --glass: rgba(255, 255, 255, 0.7);
+            --glass-border: rgba(255, 255, 255, 0.4);
+        }
+
+        body {
+            background: radial-gradient(circle at top left, #f5f3ff, #ede9fe);
+            color: #1e293b;
+            font-family: 'Plus Jakarta Sans', sans-serif;
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            position: relative;
+            padding: 2rem 0;
+            overflow-x: hidden;
+        }
+
+        body::before {
+            content: "";
+            position: absolute;
+            width: 300px;
+            height: 300px;
+            background: var(--primary);
+            filter: blur(120px);
+            opacity: 0.15;
+            top: -100px;
+            right: -100px;
+            z-index: -1;
+        }
+
+        .setup-card {
+            max-width: 600px;
+            width: 94%;
+            padding: 3rem;
+            border-radius: 28px;
+            background: var(--glass);
+            backdrop-filter: blur(25px);
+            -webkit-backdrop-filter: blur(25px);
+            border: 1px solid var(--glass-border);
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.08);
+            position: relative;
+            z-index: 1;
+        }
+
+        .header-section {
+            margin-bottom: 2.5rem;
+        }
+
+        .logo-box {
+            width: 80px;
+            height: 80px;
+            background: white;
+            border-radius: 20px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 0 auto 1.5rem;
+            box-shadow: 0 10px 20px rgba(0,0,0,0.05);
+            padding: 15px;
+        }
+
+        .logo-box img {
+            max-width: 100%;
+            height: auto;
+        }
+
+        .section-title {
+            font-size: 0.75rem;
+            font-weight: 800;
+            color: var(--primary);
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+            margin: 2rem 0 1rem;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .section-title::after {
+            content: "";
+            height: 1px;
+            flex-grow: 1;
+            background: linear-gradient(to right, rgba(99, 102, 241, 0.2), transparent);
+        }
+
+        .form-label {
+            font-size: 0.85rem;
+            font-weight: 600;
+            color: #475569;
+            margin-bottom: 0.5rem;
+        }
+
+        .form-control, .form-select {
+            border-radius: 14px;
+            padding: 0.8rem 1.2rem;
+            background: rgba(255, 255, 255, 0.6);
+            border: 1px solid rgba(203, 213, 225, 0.6);
+            font-weight: 500;
+            transition: all 0.2s ease;
+        }
+
+        .form-control:focus, .form-select:focus {
+            background: #fff;
+            border-color: var(--primary);
+            box-shadow: 0 0 0 4px rgba(99, 102, 241, 0.1);
+        }
+
+        .btn-setup {
+            background: linear-gradient(135deg, var(--primary), var(--primary-dark));
+            color: white;
+            border: none;
+            border-radius: 16px;
+            padding: 1.1rem;
+            font-weight: 700;
+            letter-spacing: 0.05em;
+            transition: all 0.3s ease;
+            box-shadow: 0 10px 20px -5px rgba(99, 102, 241, 0.4);
+            margin-top: 2.5rem;
+        }
+
+        .btn-setup:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 15px 25px -5px rgba(99, 102, 241, 0.5);
+            filter: brightness(1.1);
+        }
+
+        .alert-modern {
+            border-radius: 16px;
+            border: none;
+            background: white;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.05);
+            padding: 1.25rem;
+            margin-bottom: 2rem;
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+
+        .alert-icon {
+            width: 40px;
+            height: 40px;
+            background: rgba(99, 102, 241, 0.1);
+            color: var(--primary);
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 20px;
+        }
     </style>
 </head>
 <body>
-    <div style="text-align: center;" class="bg-10 m-block-dp s-block-dp m-position-abs s-position-abs br-radius-5px m-width-94 s-width-50 m-height-auto s-height-auto m-padding-lt-1 s-padding-lt-1 m-padding-rt-1 s-padding-rt-1 m-padding-tp-3 s-padding-tp-3 m-padding-bm-3 s-padding-bm-3 m-margin-tp-1 s-margin-tp-1 m-margin-lt-2 s-margin-lt-24">
-        <img src="<?php echo $web_http_host; ?>/uploaded-image/sp-logo.png" style="user-select: auto; object-fit: contain; object-position: center;" class="a-cursor m-position-rel s-position-rel m-inline-block-dp s-inline-block-dp m-width-30 s-width-30 m-height-30 s-height-30 m-margin-tp-0 s-margin-tp-0 m-margin-bm-3 s-margin-bm-2"/><br/>
-        <span style="user-select: auto;" class="text-bg-1 color-4 m-inline-block-dp s-inline-block-dp text-bold-500 m-font-size-20 s-font-size-25 m-margin-bm-2 s-margin-bm-2">SUPER ADMIN SET-UP</span><br>
+
+    <div class="setup-card">
+        <div class="header-section text-center">
+            <div class="logo-box">
+                <img src="uploaded-image/sp-logo.png" alt="Logo" onerror="this.src='asset/user-icon.png'">
+            </div>
+            <h2 class="fw-extrabold mb-1">Super Admin Setup</h2>
+            <p class="text-muted small">Configure the master account for your platform</p>
+        </div>
+
+        <?php if(isset($_SESSION["product_purchase_response"])): ?>
+            <div class="alert alert-modern fade show" role="alert">
+                <div class="alert-icon"><i class="bi bi-info-circle-fill"></i></div>
+                <div class="small fw-600"><?php echo $_SESSION["product_purchase_response"]; unset($_SESSION["product_purchase_response"]); ?></div>
+                <button type="button" class="btn-close ms-auto" data-bs-dismiss="alert"></button>
+            </div>
+        <?php endif; ?>
+
         <form method="post" action="">
-            <div style="text-align: center;" class="color-2 bg-3 m-inline-block-dp s-inline-block-dp m-width-20 s-width-15">
-                <img src="<?php echo $web_http_host; ?>/asset/user-icon.png" class="a-cursor m-width-100 s-width-100" style="pointer-events: none; user-select: auto;"/>
-            </div><br/>
-            <div style="text-align: center;" class="color-4 bg-3 m-inline-block-dp s-inline-block-dp m-font-size-14 s-font-size-16 m-width-60 s-width-45">
-                <span id="user-status-span" class="a-cursor" style="user-select: auto;">PERSONAL INFORMATION</span>
-            </div><br/>
-            <input style="text-align: center;" name="first" type="text" value="" placeholder="Firstname" pattern="[a-zA-Z ]{3,}" title="Firstname must be atleast 3 letters long" class="input-box outline-none color-4 bg-2 m-inline-block-dp s-inline-block-dp outline-none br-radius-5px br-width-4 br-color-4 m-width-60 s-width-45 m-padding-tp-2 s-padding-tp-1 m-padding-bm-2 s-padding-bm-1 m-padding-lt-1 s-padding-lt-1 m-padding-rt-1 s-padding-rt-1 m-margin-bm-1 s-margin-bm-1" required/><br/>
-            <input style="text-align: center;" name="last" type="text" value="" placeholder="Lastname" pattern="[a-zA-Z ]{3,}" title="Lastname must be atleast 3 letters long" class="input-box outline-none color-4 bg-2 m-inline-block-dp s-inline-block-dp outline-none br-radius-5px br-width-4 br-color-4 m-width-60 s-width-45 m-padding-tp-2 s-padding-tp-1 m-padding-bm-2 s-padding-bm-1 m-padding-lt-1 s-padding-lt-1 m-padding-rt-1 s-padding-rt-1 m-margin-bm-1 s-margin-bm-1" required/><br/>
-			<select style="text-align: center;" id="" name="gender" onchange="" class="select-box outline-none color-4 bg-2 m-inline-block-dp s-inline-block-dp outline-none br-radius-5px br-width-4 br-color-4 m-width-63 s-width-47 m-padding-tp-2 s-padding-tp-1 m-padding-bm-2 s-padding-bm-1 m-padding-lt-1 s-padding-lt-1 m-padding-rt-1 s-padding-rt-1 m-margin-bm-1 s-margin-bm-1" required/>
-            	<option value="" default hidden selected>Gender</option>
-            	<option value="m">Male</option>
-            	<option value="f">Female</option>
-            </select><br/>
-            
-            <div style="text-align: center;" class="color-4 bg-3 m-inline-block-dp s-inline-block-dp m-font-size-14 s-font-size-16 m-width-60 s-width-45">
-                <span id="user-status-span" class="a-cursor" style="user-select: auto;">CONTACT INFORMATION</span>
-            </div><br/>
-            <input style="text-align: center;" name="phone" type="text" value="" placeholder="Phone Number" pattern="[0-9]{11}" title="Phone number must be 11 digit long" class="input-box outline-none color-4 bg-2 m-inline-block-dp s-inline-block-dp outline-none br-radius-5px br-width-4 br-color-4 m-width-60 s-width-45 m-padding-tp-2 s-padding-tp-1 m-padding-bm-2 s-padding-bm-1 m-padding-lt-1 s-padding-lt-1 m-padding-rt-1 s-padding-rt-1 m-margin-bm-1 s-margin-bm-1" required/><br/>
-            <input style="text-align: center;" name="address" type="text" value="" placeholder="Home Address" class="input-box outline-none color-4 bg-2 m-inline-block-dp s-inline-block-dp outline-none br-radius-5px br-width-4 br-color-4 m-width-60 s-width-45 m-padding-tp-2 s-padding-tp-1 m-padding-bm-2 s-padding-bm-1 m-padding-lt-1 s-padding-lt-1 m-padding-rt-1 s-padding-rt-1 m-margin-bm-1 s-margin-bm-1" required/><br/>
-            
-            <div style="text-align: center;" class="color-4 bg-3 m-inline-block-dp s-inline-block-dp m-font-size-14 s-font-size-16 m-width-60 s-width-45">
-                <span id="user-status-span" class="a-cursor" style="user-select: auto;">LOGIN INFORMATION</span>
-            </div><br/>
-            <input style="text-align: center;" name="email" type="email" value="" placeholder="Email" class="input-box outline-none color-4 bg-2 m-inline-block-dp s-inline-block-dp outline-none br-radius-5px br-width-4 br-color-4 m-width-60 s-width-45 m-padding-tp-2 s-padding-tp-1 m-padding-bm-2 s-padding-bm-1 m-padding-lt-1 s-padding-lt-1 m-padding-rt-1 s-padding-rt-1 m-margin-bm-1 s-margin-bm-1" required/><br/>
-            <input style="text-align: center;" name="pass" type="password" value="" placeholder="Password" class="input-box outline-none color-4 bg-2 m-inline-block-dp s-inline-block-dp outline-none br-radius-5px br-width-4 br-color-4 m-width-60 s-width-45 m-padding-tp-2 s-padding-tp-1 m-padding-bm-2 s-padding-bm-1 m-padding-lt-1 s-padding-lt-1 m-padding-rt-1 s-padding-rt-1 m-margin-bm-1 s-margin-bm-1" required/><br/>
-            
-            <button onclick="askPermissionSubBtn(this,'Are you sure you want to proceed?');" id="" name="setup-profile" type="button" style="user-select: auto;" class="button-box a-cursor outline-none color-2 bg-7 m-inline-block-dp s-inline-block-dp outline-none onhover-bg-color-5 br-radius-5px br-width-4 br-color-4 m-width-63 s-width-47 m-padding-tp-2 s-padding-tp-1 m-padding-bm-2 s-padding-bm-1 m-padding-lt-1 s-padding-lt-1 m-padding-rt-1 s-padding-rt-1 m-margin-bm-2 s-margin-bm-2" >
-                SET-UP PROFILE
-            </button><br/>
-            
+            <div class="section-title"><i class="bi bi-person-badge me-2"></i> Personal Details</div>
+            <div class="row g-3">
+                <div class="col-md-6">
+                    <label class="form-label">First Name</label>
+                    <input name="first" type="text" placeholder="e.g. John" class="form-control" required>
+                </div>
+                <div class="col-md-6">
+                    <label class="form-label">Last Name</label>
+                    <input name="last" type="text" placeholder="e.g. Doe" class="form-control" required>
+                </div>
+                <div class="col-md-12">
+                    <label class="form-label">Gender</label>
+                    <select name="gender" class="form-select" required>
+                        <option value="" hidden selected>Select Gender</option>
+                        <option value="m">Male</option>
+                        <option value="f">Female</option>
+                    </select>
+                </div>
+            </div>
+
+            <div class="section-title"><i class="bi bi-telephone-inbound me-2"></i> Contact Details</div>
+            <div class="row g-3">
+                <div class="col-md-6">
+                    <label class="form-label">Phone Number</label>
+                    <input name="phone" type="text" placeholder="11 digits" pattern="[0-9]{11}" class="form-control" required>
+                </div>
+                <div class="col-md-6">
+                    <label class="form-label">Home Address</label>
+                    <input name="address" type="text" placeholder="City, Country" class="form-control" required>
+                </div>
+            </div>
+
+            <div class="section-title"><i class="bi bi-shield-lock me-2"></i> Login Credentials</div>
+            <div class="row g-3">
+                <div class="col-md-12">
+                    <label class="form-label">Email Address</label>
+                    <input name="email" type="email" placeholder="admin@example.com" class="form-control" required>
+                </div>
+                <div class="col-md-12">
+                    <label class="form-label">Secure Password</label>
+                    <input name="pass" type="password" placeholder="••••••••••••" class="form-control" required>
+                </div>
+            </div>
+
+            <button name="setup-profile" type="submit" class="btn btn-setup w-100">
+                COMPLETE ADMIN SETUP
+            </button>
         </form>
+
+        <div class="text-center mt-4">
+            <p style="font-size: 0.7rem; color: #94a3b8;" class="mb-0">DGV6.90 Architecture &copy; <?php echo date('Y'); ?></p>
+        </div>
     </div>
 
-<?php if(isset($_SESSION["product_purchase_response"])){ ?>
-<div style="text-align: center;" id="customAlertDiv" class="bg-2 box-shadow m-z-index-2 s-z-index-2 m-block-dp s-block-dp m-position-fix s-position-fix m-top-20 s-top-40 br-radius-5px m-width-60 s-width-26 m-height-auto s-height-auto m-padding-lt-1 s-padding-lt-1 m-padding-rt-1 s-padding-rt-1 m-padding-tp-5 s-padding-tp-1 m-padding-bm-5 s-padding-bm-1 m-margin-lt-19 s-margin-lt-36 m-margin-bm-2 s-margin-bm-2">
-	<span style="user-select: notne;" class="color-10 text-bold-500 m-font-size-20 s-font-size-25">
-		<?php echo $_SESSION["product_purchase_response"]; ?>
-	</span><br/>
-	<button style="text-align: center; user-select: auto;" onclick="customDismissPop();" onkeypress="keyCustomDismissPop(event);" class="button-box onhover-bg-color-10 a-cursor color-2 bg-10 m-font-size-12 s-font-size-13 br-style-tp-0 m-inline-dp s-inline-block-dp m-position-rel s-position-rel m-width-30 s-width-30 m-height-auto s-height-auto m-margin-tp-1 s-margin-tp-1 m-margin-bm-2 s-margin-bm-2 m-margin-lt-0 s-margin-lt-0 m-margin-rt-0 s-margin-rt-0 m-padding-tp-5 s-padding-tp-5 m-padding-bm-5 s-padding-bm-5 m-padding-lt-5 s-padding-lt-5 m-padding-rt-5 s-padding-rt-5">
-		DISMISS
-	</button>
-</div>
-<script>
-	function customDismissPop(){
-		var customAlertDiv = document.getElementById("customAlertDiv");
-		setTimeout(function(){
-			customAlertDiv.style.display = "none";
-		}, 300);
-	}
-	
-	document.addEventListener("keydown", function(event){
-		if(event.keyCode === 13){
-			//prevent enter key default function
-			event.preventDefault();
-			var customAlertDiv = document.getElementById("customAlertDiv");
-			setTimeout(function(){
-				customAlertDiv.style.display = "none";
-			}, 300);
-		}
-	});
-	
-	clearProductResponse();
-	function clearProductResponse(){
-		var productHttp = new XMLHttpRequest();
-        productHttp.open("GET", "../unset-product.php");
-        productHttp.setRequestHeader("Content-Type", "application/json");
-        // productHttp.onload = function(){
-        //     alert(productHttp.status);
-        // }
-        productHttp.send();
-	}
-</script>
-<?php } ?>
-<script src="/jsfile/bc-custom-all.js"></script>
+    <script src="assets-2/vendor/bootstrap/js/bootstrap.bundle.min.js"></script>
 </body>
-</html>
+</html>

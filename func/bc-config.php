@@ -519,17 +519,20 @@ if ($connection_server) {
 //CSS Template Update
 $css_style_template_location = "/cssfile/template/bc-style-template-1.css";
 $vendor_primary_color = "#287bff";
-$select_vendor_style_template = mysqli_query($connection_server, "SELECT * FROM sas_vendor_style_templates WHERE vendor_id='" . $select_vendor_table["id"] . "'");
-if (mysqli_num_rows($select_vendor_style_template) == 1) {
-	$get_vendor_style_template = mysqli_fetch_array($select_vendor_style_template);
-	$style_template_name = $get_vendor_style_template["template_name"];
-	if (!empty($style_template_name)) {
-		$style_template_location = "/cssfile/template/" . $style_template_name;
-		if (file_exists($_SERVER['DOCUMENT_ROOT'] . $style_template_location)) {
-			$css_style_template_location = $style_template_location;
-		}
-	}
-	$vendor_primary_color = $get_vendor_style_template["primary_color"] ?? "#287bff";
+
+if ($connection_server && isset($select_vendor_table["id"])) {
+    $select_vendor_style_template = mysqli_query($connection_server, "SELECT * FROM sas_vendor_style_templates WHERE vendor_id='" . $select_vendor_table["id"] . "'");
+    if ($select_vendor_style_template && mysqli_num_rows($select_vendor_style_template) == 1) {
+        $get_vendor_style_template = mysqli_fetch_array($select_vendor_style_template);
+        $style_template_name = $get_vendor_style_template["template_name"];
+        if (!empty($style_template_name)) {
+            $style_template_location = "/cssfile/template/" . $style_template_name;
+            if (file_exists($_SERVER['DOCUMENT_ROOT'] . $style_template_location)) {
+                $css_style_template_location = $style_template_location;
+            }
+        }
+        $vendor_primary_color = $get_vendor_style_template["primary_color"] ?? "#287bff";
+    }
 }
 
 //Service Provider ID Array

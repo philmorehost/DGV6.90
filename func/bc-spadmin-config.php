@@ -97,28 +97,34 @@
 	}
 
     // Migration: Ensure primary_color column exists for spadmin
-    $check_sp_col = mysqli_query($connection_server, "SHOW COLUMNS FROM `sas_spadmin_style_templates` LIKE 'primary_color'");
+    $check_sp_col = $connection_server ? mysqli_query($connection_server, "SHOW COLUMNS FROM `sas_spadmin_style_templates` LIKE 'primary_color'") : null;
     if ($check_sp_col && mysqli_num_rows($check_sp_col) == 0) {
         mysqli_query($connection_server, "ALTER TABLE `sas_spadmin_style_templates` ADD `primary_color` VARCHAR(20) DEFAULT '#0d6efd'");
     }
 
 	//CSS Template Update
-    $get_all_super_admin_site_details_query = mysqli_query($connection_server, "SELECT * FROM sas_super_admin_site_details LIMIT 1");
-    $get_all_super_admin_site_details = $get_all_super_admin_site_details_query ? mysqli_fetch_array($get_all_super_admin_site_details_query) : null;
+    $get_all_super_admin_site_details = null;
+    if ($connection_server) {
+        $get_all_super_admin_site_details_query = mysqli_query($connection_server, "SELECT * FROM sas_super_admin_site_details LIMIT 1");
+        $get_all_super_admin_site_details = $get_all_super_admin_site_details_query ? mysqli_fetch_array($get_all_super_admin_site_details_query) : null;
+    }
 
     $css_style_template_location = "/cssfile/template/bc-style-template-1.css";
     $spadmin_primary_color = "#0d6efd";
-    $select_spadmin_style_template = mysqli_query($connection_server, "SELECT * FROM sas_spadmin_style_templates");
-    if(mysqli_num_rows($select_spadmin_style_template) == 1){
-        $get_spadmin_style_template = mysqli_fetch_array($select_spadmin_style_template);
-        $style_template_name = $get_spadmin_style_template["template_name"];
-        if(!empty($style_template_name)){
-            $style_template_location = "/cssfile/template/".$style_template_name;
-			if(file_exists("..".$style_template_location)){
-				$css_style_template_location =  $style_template_location;
-			}
+    
+    if ($connection_server) {
+        $select_spadmin_style_template = mysqli_query($connection_server, "SELECT * FROM sas_spadmin_style_templates");
+        if($select_spadmin_style_template && mysqli_num_rows($select_spadmin_style_template) == 1){
+            $get_spadmin_style_template = mysqli_fetch_array($select_spadmin_style_template);
+            $style_template_name = $get_spadmin_style_template["template_name"];
+            if(!empty($style_template_name)){
+                $style_template_location = "/cssfile/template/".$style_template_name;
+                if(file_exists("..".$style_template_location)){
+                    $css_style_template_location =  $style_template_location;
+                }
+            }
+            $spadmin_primary_color = $get_spadmin_style_template["primary_color"] ?? "#0d6efd";
         }
-        $spadmin_primary_color = $get_spadmin_style_template["primary_color"] ?? "#0d6efd";
     }
     
 	/*if(emailTemplateTableExist('student-reg','','verify') == false){
