@@ -1,6 +1,7 @@
 <?php session_start();
 include("func/bc-connect.php");
-include("func/bc-security.php");
+include_once("func/bc-func.php");
+include_once("func/whmcs-func.php");
 
 $hash = mysqli_real_escape_string($connection_server, $_GET['hash'] ?? '');
 if (empty($hash)) {
@@ -16,8 +17,52 @@ if (!$vendor) {
 
 $platform_url = !empty($vendor['app_base_url']) ? $vendor['app_base_url'] : $vendor['website_url'];
 
-// Handle Renewal Actions
+// Handle Renewal & Domain Actions
 $renewal_response = null;
+
+if (isset($_POST['domain_action'])) {
+    $action = $_POST['domain_action'];
+    $v_id = $vendor['id'];
+    $current_balance = (float)$vendor['balance'];
+    
+    if ($action == 'register_new') {
+        $domain_name = mysqli_real_escape_string($connection_server, $_POST['target_domain']);
+        $extension = mysqli_real_escape_string($connection_server, $_POST['domain_extension']);
+        $full_domain = strtolower($domain_name . $extension);
+        
+        $q_ext = mysqli_query($connection_server, "SELECT price, promo_price FROM sas_domain_extensions WHERE extension='$extension' LIMIT 1");
+        $price_row = mysqli_fetch_assoc($q_ext);
+        $domain_price = ($price_row['promo_price'] > 0) ? (float)$price_row['promo_price'] : (float)$price_row['price'];
+        
+        if ($current_balance >= $domain_price) {
+            $whmcs_client_id = getSuperAdminOption('whmcs_default_client_id', '1');
+            $whmcs_res = whmcsCreateOrder($whmcs_client_id, $full_domain);
+            
+            if ($whmcs_res['result'] == 'success') {
+                $expiry_date = date('Y-m-d', strtotime("+1 year"));
+                mysqli_query($connection_server, "UPDATE sas_vendors SET balance = balance - $domain_price, app_base_url = '$full_domain', website_url = '$full_domain', domain_expiry_date = '$expiry_date' WHERE id = '$v_id'");
+                $renewal_response = ['status' => 'success', 'message' => "Domain $full_domain successfully registered and assigned!"];
+                // Refresh
+                $v_q = mysqli_query($connection_server, "SELECT v.*, bp.name as package_name, bp.price as package_price, bp.duration_days, bp.download_url as package_dl FROM sas_vendors v LEFT JOIN sas_billing_packages bp ON v.current_billing_id = bp.id WHERE v.id='$v_id'");
+                $vendor = mysqli_fetch_assoc($v_q);
+                $platform_url = !empty($vendor['app_base_url']) ? $vendor['app_base_url'] : $vendor['website_url'];
+            } else {
+                $renewal_response = ['status' => 'error', 'message' => "WHMCS API Error: " . ($whmcs_res['message'] ?? 'Registration failed.')];
+            }
+        } else {
+            $renewal_response = ['status' => 'error', 'message' => "Insufficient balance to register domain (₦".number_format($domain_price, 2).")."];
+        }
+    } elseif ($action == 'update_existing') {
+        $domain = mysqli_real_escape_string($connection_server, trim(strtolower($_POST['existing_domain'])));
+        mysqli_query($connection_server, "UPDATE sas_vendors SET app_base_url = '$domain', website_url = '$domain' WHERE id = '$v_id'");
+        $renewal_response = ['status' => 'success', 'message' => "Platform URL updated to $domain!"];
+        // Refresh
+        $v_q = mysqli_query($connection_server, "SELECT v.*, bp.name as package_name, bp.price as package_price, bp.duration_days, bp.download_url as package_dl FROM sas_vendors v LEFT JOIN sas_billing_packages bp ON v.current_billing_id = bp.id WHERE v.id='$v_id'");
+        $vendor = mysqli_fetch_assoc($v_q);
+        $platform_url = !empty($vendor['app_base_url']) ? $vendor['app_base_url'] : $vendor['website_url'];
+    }
+}
+
 if (isset($_POST['renew_action'])) {
     $action = $_POST['renew_action'];
     $v_id = $vendor['id'];
@@ -58,6 +103,20 @@ if (isset($_POST['renew_action'])) {
             $renewal_response = ['status' => 'error', 'message' => "Insufficient balance to renew domain (₦".number_format($domain_price, 2).")."];
         }
     }
+}
+
+// Fetch domain extensions for search
+$ext_res = mysqli_query($connection_server, "SELECT extension FROM sas_domain_extensions ORDER BY extension ASC");
+$domain_extensions = [];
+while($ext = mysqli_fetch_assoc($ext_res)) $domain_extensions[] = $ext['extension'];
+
+// Fetch domain settings for instructions
+$nameservers = ''; $ip_address = '';
+$sql_fetch_settings = "SELECT * FROM sas_super_admin_options WHERE option_name IN ('domain_nameservers', 'domain_ip_address')";
+$settings_result = mysqli_query($connection_server, $sql_fetch_settings);
+while($row = mysqli_fetch_assoc($settings_result)) {
+    if($row['option_name'] == 'domain_nameservers') $nameservers = $row['option_value'];
+    if($row['option_name'] == 'domain_ip_address') $ip_address = $row['option_value'];
 }
 
 $addon_ids = $vendor['selected_addons'];
@@ -352,12 +411,9 @@ if ($has_addons) {
                                             <div class="fw-bold">
                                                 <?php echo (!empty($vendor['domain_expiry_date']) && $vendor['domain_expiry_date'] != '0000-00-00') ? date('M d, Y', strtotime($vendor['domain_expiry_date'])) : '<span class="text-warning">Pending Setup</span>'; ?>
                                             </div>
-                                            <?php if(!empty($platform_url)): ?>
-                                            <form method="post">
-                                                <input type="hidden" name="renew_action" value="renew_domain">
-                                                <button type="submit" class="btn btn-outline-premium btn-sm mt-2 w-100">Renew Domain</button>
-                                            </form>
-                                            <?php endif; ?>
+                                            <button type="button" class="btn btn-outline-premium btn-sm mt-2 w-100" data-bs-toggle="modal" data-bs-target="#domainModal">
+                                                <i class="bi bi-gear-wide-connected me-1"></i> Manage Domain
+                                            </button>
                                         </div>
                                     </div>
                                 </div>
@@ -459,6 +515,103 @@ if ($has_addons) {
         </div>
     </div>
 
+    <!-- Modal for Domain Management -->
+    <div class="modal fade" id="domainModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-lg modal-dialog-centered">
+            <div class="modal-content text-white p-2">
+                <div class="modal-body p-4">
+                    <div class="d-flex justify-content-between align-items-center mb-4">
+                        <h4 class="fw-bold mb-0">Domain Management</h4>
+                        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+                    </div>
+
+                    <ul class="nav nav-pills nav-pill-custom mb-4" id="domainTab" role="tablist">
+                        <li class="nav-item flex-fill" role="presentation">
+                            <button class="nav-link active w-100 text-white border-0" id="register-tab" data-bs-toggle="pill" data-bs-target="#register-view" type="button" role="tab">Register New Domain</button>
+                        </li>
+                        <li class="nav-item flex-fill" role="presentation">
+                            <button class="nav-link w-100 text-white border-0" id="existing-tab" data-bs-toggle="pill" data-bs-target="#existing-view" type="button" role="tab">Use Existing Domain</button>
+                        </li>
+                    </ul>
+
+                    <div class="tab-content" id="domainTabContent">
+                        <!-- Register New Domain -->
+                        <div class="tab-pane fade show active" id="register-view" role="tabpanel">
+                            <p class="text-muted small mb-4">Search for a new domain to register for your platform. Registration fees will be deducted from your wallet balance.</p>
+                            
+                            <div class="input-group input-group-lg mb-3">
+                                <span class="input-group-text bg-black bg-opacity-20 border-white border-opacity-10 text-muted">www.</span>
+                                <input type="text" id="target_domain" class="form-control bg-black bg-opacity-20 border-white border-opacity-10 text-white" placeholder="mybrandname">
+                                <select id="domain_extension" class="form-select bg-black bg-opacity-30 border-white border-opacity-10 text-white" style="max-width: 130px;">
+                                    <?php foreach($domain_extensions as $ext): ?>
+                                        <option value="<?php echo $ext; ?>"><?php echo $ext; ?></option>
+                                    <?php endforeach; ?>
+                                </select>
+                                <button class="btn btn-premium px-4" type="button" id="search-btn" onclick="lookupDomain()">
+                                    <span id="btn-text">Search</span>
+                                    <span id="btn-spinner" class="spinner-border spinner-border-sm d-none"></span>
+                                </button>
+                            </div>
+                            
+                            <div id="domain_feedback" class="mb-4"></div>
+
+                            <form method="post" id="reg-domain-form" class="d-none">
+                                <input type="hidden" name="domain_action" value="register_new">
+                                <input type="hidden" name="target_domain" id="final_target_domain">
+                                <input type="hidden" name="domain_extension" id="final_domain_extension">
+                                <div class="bg-primary bg-opacity-10 p-4 rounded-4 border border-primary border-opacity-20 text-center">
+                                    <div class="small text-muted text-uppercase mb-2">Registration Cost</div>
+                                    <div class="h3 fw-bold text-primary-light mb-4" id="domain_price_display">₦0.00</div>
+                                    <button type="submit" class="btn btn-premium w-100 py-3" onclick="return confirm('Register this domain? The price will be deducted from your wallet balance.');">
+                                        <i class="bi bi-credit-card me-2"></i> Register & Pay Now
+                                    </button>
+                                </div>
+                            </form>
+                        </div>
+
+                        <!-- Use Existing Domain -->
+                        <div class="tab-pane fade" id="existing-view" role="tabpanel">
+                            <p class="text-muted small mb-4">Update your platform URL to a domain you already own. You'll need to point your domain to our servers.</p>
+                            
+                            <form method="post">
+                                <input type="hidden" name="domain_action" value="update_existing">
+                                <div class="mb-4">
+                                    <label class="label-modern">Enter Domain Name</label>
+                                    <div class="input-group input-group-lg">
+                                        <span class="input-group-text bg-black bg-opacity-20 border-white border-opacity-10 text-muted">https://</span>
+                                        <input type="text" name="existing_domain" class="form-control bg-black bg-opacity-20 border-white border-opacity-10 text-white" placeholder="mywebsite.com" required>
+                                    </div>
+                                </div>
+
+                                <div class="bg-black bg-opacity-20 p-4 rounded-4 border border-white border-opacity-5 mb-4">
+                                    <h6 class="fw-bold mb-3"><i class="bi bi-info-circle me-2 text-primary-light"></i>Setup Instructions</h6>
+                                    <div class="row g-3">
+                                        <div class="col-sm-6">
+                                            <span class="label-modern">Nameservers</span>
+                                            <div class="bg-black bg-opacity-30 p-2 rounded border border-white border-opacity-5 small font-monospace">
+                                                <?php echo nl2br(htmlspecialchars($nameservers)); ?>
+                                            </div>
+                                        </div>
+                                        <div class="col-sm-6">
+                                            <span class="label-modern">A-Record (IP)</span>
+                                            <div class="bg-black bg-opacity-30 p-2 rounded border border-white border-opacity-5 small font-monospace">
+                                                <?php echo htmlspecialchars($ip_address); ?>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <button type="submit" class="btn btn-premium w-100 py-3">
+                                    <i class="bi bi-arrow-repeat me-2"></i> Update Platform URL
+                                </button>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <!-- Modal for Dynamic Link -->
     <div class="modal fade" id="linkModal" tabindex="-1" aria-hidden="true">
         <div class="modal-dialog modal-dialog-centered">
@@ -489,6 +642,76 @@ if ($has_addons) {
     <script>
         const modal = new bootstrap.Modal(document.getElementById('linkModal'));
         
+        function lookupDomain() {
+            const domain = document.getElementById('target_domain').value.trim();
+            const extension = document.getElementById('domain_extension').value;
+            const feedback = document.getElementById('domain_feedback');
+            const spinner = document.getElementById('btn-spinner');
+            const btnText = document.getElementById('btn-text');
+            const regForm = document.getElementById('reg-domain-form');
+
+            if (!domain) {
+                alert('Please enter a domain name');
+                return;
+            }
+
+            spinner.classList.remove('d-none');
+            btnText.classList.add('d-none');
+            feedback.innerHTML = '<div class="text-center py-3"><div class="spinner-border text-primary"></div><div class="mt-2 small text-muted">Checking Availability...</div></div>';
+            regForm.classList.add('d-none');
+
+            fetch('bc-spadmin/ajax-domain-check.php?domain=' + encodeURIComponent(domain + extension))
+                .then(r => r.json())
+                .then(data => {
+                    spinner.classList.add('d-none');
+                    btnText.classList.remove('d-none');
+
+                    if (data.status === 'available') {
+                        feedback.innerHTML = `<div class="alert bg-success bg-opacity-10 border-success border-opacity-20 text-success rounded-4 p-3 mb-0">
+                            <i class="bi bi-check-circle-fill me-2"></i> <strong>${domain}${extension}</strong> is available for registration!
+                        </div>`;
+                        document.getElementById('domain_price_display').innerText = '₦' + parseFloat(data.price).toLocaleString();
+                        document.getElementById('final_target_domain').value = domain;
+                        document.getElementById('final_domain_extension').value = extension;
+                        regForm.classList.remove('d-none');
+                    } else if (data.status === 'registered' || data.status === 'unavailable') {
+                        let html = `<div class="alert bg-danger bg-opacity-10 border-danger border-opacity-20 text-danger rounded-4 p-3 mb-3">
+                            <i class="bi bi-x-circle-fill me-2"></i> <strong>${domain}${extension}</strong> is already taken.
+                        </div>`;
+                        if (data.suggestions && data.suggestions.length > 0) {
+                            html += `<div class="small text-muted mb-2 text-uppercase fw-bold">Try these alternatives:</div><div class="d-flex flex-wrap gap-2">`;
+                            data.suggestions.forEach(s => {
+                                html += `<button type="button" class="btn btn-outline-premium btn-sm rounded-pill py-1 px-3" onclick="useSuggested('${s}')">${s}</button>`;
+                            });
+                            html += `</div>`;
+                        }
+                        feedback.innerHTML = html;
+                    } else {
+                        feedback.innerHTML = `<div class="alert bg-warning bg-opacity-10 border-warning border-opacity-20 text-warning rounded-4 p-3">${data.message}</div>`;
+                    }
+                })
+                .catch(err => {
+                    console.error(err);
+                    spinner.classList.add('d-none');
+                    btnText.classList.remove('d-none');
+                    feedback.innerHTML = '<div class="alert bg-danger bg-opacity-10 text-danger p-3 rounded-4">Lookup failed. Check your connection.</div>';
+                });
+        }
+
+        function useSuggested(fullDomain) {
+            const parts = fullDomain.split('.');
+            document.getElementById('target_domain').value = parts[0];
+            const ext = '.' + parts.slice(1).join('.');
+            const select = document.getElementById('domain_extension');
+            for(let i=0; i<select.options.length; i++){
+                if(select.options[i].value === ext){
+                    select.selectedIndex = i;
+                    break;
+                }
+            }
+            lookupDomain();
+        }
+
         document.querySelectorAll('.generate-dl').forEach(btn => {
             btn.addEventListener('click', function() {
                 const addonId = this.getAttribute('data-id');
