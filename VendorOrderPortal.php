@@ -7,7 +7,7 @@ if (empty($hash)) {
     die("Access denied. Invalid or missing secure key.");
 }
 
-$v_q = mysqli_query($connection_server, "SELECT v.*, bp.name as package_name, bp.download_url as package_dl FROM sas_vendors v JOIN sas_billing_packages bp ON v.current_billing_id = bp.id WHERE v.access_hash='$hash'");
+$v_q = mysqli_query($connection_server, "SELECT v.*, bp.name as package_name, bp.download_url as package_dl FROM sas_vendors v LEFT JOIN sas_billing_packages bp ON v.current_billing_id = bp.id WHERE v.access_hash='$hash'");
 $vendor = mysqli_fetch_assoc($v_q);
 
 if (!$vendor) {

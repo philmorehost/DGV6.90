@@ -79,6 +79,12 @@ if ($connection_server) {
                 $get_logged_admin_query = mysqli_query($connection_server, "SELECT * FROM sas_vendors WHERE id='$vid' && email='$email' LIMIT 1");
                 if (mysqli_num_rows($get_logged_admin_query) == 1) {
                     $get_logged_admin_details = mysqli_fetch_array($get_logged_admin_query);
+                    // DGV6.90: Ensure access_hash is never empty for the portal link
+                    if (empty($get_logged_admin_details['access_hash'])) {
+                        $new_hash = md5($get_logged_admin_details['id'] . $get_logged_admin_details['email'] . time());
+                        mysqli_query($connection_server, "UPDATE sas_vendors SET access_hash='$new_hash' WHERE id='".$get_logged_admin_details['id']."'");
+                        $get_logged_admin_details['access_hash'] = $new_hash;
+                    }
                     if (($get_logged_admin_details["status"] == 1 && $get_logged_admin_details["is_blocked"] == 0) || (isset($_SESSION["spadmin_vendor_auth"]))) {
                         // Check for vendor expiry
                         $is_expired = false;
