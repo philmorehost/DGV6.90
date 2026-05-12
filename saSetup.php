@@ -2,6 +2,7 @@
     include("./func/bc-config.php");
     
     $json_response_encode = null;
+    $setup_completed = false;
 
     if(isset($_POST["setup-profile"])){
         $first = mysqli_real_escape_string($connection_server, trim(strip_tags(ucwords($_POST["first"]))));
@@ -50,8 +51,7 @@
             $_SESSION["product_purchase_response"] = $json_response_decode["desc"];
             
             if (str_contains($json_response_decode["desc"], "Successfully")) {
-                header("Location: /bc-spadmin");
-                exit();
+                $setup_completed = true;
             }
         }
     }
@@ -69,6 +69,7 @@
         :root {
             --primary: #6366f1;
             --primary-dark: #4f46e5;
+            --success: #10b981;
             --glass: rgba(255, 255, 255, 0.7);
             --glass-border: rgba(255, 255, 255, 0.4);
         }
@@ -111,6 +112,7 @@
             box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.08);
             position: relative;
             z-index: 1;
+            transition: all 0.5s ease;
         }
 
         .header-section {
@@ -195,6 +197,30 @@
             filter: brightness(1.1);
         }
 
+        .success-view {
+            text-align: center;
+            padding: 2rem 0;
+        }
+
+        .success-icon {
+            width: 80px;
+            height: 80px;
+            background: rgba(16, 185, 129, 0.1);
+            color: var(--success);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 40px;
+            margin: 0 auto 1.5rem;
+            animation: scaleIn 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        }
+
+        @keyframes scaleIn {
+            from { transform: scale(0); opacity: 0; }
+            to { transform: scale(1); opacity: 1; }
+        }
+
         .alert-modern {
             border-radius: 16px;
             border: none;
@@ -223,71 +249,85 @@
 <body>
 
     <div class="setup-card">
-        <div class="header-section text-center">
-            <div class="logo-box">
-                <img src="uploaded-image/sp-logo.png" alt="Logo" onerror="this.src='asset/user-icon.png'">
+        <?php if($setup_completed): ?>
+            <div class="success-view">
+                <div class="success-icon">
+                    <i class="bi bi-check-circle-fill"></i>
+                </div>
+                <h2 class="fw-bold mb-2">Installation Complete!</h2>
+                <p class="text-muted mb-4">Your Super Admin account has been created successfully. You can now log in to the dashboard.</p>
+                
+                <a href="/bc-spadmin" class="btn btn-setup w-100 d-inline-block text-decoration-none">
+                    GO TO DASHBOARD <i class="bi bi-arrow-right ms-2"></i>
+                </a>
             </div>
-            <h2 class="fw-extrabold mb-1">Super Admin Setup</h2>
-            <p class="text-muted small">Configure the master account for your platform</p>
-        </div>
+        <?php else: ?>
+            <div class="header-section text-center">
+                <div class="logo-box">
+                    <img src="uploaded-image/sp-logo.png" alt="Logo" onerror="this.src='asset/user-icon.png'">
+                </div>
+                <h2 class="fw-extrabold mb-1">Super Admin Setup</h2>
+                <p class="text-muted small">Configure the master account for your platform</p>
+            </div>
 
-        <?php if(isset($_SESSION["product_purchase_response"])): ?>
-            <div class="alert alert-modern fade show" role="alert">
-                <div class="alert-icon"><i class="bi bi-info-circle-fill"></i></div>
-                <div class="small fw-600"><?php echo $_SESSION["product_purchase_response"]; unset($_SESSION["product_purchase_response"]); ?></div>
-                <button type="button" class="btn-close ms-auto" data-bs-dismiss="alert"></button>
-            </div>
+            <?php if(isset($_SESSION["product_purchase_response"])): ?>
+                <div class="alert alert-modern fade show" role="alert">
+                    <div class="alert-icon"><i class="bi bi-info-circle-fill"></i></div>
+                    <div class="small fw-600"><?php echo $_SESSION["product_purchase_response"]; unset($_SESSION["product_purchase_response"]); ?></div>
+                    <button type="button" class="btn-close ms-auto" data-bs-dismiss="alert"></button>
+                </div>
+            <?php endif; ?>
+
+            <form method="post" action="">
+                <div class="section-title"><i class="bi bi-person-badge me-2"></i> Personal Details</div>
+                <div class="row g-3">
+                    <div class="col-md-6">
+                        <label class="form-label">First Name</label>
+                        <input name="first" type="text" placeholder="e.g. John" class="form-control" required>
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label">Last Name</label>
+                        <input name="last" type="text" placeholder="e.g. Doe" class="form-control" required>
+                    </div>
+                    <div class="col-md-12">
+                        <label class="form-label">Gender</label>
+                        <select name="gender" class="form-select" required>
+                            <option value="" hidden selected>Select Gender</option>
+                            <option value="m">Male</option>
+                            <option value="f">Female</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="section-title"><i class="bi bi-telephone-inbound me-2"></i> Contact Details</div>
+                <div class="row g-3">
+                    <div class="col-md-6">
+                        <label class="form-label">Phone Number</label>
+                        <input name="phone" type="text" placeholder="11 digits" pattern="[0-9]{11}" class="form-control" required>
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label">Home Address</label>
+                        <input name="address" type="text" placeholder="City, Country" class="form-control" required>
+                    </div>
+                </div>
+
+                <div class="section-title"><i class="bi bi-shield-lock me-2"></i> Login Credentials</div>
+                <div class="row g-3">
+                    <div class="col-md-12">
+                        <label class="form-label">Email Address</label>
+                        <input name="email" type="email" placeholder="admin@example.com" class="form-control" required>
+                    </div>
+                    <div class="col-md-12">
+                        <label class="form-label">Secure Password</label>
+                        <input name="pass" type="password" placeholder="••••••••••••" class="form-control" required>
+                    </div>
+                </div>
+
+                <button name="setup-profile" type="submit" class="btn btn-setup w-100">
+                    COMPLETE ADMIN SETUP
+                </button>
+            </form>
         <?php endif; ?>
-
-        <form method="post" action="">
-            <div class="section-title"><i class="bi bi-person-badge me-2"></i> Personal Details</div>
-            <div class="row g-3">
-                <div class="col-md-6">
-                    <label class="form-label">First Name</label>
-                    <input name="first" type="text" placeholder="e.g. John" class="form-control" required>
-                </div>
-                <div class="col-md-6">
-                    <label class="form-label">Last Name</label>
-                    <input name="last" type="text" placeholder="e.g. Doe" class="form-control" required>
-                </div>
-                <div class="col-md-12">
-                    <label class="form-label">Gender</label>
-                    <select name="gender" class="form-select" required>
-                        <option value="" hidden selected>Select Gender</option>
-                        <option value="m">Male</option>
-                        <option value="f">Female</option>
-                    </select>
-                </div>
-            </div>
-
-            <div class="section-title"><i class="bi bi-telephone-inbound me-2"></i> Contact Details</div>
-            <div class="row g-3">
-                <div class="col-md-6">
-                    <label class="form-label">Phone Number</label>
-                    <input name="phone" type="text" placeholder="11 digits" pattern="[0-9]{11}" class="form-control" required>
-                </div>
-                <div class="col-md-6">
-                    <label class="form-label">Home Address</label>
-                    <input name="address" type="text" placeholder="City, Country" class="form-control" required>
-                </div>
-            </div>
-
-            <div class="section-title"><i class="bi bi-shield-lock me-2"></i> Login Credentials</div>
-            <div class="row g-3">
-                <div class="col-md-12">
-                    <label class="form-label">Email Address</label>
-                    <input name="email" type="email" placeholder="admin@example.com" class="form-control" required>
-                </div>
-                <div class="col-md-12">
-                    <label class="form-label">Secure Password</label>
-                    <input name="pass" type="password" placeholder="••••••••••••" class="form-control" required>
-                </div>
-            </div>
-
-            <button name="setup-profile" type="submit" class="btn btn-setup w-100">
-                COMPLETE ADMIN SETUP
-            </button>
-        </form>
 
         <div class="text-center mt-4">
             <p style="font-size: 0.7rem; color: #94a3b8;" class="mb-0">DGV6.90 Architecture &copy; <?php echo date('Y'); ?></p>

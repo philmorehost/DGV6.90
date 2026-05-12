@@ -34,7 +34,11 @@ $db_json_encode = json_encode($db_json_decode, true);
             $_SESSION["product_purchase_response"] = "Error: Please fill all required fields.";
     	}
 		
-        header("Location: ".$_SERVER["REQUEST_URI"]);
+        if (isset($_SESSION["product_purchase_response"]) && str_contains($_SESSION["product_purchase_response"], "Successfully")) {
+            header("Location: /saSetup.php");
+        } else {
+            header("Location: ".$_SERVER["REQUEST_URI"]);
+        }
         exit();
     }
 ?>
