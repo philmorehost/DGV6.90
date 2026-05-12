@@ -17,7 +17,7 @@ if (json_last_error() === JSON_ERROR_NONE) {
         $exp_edu_type_qty = array_filter(explode("-", trim($education_type_qty)));
         $exp_edu_type_qty = array_filter(explode("|", trim($exp_edu_type_qty[0])));
         $education_type = strtolower(trim($exp_edu_type_qty[0]));
-        $education_qty = strtolower(trim($exp_edu_type_qty[1]));
+        $education_qty = trim($exp_edu_type_qty[1]);
         $status_update = "failed";
         $status_msg = "Unknown Error";
 

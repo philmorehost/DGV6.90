@@ -13,7 +13,7 @@ if (json_last_error() === JSON_ERROR_NONE) {
     if ($select_vendor_table) {
         $username = mysqli_real_escape_string($connection_server, trim(strip_tags($decode_post_request["username"])));
         $password = mysqli_real_escape_string($connection_server, trim(strip_tags($decode_post_request["encoded-passkey"])));
-        $network = mysqli_real_escape_string($connection_server, trim(strip_tags($decode_post_request["network"])));
+        $network = mysqli_real_escape_string($connection_server, trim(strip_tags(strtolower($decode_post_request["network"]))));
         $id_number = str_replace(" ", "", mysqli_real_escape_string($connection_server, trim(strip_tags($decode_post_request["id_number"]))));
         $amount = mysqli_real_escape_string($connection_server, trim(strip_tags($decode_post_request["amount"])));
         $amount = str_replace(["-", "+", "*", "/"], "", $amount);
@@ -41,7 +41,7 @@ if (json_last_error() === JSON_ERROR_NONE) {
                     $get_user_info = mysqli_fetch_array($checkuser_pass);
                     $api_file_url = $_SERVER["DOCUMENT_ROOT"] . "/web/api/betting.php";
                     if (file_exists($api_file_url)) {
-                        $api_post_info_from_app = array("api_key" => $get_user_info["api_key"], "provider" => $network, "customer_id" => $id_number, "type" => $meter_type, "amount" => $amount);
+                        $api_post_info_from_app = array("api_key" => $get_user_info["api_key"], "provider" => $network, "customer_id" => $id_number, "type" => "", "amount" => $amount);
                         include_once($api_file_url);
                         if (in_array($json_response_array["status"], array("success", "pending"))) {
                             $status_update = "success";

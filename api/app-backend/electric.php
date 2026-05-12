@@ -15,7 +15,7 @@ if (json_last_error() === JSON_ERROR_NONE) {
         $password = mysqli_real_escape_string($connection_server, trim(strip_tags($decode_post_request["encoded-passkey"])));
         $network = mysqli_real_escape_string($connection_server, trim(strip_tags($decode_post_request["network"])));
         $meter_number = str_replace(" ", "", mysqli_real_escape_string($connection_server, trim(strip_tags($decode_post_request["meter_number"]))));
-        $meter_type = mysqli_real_escape_string($connection_server, trim(strip_tags($decode_post_request["meter_type"])));
+        $meter_type = mysqli_real_escape_string($connection_server, trim(strip_tags(strtolower($decode_post_request["meter_type"]))));
         $amount = mysqli_real_escape_string($connection_server, trim(strip_tags($decode_post_request["amount"])));
         $amount = str_replace(["-", "+", "*", "/"], "", $amount);
 

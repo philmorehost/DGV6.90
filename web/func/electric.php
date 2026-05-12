@@ -5,13 +5,13 @@ if (in_array($purchase_method, $purchase_method_array)) {
     if ($purchase_method === "WEB") {
         if (isset($_SESSION["meter_name"])) {
             $epp = mysqli_real_escape_string($connection_server, trim(strip_tags(strtolower($_SESSION["meter_provider"]))));
-            $type = mysqli_real_escape_string($connection_server, trim(strip_tags(strtolower($_SESSION["meter_type"]))));
+            $type = mysqli_real_escape_string($connection_server, trim(strip_tags($_SESSION["meter_type"])));
             $amount = mysqli_real_escape_string($connection_server, preg_replace("/[^0-9.]+/", "", trim(strip_tags($_SESSION["meter_amount"]))));
             $meter_number = sanitize_phone_number(trim(strip_tags($_SESSION["meter_number"])));
             $meter_number = mysqli_real_escape_string($connection_server, $meter_number);
         } else {
             $epp = mysqli_real_escape_string($connection_server, trim(strip_tags(strtolower($_POST["epp"]))));
-            $type = mysqli_real_escape_string($connection_server, trim(strip_tags(strtolower($_POST["type"]))));
+            $type = mysqli_real_escape_string($connection_server, trim(strip_tags($_POST["type"])));
             $amount = mysqli_real_escape_string($connection_server, preg_replace("/[^0-9.]+/", "", trim(strip_tags($_POST["amount"]))));
             $meter_number = sanitize_phone_number(trim(strip_tags($_POST["meter-number"])));
             $meter_number = mysqli_real_escape_string($connection_server, $meter_number);
@@ -21,7 +21,7 @@ if (in_array($purchase_method, $purchase_method_array)) {
 
     if (in_array($purchase_method, array("API", "APP"))) {
         $epp = mysqli_real_escape_string($connection_server, trim(strip_tags(strtolower($get_api_post_info["provider"] ?? ""))));
-        $type = mysqli_real_escape_string($connection_server, trim(strip_tags(strtolower($get_api_post_info["type"] ?? ""))));
+        $type = mysqli_real_escape_string($connection_server, trim(strip_tags($get_api_post_info["type"] ?? "")));
         $amount = mysqli_real_escape_string($connection_server, preg_replace("/[^0-9.]+/", "", trim(strip_tags($get_api_post_info["amount"] ?? ""))));
         $meter_number = sanitize_phone_number(trim(strip_tags($get_api_post_info["meter_number"] ?? $get_api_post_info["meter_no"] ?? "")));
         $meter_number = mysqli_real_escape_string($connection_server, $meter_number);

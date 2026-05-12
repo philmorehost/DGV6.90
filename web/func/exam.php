@@ -4,13 +4,13 @@ $purchase_method_array = array("API", "WEB", "APP");
 if (in_array($purchase_method, $purchase_method_array)) {
     if ($purchase_method === "WEB") {
         $epp = mysqli_real_escape_string($connection_server, trim(strip_tags(strtolower($_POST["epp"]))));
-        $quantity = mysqli_real_escape_string($connection_server, trim(strip_tags(strtolower($_POST["quantity"]))));
+        $quantity = mysqli_real_escape_string($connection_server, trim(strip_tags($_POST["quantity"])));
 
     }
 
     if (in_array($purchase_method, array("API", "APP"))) {
         $epp = mysqli_real_escape_string($connection_server, trim(strip_tags(strtolower($get_api_post_info["type"]))));
-        $quantity = mysqli_real_escape_string($connection_server, trim(strip_tags(strtolower($get_api_post_info["quantity"]))));
+        $quantity = mysqli_real_escape_string($connection_server, trim(strip_tags($get_api_post_info["quantity"])));
     }
     //$discounted_amount = $amount;
     $type_alternative = ucwords($epp . " exam");

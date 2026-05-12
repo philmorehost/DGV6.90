@@ -7,12 +7,12 @@ if (in_array($purchase_method, $purchase_method_array)) {
             $isp = mysqli_real_escape_string($connection_server, trim(strip_tags(strtolower($_SESSION["cable_provider"]))));
             $iuc_no = sanitize_phone_number(trim(strip_tags($_SESSION["iuc_number"])));
             $iuc_no = mysqli_real_escape_string($connection_server, $iuc_no);
-            $quantity = mysqli_real_escape_string($connection_server, trim(strip_tags(strtolower($_SESSION["cable_package"]))));
+            $quantity = mysqli_real_escape_string($connection_server, trim(strip_tags($_SESSION["cable_package"])));
         } else {
             $isp = mysqli_real_escape_string($connection_server, trim(strip_tags(strtolower($_POST["isp"]))));
             $iuc_no = sanitize_phone_number(trim(strip_tags($_POST["iuc-number"])));
             $iuc_no = mysqli_real_escape_string($connection_server, $iuc_no);
-            $quantity = mysqli_real_escape_string($connection_server, trim(strip_tags(strtolower($_POST["quantity"]))));
+            $quantity = mysqli_real_escape_string($connection_server, trim(strip_tags($_POST["quantity"])));
         }
     }
 
@@ -20,7 +20,7 @@ if (in_array($purchase_method, $purchase_method_array)) {
         $isp = mysqli_real_escape_string($connection_server, trim(strip_tags(strtolower($get_api_post_info["type"] ?? ""))));
         $iuc_no = sanitize_phone_number(trim(strip_tags($get_api_post_info["iuc_number"] ?? $get_api_post_info["iuc_no"] ?? "")));
         $iuc_no = mysqli_real_escape_string($connection_server, $iuc_no);
-        $quantity = mysqli_real_escape_string($connection_server, trim(strip_tags(strtolower($get_api_post_info["package"] ?? $get_api_post_info["plan_code"] ?? ""))));
+        $quantity = mysqli_real_escape_string($connection_server, trim(strip_tags($get_api_post_info["package"] ?? $get_api_post_info["plan_code"] ?? "")));
     }
     //$discounted_amount = $amount;
     $type_alternative = ucwords($isp . " cable");
