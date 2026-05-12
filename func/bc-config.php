@@ -479,7 +479,7 @@ if ($connection_server) {
 		} else {
 			// Not logged in
 		$current_uri = explode("?", trim($_SERVER["REQUEST_URI"]))[0];
-		$public_pages = array("/web/Login.php", "/web/Register.php", "/web/PasswordRecovery.php", "/web/PayRequest.php", "/web/ajax-unblock-request.php", "/web/Inactive.php", "/web/LockoutResolution.php", "/web/APIDocs.php", "/blog.php", "/single-post.php", "/web/biometric-ajax.php", "/manifest.php", "/web/ViewCryptoInvoice.php", "/dbSetup.php", "/saSetup.php");
+		$public_pages = array("/web/Login.php", "/web/Register.php", "/web/PasswordRecovery.php", "/web/PayRequest.php", "/web/ajax-unblock-request.php", "/web/Inactive.php", "/web/LockoutResolution.php", "/web/APIDocs.php", "/blog.php", "/single-post.php", "/web/biometric-ajax.php", "/manifest.php", "/web/ViewCryptoInvoice.php", "/dbSetup.php", "/saSetup.php", "/web/Error.php", "/logout.php");
 
 		$is_public_page = false;
 		foreach($public_pages as $page) {
@@ -505,9 +505,18 @@ if ($connection_server) {
         }
 
 	} else {
-		// Only redirect if NOT on setup pages (to allow fresh install)
-		$is_setup_page = in_array(explode("?", trim($_SERVER["REQUEST_URI"]))[0], array("/dbSetup.php", "/saSetup.php"));
-		if (!$is_setup_page) {
+		// Only redirect if NOT on setup or error pages (to allow fresh install and prevent loops)
+		$current_path = explode("?", trim($_SERVER["REQUEST_URI"]))[0];
+		$safe_installer_pages = array("/dbSetup.php", "/saSetup.php", "/web/Error.php", "/logout.php");
+		$is_safe_page = false;
+		foreach ($safe_installer_pages as $page) {
+			if (substr($current_path, -strlen($page)) === $page) {
+				$is_safe_page = true;
+				break;
+			}
+		}
+		
+		if (!$is_safe_page) {
 			header("Location: /web/Error.php");
 			exit();
 		}

@@ -67,7 +67,8 @@
                 exit();
 			}
 		}else{
-			if(!in_array(explode("?",trim($_SERVER["REQUEST_URI"]))[0], array("/bc-spadmin/Login.php", "/bc-spadmin/PasswordRecovery.php", "/web/LockoutResolution.php"))){
+			$current_uri = explode("?",trim($_SERVER["REQUEST_URI"]))[0];
+			if(!in_array($current_uri, array("/bc-spadmin/Login.php", "/bc-spadmin/PasswordRecovery.php", "/web/LockoutResolution.php"))){
 				$redirecturl = trim($_SERVER["REQUEST_URI"]);
 				if(!empty(trim($redirecturl)) && file_exists("..".$redirecturl)){
 					header("Location: /bc-spadmin/Login.php?redirecturl=".$redirecturl);
@@ -79,7 +80,7 @@
 			}
 		}
 	}else{
-		header("Location: /bc-spadmin/Error.php");
+		header("Location: /web/Error.php");
         exit();
 	}
 	}else{
