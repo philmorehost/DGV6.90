@@ -176,7 +176,7 @@ $vendor_q = mysqli_query($connection_server,
     "SELECT ai_per_tx_cost, ai_model_assigned, ai_price_per_1k_tokens FROM sas_vendors WHERE id='$safe_vid' LIMIT 1"
 );
 $vendor_ai = $vendor_q ? mysqli_fetch_assoc($vendor_q) : null;
-$tokens_per_call = (int)($vendor_ai['ai_per_tx_cost'] ?? 5);
+$tokens_per_call = (int)($vendor_ai['ai_per_tx_cost'] ?? 2);
 $assigned_model  = $vendor_ai['ai_model_assigned'] ?? 'gemini-1.5-flash';
 
 // Use requested model only if it matches the assigned model (prevent tier-hopping)
@@ -389,7 +389,7 @@ switch ($action_type) {
                 'model'    => $model_to_use,
                 'duration_ms' => 0 
             ];
-            $tokens_per_call = (int)($vendor_ai['ai_voice_fee_tokens'] ?? 100);
+            $tokens_per_call = (int)($vendor_ai['ai_voice_fee_tokens'] ?? 0);
         } else {
             echo json_encode([
                 'status'  => 'error',

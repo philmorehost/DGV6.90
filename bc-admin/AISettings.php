@@ -129,13 +129,14 @@ if (isset($_GET["remove-whitelist"])) {
     exit();
 }
 
-// Handle Voice Settings Update
+// Handle Voice & Billing Settings Update
 if (isset($_POST['set-voice-limit'])) {
     bc_validate_csrf();
     $new_min = (int)$_POST['voice_tx_threshold'];
     $new_fee = (int)$_POST['ai_voice_fee_tokens'];
-    mysqli_query($connection_server, "UPDATE sas_vendors SET voice_tx_threshold='$new_min', ai_voice_fee_tokens='$new_fee' WHERE id='$esc_vid'");
-    $_SESSION['product_purchase_response'] = "✅ Voice settings updated.";
+    $chat_fee = (int)$_POST['ai_per_tx_cost'];
+    mysqli_query($connection_server, "UPDATE sas_vendors SET voice_tx_threshold='$new_min', ai_voice_fee_tokens='$new_fee', ai_per_tx_cost='$chat_fee' WHERE id='$esc_vid'");
+    $_SESSION['product_purchase_response'] = "✅ AI Billing & Voice settings updated.";
     header("Location: AISettings.php");
     exit();
 }
@@ -167,7 +168,8 @@ $usage_q = mysqli_query($connection_server, "SELECT SUM(tokens_burned) as used, 
 $usage = $usage_q ? mysqli_fetch_assoc($usage_q) : ['used' => 0, 'calls' => 0];
 
 $voice_min_tx = (int)($get_logged_admin_details["voice_tx_threshold"] ?? 50);
-$voice_fee_tokens = (int)($get_logged_admin_details['ai_voice_fee_tokens'] ?? 50);
+$voice_fee_tokens = (int)($get_logged_admin_details['ai_voice_fee_tokens'] ?? 0);
+$chat_fee_tokens = (int)($get_logged_admin_details['ai_per_tx_cost'] ?? 2);
 $voice_apps_q = mysqli_query($connection_server, "SELECT id, username, email, phone_number, ai_voice_status FROM sas_users WHERE vendor_id='$esc_vid' AND ai_voice_status IN (1,2) ORDER BY ai_voice_status ASC, id DESC LIMIT 20");
 
 $top_consumers_q = mysqli_query($connection_server, "SELECT username, SUM(tokens_burned) as total FROM sas_ai_transactions WHERE vendor_id='$esc_vid' AND MONTH(created_at)=MONTH(NOW()) AND status='success' GROUP BY username ORDER BY total DESC LIMIT 5");
@@ -470,18 +472,24 @@ $v_blocked_count = ($blocked_q && $row_b = mysqli_fetch_assoc($blocked_q)) ? $ro
             <div class="row g-4">
                 <div class="col-lg-4">
                     <div class="ai-glass-card p-4">
-                        <h5 class="fw-bold mb-4"><i class="bi bi-mic me-2 text-primary"></i>Thresholds</h5>
+                        <h5 class="fw-bold mb-4"><i class="bi bi-mic me-2 text-primary"></i>Billing & Thresholds</h5>
                         <form method="post">
                             <?php echo bc_csrf_field(); ?>
                             <div class="mb-3">
-                                <label class="small fw-bold">Min Success Tx Required</label>
-                                <input type="number" name="voice_tx_threshold" class="form-control rounded-4" value="<?php echo $voice_min_tx; ?>">
+                                <label class="small fw-bold">General Chat Fee (Tokens)</label>
+                                <input type="number" name="ai_per_tx_cost" class="form-control rounded-4" value="<?php echo $chat_fee_tokens; ?>">
+                                <small class="text-muted">Charged for every AI response in chat.</small>
+                            </div>
+                            <div class="mb-3">
+                                <label class="small fw-bold">Successful Execution Fee (Tokens)</label>
+                                <input type="number" name="ai_voice_fee_tokens" class="form-control rounded-4" value="<?php echo $voice_fee_tokens; ?>">
+                                <small class="text-muted">Extra charge for successful VTU execution.</small>
                             </div>
                             <div class="mb-4">
-                                <label class="small fw-bold">Activation Fee (Tokens)</label>
-                                <input type="number" name="ai_voice_fee_tokens" class="form-control rounded-4" value="<?php echo $voice_fee_tokens; ?>">
+                                <label class="small fw-bold">Min Success Tx for User Activation</label>
+                                <input type="number" name="voice_tx_threshold" class="form-control rounded-4" value="<?php echo $voice_min_tx; ?>">
                             </div>
-                            <button type="submit" name="set-voice-limit" class="ai-btn-primary w-100">Save Voice Rules</button>
+                            <button type="submit" name="set-voice-limit" class="ai-btn-primary w-100">Save AI Billing Rules</button>
                         </form>
                     </div>
                 </div>

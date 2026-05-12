@@ -36,6 +36,9 @@ if (isset($_POST['generate-ad'])) {
     
     $start_time = microtime(true);
     $ai = ai_engine();
+    if (!$ai->isModelCompatible($assigned_model)) {
+        $assigned_model = $ai->getDefaultModel();
+    }
     $result = $ai->chat($assigned_model, $prompt, ['temperature' => 0.85]);
     $duration = round((microtime(true) - $start_time) * 1000);
 
